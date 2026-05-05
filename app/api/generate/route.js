@@ -11,52 +11,60 @@ export async function POST(request) {
     const ctaText = cta && cta !== 'None' ? `End with a "${cta}" call to action.` : ''
     const isBlog = platform === 'Blog'
 
-    const prompt = isBlog
-      ? `You are an expert SEO blog writer. Write a blog post in ${language}.
-Topic: ${topic}
-Tone: ${tone}
-Word count: approximately ${wordCount} words
-${keywordText}
-${audienceText}
-${ctaText}
+    const systemPrompt = `You are a content writer. You ALWAYS respond with ONLY a valid JSON object. Never include any text outside the JSON. Never use markdown. Never use code blocks. Only output the raw JSON object.`
 
-You MUST respond ONLY with a valid JSON object. No text before or after. No markdown. No backticks. Just pure JSON like this:
-{"metaTitle":"your meta title here","metaDescription":"your meta description here","titles":["H1 option 1","H1 option 2","H1 option 3"],"content":"your full blog post here"}`
-      : `You are an expert ${platform} content writer. Write a ${platform} post in ${language}.
-Topic: ${topic}
-Tone: ${tone}
-Word count: approximately ${wordCount} words
-${keywordText}
-${audienceText}
-${ctaText}
+    const userPrompt = isBlog
+      ? `Write a blog post in ${language} about: ${topic}
+Tone: ${tone}, Word count: ~${wordCount} words
+${keywordText} ${audienceText} ${ctaText}
 
-You MUST respond ONLY with a valid JSON object. No text before or after. No markdown. No backticks. Just pure JSON like this:
-{"metaTitle":"","metaDescription":"","titles":[],"content":"your full ${platform} post here"}`
+Respond with this exact JSON structure:
+{"metaTitle":"SEO title under 60 chars","metaDescription":"SEO description under 160 chars","titles":["H1 option 1","H1 option 2","H1 option 3"],"content":"Full blog post text here"}`
+      : `Write a ${platform} post in ${language} about: ${topic}
+Tone: ${tone}, Word count: ~${wordCount} words
+${keywordText} ${audienceText} ${ctaText}
+
+Respond with this exact JSON structure:
+{"metaTitle":"","metaDescription":"","titles":[],"content":"Full ${platform} post text here"}`
 
     const completion = await groq.chat.completions.create({
-      messages: [{ role: 'user', content: prompt }],
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
       model: 'llama-3.3-70b-versatile',
       temperature: 0.7,
       max_tokens: 2000,
     })
 
-    const text = completion.choices[0]?.message?.content || ''
+    let text = completion.choices[0]?.message?.content || ''
     
-    // Clean the response aggressively
-    let cleaned = text.trim()
-    cleaned = cleaned.replace(/^```json\s*/i, '')
-    cleaned = cleaned.replace(/^```\s*/i, '')
-    cleaned = cleaned.replace(/\s*```$/i, '')
-    cleaned = cleaned.trim()
+    // Remove any markdown or extra text
+    text = text.replace(/```json/gi, '').replace(/```/g, '').trim()
     
-    // Find JSON object in the response
-    const jsonStart = cleaned.indexOf('{')
-    const jsonEnd = cleaned.lastIndexOf('}')
-    if (jsonStart !== -1 && jsonEnd !== -1) {
-      cleaned = cleaned.substring(jsonStart, jsonEnd + 1)
+    // Remove control characters that break JSON
+    text = text.replace(/[\x00-\x1F\x7F]/g, (char) => {
+      if (char === '\n') return '\\n'
+      if (char === '\r') return '\\r'
+      if (char === '\t') return '\\t'
+      return ''
+    })
+
+    // Extract JSON object
+    const jsonStart = text.indexOf('{')
+    const jsonEnd = text.lastIndexOf('}')
+    if (jsonStart === -1 || jsonEnd === -1) {
+      throw new Error('No JSON found in response')
+    }
+    text = text.substring(jsonStart, jsonEnd + 1)
+
+    const parsed = JSON.parse(text)
+    
+    // Clean up escaped newlines in content for display
+    if (parsed.content) {
+      parsed.content = parsed.content.replace(/\\n/g, '\n').replace(/\\t/g, '\t')
     }
 
-    const parsed = JSON.parse(cleaned)
     return Response.json({ content: parsed })
 
   } catch (error) {
