@@ -25,9 +25,9 @@ export default function Dashboard() {
   })
 
   const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-)
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  )
   const router = useRouter()
 
   useEffect(() => {
@@ -159,7 +159,7 @@ export default function Dashboard() {
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen bg-gray-950">
-      <div className="text-teal-400 text-xl animate-pulse">Loading RANKIVO...</div>
+      <div className="text-teal-400 text-xl">Loading RANKIVO...</div>
     </div>
   )
 
@@ -172,15 +172,14 @@ export default function Dashboard() {
   return (
     <div className="flex min-h-screen bg-gray-950 text-white">
 
-      {/* Cookie Banner */}
       {showCookieBanner && (
         <div className="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-teal-800 p-4 z-50 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-gray-300 text-sm">
-            🍪 RANKIVO uses cookies to provide your free content generation. Cookies must be enabled to use our service.
+            RANKIVO uses cookies to provide your free content generation. Cookies must be enabled to use our service.
           </p>
           <div className="flex gap-3">
             <button onClick={acceptCookies} className="bg-teal-500 hover:bg-teal-400 text-white px-6 py-2 rounded-lg text-sm font-semibold whitespace-nowrap">
-              Accept & Continue
+              Accept and Continue
             </button>
             <button onClick={() => router.push('/')} className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm whitespace-nowrap">
               Decline
@@ -193,25 +192,25 @@ export default function Dashboard() {
       <div className="w-64 bg-gray-900 border-r border-gray-800 flex flex-col min-h-screen fixed left-0 top-0">
         <div className="p-6 border-b border-gray-800">
           <h1 className="text-2xl font-bold text-teal-400">RANKIVO</h1>
-          <p className="text-gray-500 text-xs mt-1">AI Content & SEO Platform</p>
+          <p className="text-gray-500 text-xs mt-1">AI Content and SEO Platform</p>
         </div>
 
         <nav className="flex-1 p-4 space-y-1">
           <button onClick={() => setActiveTab('generate')}
             className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors ${activeTab === 'generate' ? 'bg-teal-500/20 text-teal-400' : 'text-gray-400 hover:bg-gray-800'}`}>
-            ✨ Generate Content
+            Generate Content
           </button>
           <button onClick={() => setActiveTab('history')}
             className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors ${activeTab === 'history' ? 'bg-teal-500/20 text-teal-400' : 'text-gray-400 hover:bg-gray-800'}`}>
-            📝 Content History
+            Content History
           </button>
           <button onClick={() => setActiveTab('seo')}
             className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors ${activeTab === 'seo' ? 'bg-teal-500/20 text-teal-400' : 'text-gray-400 hover:bg-gray-800'}`}>
-            🔍 SEO Tools
+            SEO Tools
           </button>
           <button onClick={() => setActiveTab('settings')}
             className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors ${activeTab === 'settings' ? 'bg-teal-500/20 text-teal-400' : 'text-gray-400 hover:bg-gray-800'}`}>
-            ⚙️ Settings
+            Settings
           </button>
         </nav>
 
@@ -231,7 +230,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <button onClick={logout} className="w-full text-left px-4 py-2 text-gray-400 hover:text-red-400 text-sm transition-colors">
-                🚪 Logout
+                Logout
               </button>
             </div>
           ) : (
@@ -255,7 +254,6 @@ export default function Dashboard() {
 
             <div className="space-y-6">
 
-              {/* Platform */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-3">Platform</label>
                 <div className="flex flex-wrap gap-2">
@@ -268,7 +266,6 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Topic */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Topic *</label>
                 <input type="text" value={form.topic} onChange={e => setForm({ ...form, topic: e.target.value })}
@@ -276,20 +273,18 @@ export default function Dashboard() {
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-teal-500" />
               </div>
 
-              {/* Length */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-3">Content Length</label>
                 <div className="flex gap-3">
                   {lengths.map(l => (
                     <button key={l} onClick={() => setForm({ ...form, length: l })}
                       className={`flex-1 py-3 rounded-lg text-sm font-medium transition-colors ${form.length === l ? 'bg-teal-500 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>
-                      {l === 'Short' ? '📝 Short (~150w)' : l === 'Medium' ? '📄 Medium (~500w)' : '📰 Long (~1500w)'}
+                      {l === 'Short' ? 'Short (~150w)' : l === 'Medium' ? 'Medium (~500w)' : 'Long (~1500w)'}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Keywords */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   SEO Keywords
@@ -300,13 +295,12 @@ export default function Dashboard() {
                     <input key={i} type="text" value={form.keywords[i]}
                       onChange={e => updateKeyword(i, e.target.value)}
                       disabled={i >= getKeywordLimit()}
-                      placeholder={i >= getKeywordLimit() ? '🔒 Upgrade length' : `Keyword ${i + 1}`}
+                      placeholder={i >= getKeywordLimit() ? 'Upgrade length' : `Keyword ${i + 1}`}
                       className={`flex-1 bg-gray-800 border rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-teal-500 ${i >= getKeywordLimit() ? 'border-gray-700 opacity-40 cursor-not-allowed' : 'border-gray-700'}`} />
                   ))}
                 </div>
               </div>
 
-              {/* Tone */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-3">Tone of Voice</label>
                 <div className="flex flex-wrap gap-2">
@@ -319,7 +313,6 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Audience */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Target Audience</label>
                 <input type="text" value={form.audience} onChange={e => setForm({ ...form, audience: e.target.value })}
@@ -327,7 +320,6 @@ export default function Dashboard() {
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-teal-500" />
               </div>
 
-              {/* CTA */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-3">Call to Action</label>
                 <div className="flex flex-wrap gap-2">
@@ -340,7 +332,6 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Language */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-3">Language</label>
                 <div className="flex flex-wrap gap-2">
@@ -353,36 +344,34 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Generate Button */}
               <button onClick={generateContent} disabled={generating}
-                className="w-full bg-gradient-to-r from-teal-500 to-teal-400 hover:from-teal-400 hover:to-teal-300 text-white py-4 rounded-xl font-bold text-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-teal-500/25">
-                {generating ? '⏳ Generating...' : '✨ Generate Content'}
+                className="w-full bg-gradient-to-r from-teal-500 to-teal-400 hover:from-teal-400 hover:to-teal-300 text-white py-4 rounded-xl font-bold text-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg">
+                {generating ? 'Generating...' : 'Generate Content'}
               </button>
 
             </div>
 
-            {/* Result */}
             {result && (
               <div className="mt-8 space-y-4">
-                <h3 className="text-lg font-semibold text-teal-400">✅ Generated Content</h3>
+                <h3 className="text-lg font-semibold text-teal-400">Generated Content</h3>
 
                 {result.metaTitle && (
                   <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
-                    <p className="text-xs text-gray-400 mb-1 font-medium">🏷️ META TITLE</p>
+                    <p className="text-xs text-gray-400 mb-1 font-medium">META TITLE</p>
                     <p className="text-white">{result.metaTitle}</p>
                   </div>
                 )}
 
                 {result.metaDescription && (
                   <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
-                    <p className="text-xs text-gray-400 mb-1 font-medium">📄 META DESCRIPTION</p>
+                    <p className="text-xs text-gray-400 mb-1 font-medium">META DESCRIPTION</p>
                     <p className="text-white">{result.metaDescription}</p>
                   </div>
                 )}
 
                 {result.titles && (
                   <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
-                    <p className="text-xs text-gray-400 mb-2 font-medium">📰 H1 TITLE OPTIONS</p>
+                    <p className="text-xs text-gray-400 mb-2 font-medium">H1 TITLE OPTIONS</p>
                     <div className="space-y-2">
                       {result.titles.map((title, i) => (
                         <div key={i} className="flex items-center gap-2">
@@ -395,61 +384,5 @@ export default function Dashboard() {
                 )}
 
                 <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
-                  <p className="text-xs text-gray-400 mb-2 font-medium">✨ YOUR CONTENT</p>
-                  <p className="text-white whitespace-pre-wrap leading-relaxed">{result.content}</p>
-                </div>
-
-                <button onClick={() => navigator.clipboard.writeText(result.content)}
-                  className="w-full bg-gray-800 hover:bg-gray-700 text-teal-400 py-3 rounded-lg font-medium border border-gray-700 transition-colors">
-                  📋 Copy Content
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'history' && (
-          <div>
-            <h2 className="text-2xl font-bold text-white mb-1">Content History</h2>
-            <p className="text-gray-400">Your previously generated content will appear here.</p>
-            <div className="mt-8 bg-gray-800 rounded-xl p-8 text-center border border-gray-700">
-              <p className="text-4xl mb-3">📝</p>
-              <p className="text-gray-400">No content generated yet.</p>
-              <button onClick={() => setActiveTab('generate')} className="mt-4 bg-teal-500 hover:bg-teal-400 text-white px-6 py-2 rounded-lg text-sm font-semibold">
-                Generate Your First Post
-              </button>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'seo' && (
-          <div>
-            <h2 className="text-2xl font-bold text-white mb-1">SEO Tools</h2>
-            <p className="text-gray-400">Powerful SEO tools coming very soon.</p>
-            <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-              {['🔑 Keyword Research', '📊 SEO Score Checker', '🏷️ Meta Tag Generator', '🔗 Link Analyzer'].map(tool => (
-                <div key={tool} className="bg-gray-800 border border-gray-700 rounded-xl p-6 text-center opacity-60">
-                  <p className="text-2xl mb-2">{tool.split(' ')[0]}</p>
-                  <p className="text-gray-300 font-medium">{tool.split(' ').slice(1).join(' ')}</p>
-                  <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded mt-2 inline-block">Coming Soon</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'settings' && (
-          <div>
-            <h2 className="text-2xl font-bold text-white mb-1">Settings</h2>
-            <p className="text-gray-400">Manage your account settings.</p>
-            <div className="mt-8 bg-gray-800 rounded-xl p-8 text-center border border-gray-700">
-              <p className="text-4xl mb-3">⚙️</p>
-              <p className="text-gray-400">Account settings coming soon.</p>
-            </div>
-          </div>
-        )}
-
-      </div>
-    </div>
-  )
-}
+                  <p className="text-xs text-gray-400 mb-2 font-medium">YOUR CONTENT</p>
+                  <p className="text-white whitespace-pre-wrap lea
