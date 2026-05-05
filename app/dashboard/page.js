@@ -188,7 +188,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Sidebar */}
       <div className="w-64 bg-gray-900 border-r border-gray-800 flex flex-col min-h-screen fixed left-0 top-0">
         <div className="p-6 border-b border-gray-800">
           <h1 className="text-2xl font-bold text-teal-400">RANKIVO</h1>
@@ -244,7 +243,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="ml-64 flex-1 p-8">
 
         {activeTab === 'generate' && (
@@ -267,7 +265,7 @@ export default function Dashboard() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Topic *</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Topic</label>
                 <input type="text" value={form.topic} onChange={e => setForm({ ...form, topic: e.target.value })}
                   placeholder="e.g. Best coffee shop in New York"
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-teal-500" />
@@ -279,7 +277,7 @@ export default function Dashboard() {
                   {lengths.map(l => (
                     <button key={l} onClick={() => setForm({ ...form, length: l })}
                       className={`flex-1 py-3 rounded-lg text-sm font-medium transition-colors ${form.length === l ? 'bg-teal-500 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>
-                      {l === 'Short' ? 'Short (~150w)' : l === 'Medium' ? 'Medium (~500w)' : 'Long (~1500w)'}
+                      {l === 'Short' ? 'Short 150w' : l === 'Medium' ? 'Medium 500w' : 'Long 1500w'}
                     </button>
                   ))}
                 </div>
@@ -287,8 +285,7 @@ export default function Dashboard() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  SEO Keywords
-                  <span className="text-gray-500 text-xs ml-2">({getKeywordLimit()} keyword{getKeywordLimit() > 1 ? 's' : ''} available for {form.length} posts)</span>
+                  SEO Keywords ({getKeywordLimit()} available for {form.length} posts)
                 </label>
                 <div className="flex gap-3">
                   {[0, 1, 2].map(i => (
@@ -385,4 +382,57 @@ export default function Dashboard() {
 
                 <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
                   <p className="text-xs text-gray-400 mb-2 font-medium">YOUR CONTENT</p>
-                  <p className="text-white whitespace-pre-wrap lea
+                  <p className="text-white whitespace-pre-wrap leading-relaxed">{result.content}</p>
+                </div>
+
+                <button onClick={() => navigator.clipboard.writeText(result.content)}
+                  className="w-full bg-gray-800 hover:bg-gray-700 text-teal-400 py-3 rounded-lg font-medium border border-gray-700 transition-colors">
+                  Copy Content
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'history' && (
+          <div>
+            <h2 className="text-2xl font-bold text-white mb-1">Content History</h2>
+            <p className="text-gray-400">Your previously generated content will appear here.</p>
+            <div className="mt-8 bg-gray-800 rounded-xl p-8 text-center border border-gray-700">
+              <p className="text-gray-400">No content generated yet.</p>
+              <button onClick={() => setActiveTab('generate')} className="mt-4 bg-teal-500 hover:bg-teal-400 text-white px-6 py-2 rounded-lg text-sm font-semibold">
+                Generate Your First Post
+              </button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'seo' && (
+          <div>
+            <h2 className="text-2xl font-bold text-white mb-1">SEO Tools</h2>
+            <p className="text-gray-400">Powerful SEO tools coming very soon.</p>
+            <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+              {['Keyword Research', 'SEO Score Checker', 'Meta Tag Generator', 'Link Analyzer'].map(tool => (
+                <div key={tool} className="bg-gray-800 border border-gray-700 rounded-xl p-6 text-center opacity-60">
+                  <p className="text-gray-300 font-medium">{tool}</p>
+                  <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded mt-2 inline-block">Coming Soon</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'settings' && (
+          <div>
+            <h2 className="text-2xl font-bold text-white mb-1">Settings</h2>
+            <p className="text-gray-400">Manage your account settings.</p>
+            <div className="mt-8 bg-gray-800 rounded-xl p-8 text-center border border-gray-700">
+              <p className="text-gray-400">Account settings coming soon.</p>
+            </div>
+          </div>
+        )}
+
+      </div>
+    </div>
+  )
+}
