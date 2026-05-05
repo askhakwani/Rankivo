@@ -1,51 +1,46 @@
 import Groq from 'groq-sdk'
 
-const client = new Groq({
-  apiKey: process.env.GROQ_API_KEY
-})
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 
 export async function POST(request) {
   try {
-    const { contentType, language, topic } = await request.json()
+    const { platform, topic, keywords, tone, audience, cta, length, language, wordCount } = await request.json()
 
-    if (!topic) {
-      return Response.json({ error: 'Topic is required' }, { status: 400 })
-    }
+    const keywordText = keywords.length > 0 ? `Primary SEO keywords to include naturally: ${keywords.join(', ')}.` : ''
+    const audienceText = audience ? `Target audience: ${audience}.` : ''
+    const ctaText = cta !== 'None' ? `End with a strong "${cta}" call to action.` : ''
 
-    const prompts = {
-      '📷 Instagram Caption': `Write an engaging Instagram caption for: "${topic}". Include relevant emojis, a call to action, and 10 relevant hashtags. Make it conversational and authentic.`,
-      '🎵 TikTok Caption': `Write a viral TikTok caption for: "${topic}". Make it trendy, fun and include relevant hashtags and emojis. Keep it short and punchy.`,
-      '💼 LinkedIn Post': `Write a professional LinkedIn post about: "${topic}". Make it insightful, add value, and end with a question to drive engagement. Professional tone.`,
-      '📝 SEO Blog Post': `Write a complete SEO-optimized blog post about: "${topic}". Include: a compelling title, introduction, 5 main sections with subheadings, and conclusion. Make it informative and engaging. Around 800 words.`,
-      '📧 Email Newsletter': `Write an email newsletter about: "${topic}". Include: subject line, greeting, main content, call to action, and sign-off. Make it engaging and personal.`,
-      '📣 Ad Copy': `Write compelling ad copy for: "${topic}". Include: headline, subheadline, main benefits, social proof placeholder, and strong call to action. Make it conversion-focused.`,
-    }
+    const prompt = `You are an expert SEO content writer. Generate content for ${platform} in ${language}.
 
-    const languageInstructions = {
-      '🌍 English': 'Write in English.',
-      '🇪🇸 Spanish': 'Write in Spanish.',
-      '🇫🇷 French': 'Write in French.',
-      '🇩🇪 German': 'Write in German.',
-      '🇸🇦 Arabic': 'Write in Arabic.',
-      '🇵🇰 Urdu': 'Write in Urdu.',
-    }
+Topic: ${topic}
+Tone: ${tone}
+Word count: approximately ${wordCount} words
+${keywordText}
+${audienceText}
+${ctaText}
 
-    const prompt = `${prompts[contentType] || prompts['📷 Instagram Caption']} ${languageInstructions[language] || 'Write in English.'}`
+Respond ONLY in this exact JSON format with no extra text:
+{
+  "metaTitle": "SEO optimized title under 60 characters",
+  "metaDescription": "SEO meta description under 160 characters with main keyword",
+  "titles": ["H1 title option 1", "H1 title option 2", "H1 title option 3"],
+  "content": "The full generated content here"
+}`
 
-    const completion = await client.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
+    const completion = await groq.chat.completions.create({
       messages: [{ role: 'user', content: prompt }],
-      max_tokens: 1024,
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0.7,
+      max_tokens: 2000,
     })
 
-    return Response.json({
-      content: completion.choices[0].message.content,
-      contentType,
-      topic
-    })
+    const text = completion.choices[0]?.message?.content || ''
+    const cleaned = text.replace(/```json|```/g, '').trim()
+    const parsed = JSON.parse(cleaned)
 
+    return Response.json({ content: parsed })
   } catch (error) {
     console.error('Generation error:', error)
-    return Response.json({ error: error.message }, { status: 500 })
+    return Response.json({ error: 'Generation failed' }, { status: 500 })
   }
 }
