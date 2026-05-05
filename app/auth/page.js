@@ -1,9 +1,9 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { useRouter, useSearchParams } from 'next/navigation'
 
-export default function Auth() {
+function AuthForm() {
   const [mode, setMode] = useState('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -73,7 +73,6 @@ export default function Auth() {
         </div>
 
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8">
-
           <h2 className="text-xl font-bold text-white mb-6">
             {mode === 'login' ? 'Welcome back' : mode === 'signup' ? 'Create your account' : 'Reset your password'}
           </h2>
@@ -154,7 +153,6 @@ export default function Auth() {
               <p>Already have an account? <button onClick={() => setMode('login')} className="text-teal-400 hover:text-teal-300">Login</button></p>
             )}
           </div>
-
         </div>
 
         <p className="text-center text-gray-600 text-xs mt-6">
@@ -163,5 +161,17 @@ export default function Auth() {
 
       </div>
     </div>
+  )
+}
+
+export default function Auth() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <div className="text-teal-400">Loading...</div>
+      </div>
+    }>
+      <AuthForm />
+    </Suspense>
   )
 }
