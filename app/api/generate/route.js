@@ -20,13 +20,8 @@ ${keywordText}
 ${audienceText}
 ${ctaText}
 
-Respond ONLY in this exact JSON format with no extra text:
-{
-  "metaTitle": "SEO optimized title under 60 characters",
-  "metaDescription": "SEO meta description under 160 characters",
-  "titles": ["H1 option 1", "H1 option 2", "H1 option 3"],
-  "content": "The full blog post content here"
-}`
+You MUST respond ONLY with a valid JSON object. No text before or after. No markdown. No backticks. Just pure JSON like this:
+{"metaTitle":"your meta title here","metaDescription":"your meta description here","titles":["H1 option 1","H1 option 2","H1 option 3"],"content":"your full blog post here"}`
       : `You are an expert ${platform} content writer. Write a ${platform} post in ${language}.
 Topic: ${topic}
 Tone: ${tone}
@@ -35,13 +30,8 @@ ${keywordText}
 ${audienceText}
 ${ctaText}
 
-Respond ONLY in this exact JSON format with no extra text:
-{
-  "metaTitle": "",
-  "metaDescription": "",
-  "titles": [],
-  "content": "The full ${platform} post content here"
-}`
+You MUST respond ONLY with a valid JSON object. No text before or after. No markdown. No backticks. Just pure JSON like this:
+{"metaTitle":"","metaDescription":"","titles":[],"content":"your full ${platform} post here"}`
 
     const completion = await groq.chat.completions.create({
       messages: [{ role: 'user', content: prompt }],
@@ -51,12 +41,26 @@ Respond ONLY in this exact JSON format with no extra text:
     })
 
     const text = completion.choices[0]?.message?.content || ''
-    const cleaned = text.replace(/```json|```/g, '').trim()
-    const parsed = JSON.parse(cleaned)
+    
+    // Clean the response aggressively
+    let cleaned = text.trim()
+    cleaned = cleaned.replace(/^```json\s*/i, '')
+    cleaned = cleaned.replace(/^```\s*/i, '')
+    cleaned = cleaned.replace(/\s*```$/i, '')
+    cleaned = cleaned.trim()
+    
+    // Find JSON object in the response
+    const jsonStart = cleaned.indexOf('{')
+    const jsonEnd = cleaned.lastIndexOf('}')
+    if (jsonStart !== -1 && jsonEnd !== -1) {
+      cleaned = cleaned.substring(jsonStart, jsonEnd + 1)
+    }
 
+    const parsed = JSON.parse(cleaned)
     return Response.json({ content: parsed })
+
   } catch (error) {
     console.error('Generation error:', error)
-    return Response.json({ error: 'Generation failed' }, { status: 500 })
+    return Response.json({ error: 'Generation failed: ' + error.message }, { status: 500 })
   }
 }
