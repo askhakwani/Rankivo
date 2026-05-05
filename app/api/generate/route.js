@@ -2,6 +2,8 @@ import Groq from 'groq-sdk'
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 
+export const maxDuration = 30
+
 export async function POST(request) {
   try {
     const { platform, topic, keywords, tone, audience, cta, length, language, wordCount } = await request.json()
@@ -12,6 +14,9 @@ export async function POST(request) {
     const isBlog = platform === 'Blog'
     const needsHashtags = platform === 'Instagram' || platform === 'TikTok'
 
+    // Adjust word count to be realistic within token limits
+    const actualWordCount = length === 'Long' ? 800 : length === 'Medium' ? 400 : 150
+
     const systemPrompt = `You are a professional content writer. You ALWAYS respond with ONLY a valid JSON object. Never include any text outside the JSON. Never use markdown. Never use code blocks. Only output the raw JSON object.`
 
     let userPrompt = ''
@@ -19,28 +24,26 @@ export async function POST(request) {
     if (isBlog) {
       userPrompt = `Write a detailed blog post in ${language} about: ${topic}
 Tone: ${tone}
-IMPORTANT: The blog post MUST be at least ${wordCount} words long. Write fully, do not summarize or cut short.
+Write approximately ${actualWordCount} words. Be detailed and thorough.
 ${keywordText}
 ${audienceText}
 ${ctaText}
 
 Respond with this exact JSON:
-{"metaTitle":"SEO title under 60 chars","metaDescription":"SEO description under 160 chars","titles":["H1 option 1","H1 option 2","H1 option 3"],"content":"Full detailed blog post of at least ${wordCount} words"}`
+{"metaTitle":"SEO title under 60 chars","metaDescription":"SEO description under 160 chars","titles":["H1 option 1","H1 option 2","H1 option 3"],"content":"Full blog post here"}`
     } else if (needsHashtags) {
       userPrompt = `Write a ${platform} post in ${language} about: ${topic}
 Tone: ${tone}
-Word count: ~${wordCount} words
 ${keywordText}
 ${audienceText}
 ${ctaText}
-IMPORTANT: End the content with a line break then 15-20 relevant hashtags starting with #.
+End with 15 relevant hashtags starting with #.
 
 Respond with this exact JSON:
 {"metaTitle":"","metaDescription":"","titles":[],"content":"Full ${platform} post with hashtags at the end"}`
     } else {
       userPrompt = `Write a ${platform} post in ${language} about: ${topic}
 Tone: ${tone}
-Word count: ~${wordCount} words
 ${keywordText}
 ${audienceText}
 ${ctaText}
@@ -56,7 +59,7 @@ Respond with this exact JSON:
       ],
       model: 'llama-3.3-70b-versatile',
       temperature: 0.7,
-      max_tokens: 4000,
+      max_tokens: 2500,
     })
 
     let text = completion.choices[0]?.message?.content || ''
