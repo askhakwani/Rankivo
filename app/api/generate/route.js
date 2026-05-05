@@ -10,22 +10,44 @@ export async function POST(request) {
     const audienceText = audience ? `Target audience: ${audience}.` : ''
     const ctaText = cta && cta !== 'None' ? `End with a "${cta}" call to action.` : ''
     const isBlog = platform === 'Blog'
+    const needsHashtags = platform === 'Instagram' || platform === 'TikTok'
 
-    const systemPrompt = `You are a content writer. You ALWAYS respond with ONLY a valid JSON object. Never include any text outside the JSON. Never use markdown. Never use code blocks. Only output the raw JSON object.`
+    const systemPrompt = `You are a professional content writer. You ALWAYS respond with ONLY a valid JSON object. Never include any text outside the JSON. Never use markdown. Never use code blocks. Only output the raw JSON object.`
 
-    const userPrompt = isBlog
-      ? `Write a blog post in ${language} about: ${topic}
-Tone: ${tone}, Word count: ~${wordCount} words
-${keywordText} ${audienceText} ${ctaText}
+    let userPrompt = ''
 
-Respond with this exact JSON structure:
-{"metaTitle":"SEO title under 60 chars","metaDescription":"SEO description under 160 chars","titles":["H1 option 1","H1 option 2","H1 option 3"],"content":"Full blog post text here"}`
-      : `Write a ${platform} post in ${language} about: ${topic}
-Tone: ${tone}, Word count: ~${wordCount} words
-${keywordText} ${audienceText} ${ctaText}
+    if (isBlog) {
+      userPrompt = `Write a detailed blog post in ${language} about: ${topic}
+Tone: ${tone}
+IMPORTANT: The blog post MUST be at least ${wordCount} words long. Write fully, do not summarize or cut short.
+${keywordText}
+${audienceText}
+${ctaText}
 
-Respond with this exact JSON structure:
-{"metaTitle":"","metaDescription":"","titles":[],"content":"Full ${platform} post text here"}`
+Respond with this exact JSON:
+{"metaTitle":"SEO title under 60 chars","metaDescription":"SEO description under 160 chars","titles":["H1 option 1","H1 option 2","H1 option 3"],"content":"Full detailed blog post of at least ${wordCount} words"}`
+    } else if (needsHashtags) {
+      userPrompt = `Write a ${platform} post in ${language} about: ${topic}
+Tone: ${tone}
+Word count: ~${wordCount} words
+${keywordText}
+${audienceText}
+${ctaText}
+IMPORTANT: End the content with a line break then 15-20 relevant hashtags starting with #.
+
+Respond with this exact JSON:
+{"metaTitle":"","metaDescription":"","titles":[],"content":"Full ${platform} post with hashtags at the end"}`
+    } else {
+      userPrompt = `Write a ${platform} post in ${language} about: ${topic}
+Tone: ${tone}
+Word count: ~${wordCount} words
+${keywordText}
+${audienceText}
+${ctaText}
+
+Respond with this exact JSON:
+{"metaTitle":"","metaDescription":"","titles":[],"content":"Full ${platform} post here"}`
+    }
 
     const completion = await groq.chat.completions.create({
       messages: [
@@ -34,15 +56,11 @@ Respond with this exact JSON structure:
       ],
       model: 'llama-3.3-70b-versatile',
       temperature: 0.7,
-      max_tokens: 2000,
+      max_tokens: 4000,
     })
 
     let text = completion.choices[0]?.message?.content || ''
-    
-    // Remove any markdown or extra text
     text = text.replace(/```json/gi, '').replace(/```/g, '').trim()
-    
-    // Remove control characters that break JSON
     text = text.replace(/[\x00-\x1F\x7F]/g, (char) => {
       if (char === '\n') return '\\n'
       if (char === '\r') return '\\r'
@@ -50,17 +68,12 @@ Respond with this exact JSON structure:
       return ''
     })
 
-    // Extract JSON object
     const jsonStart = text.indexOf('{')
     const jsonEnd = text.lastIndexOf('}')
-    if (jsonStart === -1 || jsonEnd === -1) {
-      throw new Error('No JSON found in response')
-    }
+    if (jsonStart === -1 || jsonEnd === -1) throw new Error('No JSON found in response')
     text = text.substring(jsonStart, jsonEnd + 1)
 
     const parsed = JSON.parse(text)
-    
-    // Clean up escaped newlines in content for display
     if (parsed.content) {
       parsed.content = parsed.content.replace(/\\n/g, '\n').replace(/\\t/g, '\t')
     }
