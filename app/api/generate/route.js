@@ -6,12 +6,13 @@ export async function POST(request) {
   try {
     const { platform, topic, keywords, tone, audience, cta, length, language, wordCount } = await request.json()
 
-    const keywordText = keywords.length > 0 ? `Primary SEO keywords to include naturally: ${keywords.join(', ')}.` : ''
+    const keywordText = keywords && keywords.length > 0 ? `SEO keywords to include naturally: ${keywords.join(', ')}.` : ''
     const audienceText = audience ? `Target audience: ${audience}.` : ''
-    const ctaText = cta !== 'None' ? `End with a strong "${cta}" call to action.` : ''
+    const ctaText = cta && cta !== 'None' ? `End with a "${cta}" call to action.` : ''
+    const isBlog = platform === 'Blog'
 
-    const prompt = `You are an expert SEO content writer. Generate content for ${platform} in ${language}.
-
+    const prompt = isBlog
+      ? `You are an expert SEO blog writer. Write a blog post in ${language}.
 Topic: ${topic}
 Tone: ${tone}
 Word count: approximately ${wordCount} words
@@ -22,9 +23,24 @@ ${ctaText}
 Respond ONLY in this exact JSON format with no extra text:
 {
   "metaTitle": "SEO optimized title under 60 characters",
-  "metaDescription": "SEO meta description under 160 characters with main keyword",
-  "titles": ["H1 title option 1", "H1 title option 2", "H1 title option 3"],
-  "content": "The full generated content here"
+  "metaDescription": "SEO meta description under 160 characters",
+  "titles": ["H1 option 1", "H1 option 2", "H1 option 3"],
+  "content": "The full blog post content here"
+}`
+      : `You are an expert ${platform} content writer. Write a ${platform} post in ${language}.
+Topic: ${topic}
+Tone: ${tone}
+Word count: approximately ${wordCount} words
+${keywordText}
+${audienceText}
+${ctaText}
+
+Respond ONLY in this exact JSON format with no extra text:
+{
+  "metaTitle": "",
+  "metaDescription": "",
+  "titles": [],
+  "content": "The full ${platform} post content here"
 }`
 
     const completion = await groq.chat.completions.create({

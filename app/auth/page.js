@@ -1,169 +1,166 @@
 'use client'
-import { useState } from 'react'
-import { createClient } from '../../lib/supabase'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { createBrowserClient } from '@supabase/ssr'
+import { useRouter, useSearchParams } from 'next/navigation'
 
-export default function AuthPage() {
-  const [isLogin, setIsLogin] = useState(true)
+export default function Auth() {
+  const [mode, setMode] = useState('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
-  const router = useRouter()
-  const supabase = createClient()
+  const [error, setError] = useState('')
 
-  const handleAuth = async () => {
-    setLoading(true)
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  )
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    const m = searchParams.get('mode')
+    if (m === 'signup') setMode('signup')
+    if (m === 'forgot') setMode('forgot')
+  }, [searchParams])
+
+  async function handleSubmit() {
+    setError('')
     setMessage('')
-    try {
-      if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) throw error
-        router.push('/dashboard')
-      } else {
-        const { error } = await supabase.auth.signUp({ 
-          email, 
-          password,
-          options: { data: { full_name: name } }
-        })
-        if (error) throw error
-        setMessage('Check your email to verify your account!')
-      }
-    } catch (error) {
-      setMessage(error.message)
+    if (!email.trim()) { setError('Please enter your email.'); return }
+    if (mode !== 'forgot' && !password.trim()) { setError('Please enter your password.'); return }
+    setLoading(true)
+
+    if (mode === 'login') {
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) { setError(error.message); setLoading(false); return }
+      router.push('/dashboard')
     }
+
+    if (mode === 'signup') {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { phone: phone } }
+      })
+      if (error) { setError(error.message); setLoading(false); return }
+      setMessage('Account created! Please check your email to verify your account.')
+    }
+
+    if (mode === 'forgot') {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`
+      })
+      if (error) { setError(error.message); setLoading(false); return }
+      setMessage('Password reset link sent! Please check your email.')
+    }
+
     setLoading(false)
   }
 
+  function handleKeyDown(e) {
+    if (e.key === 'Enter') handleSubmit()
+  }
+
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #EFF7FF 0%, #ffffff 50%, #F0FAFA 100%)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontFamily: 'sans-serif'
-    }}>
-      <div style={{
-        background: 'white',
-        borderRadius: '20px',
-        padding: '40px',
-        width: '100%',
-        maxWidth: '420px',
-        border: '1px solid #D4EEF9',
-        boxShadow: '0 20px 60px rgba(27,95,168,0.12)'
-      }}>
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: '8px',
-            marginBottom: '8px'
-          }}>
-            <div style={{
-              width: '36px', height: '36px', borderRadius: '8px',
-              background: 'linear-gradient(135deg, #1B5FA8, #0D9488)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'white', fontWeight: '900', fontSize: '18px'
-            }}>R</div>
-            <span style={{ fontSize: '24px', fontWeight: '800', color: '#0B3D6B' }}>
-              Rank<span style={{ color: '#0D9488' }}>ivo</span>
-            </span>
-          </div>
-          <h1 style={{ fontSize: '22px', fontWeight: '800', color: '#0B3D6B', marginBottom: '6px' }}>
-            {isLogin ? 'Welcome back!' : 'Create your account'}
-          </h1>
-          <p style={{ color: '#6B7280', fontSize: '14px' }}>
-            {isLogin ? 'Login to your Rankivo dashboard' : 'Start creating AI content today'}
-          </p>
+    <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4">
+      <div className="w-full max-w-md">
+
+        <div className="text-center mb-8">
+          <a href="/" className="text-3xl font-bold text-teal-400">RANKIVO</a>
+          <p className="text-gray-400 text-sm mt-2">AI Content and SEO Platform</p>
         </div>
 
-        {!isLogin && (
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ fontSize: '13px', fontWeight: '600', color: '#0B3D6B', display: 'block', marginBottom: '6px' }}>
-              Full Name
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="Sarah Johnson"
-              style={{
-                width: '100%', padding: '11px 14px', borderRadius: '8px',
-                border: '1.5px solid #E5E7EB', fontSize: '14px',
-                outline: 'none', boxSizing: 'border-box'
-              }}
-            />
-          </div>
-        )}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8">
 
-        <div style={{ marginBottom: '16px' }}>
-          <label style={{ fontSize: '13px', fontWeight: '600', color: '#0B3D6B', display: 'block', marginBottom: '6px' }}>
-            Email Address
-          </label>
-          <input
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            style={{
-              width: '100%', padding: '11px 14px', borderRadius: '8px',
-              border: '1.5px solid #E5E7EB', fontSize: '14px',
-              outline: 'none', boxSizing: 'border-box'
-            }}
-          />
+          <h2 className="text-xl font-bold text-white mb-6">
+            {mode === 'login' ? 'Welcome back' : mode === 'signup' ? 'Create your account' : 'Reset your password'}
+          </h2>
+
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm px-4 py-3 rounded-lg mb-4">
+              {error}
+            </div>
+          )}
+
+          {message && (
+            <div className="bg-teal-500/10 border border-teal-500/30 text-teal-400 text-sm px-4 py-3 rounded-lg mb-4">
+              {message}
+            </div>
+          )}
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Email address</label>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="you@example.com"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-teal-500"
+              />
+            </div>
+
+            {mode === 'signup' && (
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Phone number (optional)</label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={e => setPhone(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="+1 234 567 8900"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-teal-500"
+                />
+              </div>
+            )}
+
+            {mode !== 'forgot' && (
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Password</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Enter your password"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-teal-500"
+                />
+              </div>
+            )}
+
+            {mode === 'login' && (
+              <div className="text-right">
+                <button onClick={() => setMode('forgot')} className="text-teal-400 text-sm hover:text-teal-300 transition-colors">
+                  Forgot password?
+                </button>
+              </div>
+            )}
+
+            <button
+              onClick={handleSubmit}
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-teal-500 to-teal-400 hover:from-teal-400 hover:to-teal-300 text-white py-3 rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+              {loading ? 'Please wait...' : mode === 'login' ? 'Login to RANKIVO' : mode === 'signup' ? 'Create Account' : 'Send Reset Link'}
+            </button>
+          </div>
+
+          <div className="mt-6 text-center text-sm text-gray-400">
+            {mode === 'login' ? (
+              <p>No account? <button onClick={() => setMode('signup')} className="text-teal-400 hover:text-teal-300">Sign up free</button></p>
+            ) : (
+              <p>Already have an account? <button onClick={() => setMode('login')} className="text-teal-400 hover:text-teal-300">Login</button></p>
+            )}
+          </div>
+
         </div>
 
-        <div style={{ marginBottom: '24px' }}>
-          <label style={{ fontSize: '13px', fontWeight: '600', color: '#0B3D6B', display: 'block', marginBottom: '6px' }}>
-            Password
-          </label>
-          <input
-            type="password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            placeholder="••••••••"
-            style={{
-              width: '100%', padding: '11px 14px', borderRadius: '8px',
-              border: '1.5px solid #E5E7EB', fontSize: '14px',
-              outline: 'none', boxSizing: 'border-box'
-            }}
-          />
-        </div>
-
-        {message && (
-          <div style={{
-            padding: '12px', borderRadius: '8px', marginBottom: '16px',
-            background: message.includes('Check') ? '#D1FAE5' : '#FEE2E2',
-            color: message.includes('Check') ? '#065F46' : '#991B1B',
-            fontSize: '13px'
-          }}>
-            {message}
-          </div>
-        )}
-
-        <button
-          onClick={handleAuth}
-          disabled={loading}
-          style={{
-            width: '100%', padding: '13px', borderRadius: '8px',
-            background: loading ? '#9CA3AF' : '#1B5FA8',
-            color: 'white', border: 'none', fontSize: '15px',
-            fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer',
-            marginBottom: '16px'
-          }}
-        >
-          {loading ? 'Please wait...' : isLogin ? 'Login to Rankivo' : 'Create Account'}
-        </button>
-
-        <p style={{ textAlign: 'center', fontSize: '14px', color: '#6B7280' }}>
-          {isLogin ? "Don't have an account? " : "Already have an account? "}
-          <span
-            onClick={() => setIsLogin(!isLogin)}
-            style={{ color: '#1B5FA8', fontWeight: '600', cursor: 'pointer' }}
-          >
-            {isLogin ? 'Sign up free' : 'Login'}
-          </span>
+        <p className="text-center text-gray-600 text-xs mt-6">
+          By signing up you agree to our Terms of Service and Privacy Policy.
         </p>
+
       </div>
     </div>
   )
