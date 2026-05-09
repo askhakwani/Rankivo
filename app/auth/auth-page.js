@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, Suspense } from 'react'
-import { createBrowserClient } from '@supabase/ssr'
+import { createClient } from '../../lib/supabase'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 function AuthForm() {
@@ -8,19 +8,16 @@ function AuthForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [phone, setPhone] = useState('')
-const [fullName, setFullName] = useState('')
-const [country, setCountry] = useState('')
-const [city, setCity] = useState('')
-const [state, setState] = useState('')
-const [zip, setZip] = useState('')
+  const [fullName, setFullName] = useState('')
+  const [country, setCountry] = useState('')
+  const [city, setCity] = useState('')
+  const [state, setState] = useState('')
+  const [zip, setZip] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  )
+  const supabase = createClient()
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -44,16 +41,15 @@ const [zip, setZip] = useState('')
     }
 
     if (mode === 'signup') {
-  if (!fullName.trim()) { setError('Please enter your full name.'); setLoading(false); return }
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: { data: { phone: phone, full_name: fullName, country: country } }
-  })
-  if (error) { setError(error.message); setLoading(false); return }
-  // profile is handled by database trigger
-  setMessage('Account created! Please check your email to verify your account.')
-}
+      if (!fullName.trim()) { setError('Please enter your full name.'); setLoading(false); return }
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { phone: phone, full_name: fullName, country: country } }
+      })
+      if (error) { setError(error.message); setLoading(false); return }
+      setMessage('Account created! Please check your email to verify your account.')
+    }
 
     if (mode === 'forgot') {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -109,87 +105,87 @@ const [zip, setZip] = useState('')
               />
             </div>
 
-    {mode === 'signup' && (
-  <>
-    <div>
-      <label className="block text-sm text-gray-400 mb-1">Full name</label>
-      <input
-        type="text"
-        value={fullName}
-        onChange={e => setFullName(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder="Your full name"
-        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-teal-500"
-      />
-    </div>
-    <div>
-      <label className="block text-sm text-gray-400 mb-1">Country</label>
-      <select
-        value={country}
-        onChange={e => setCountry(e.target.value)}
-        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-teal-500">
-        <option value="">Select your country</option>
-        <option>Pakistan</option>
-        <option>United States</option>
-        <option>United Kingdom</option>
-        <option>United Arab Emirates</option>
-        <option>Saudi Arabia</option>
-        <option>India</option>
-        <option>Canada</option>
-        <option>Australia</option>
-        <option>Germany</option>
-        <option>France</option>
-        <option>Other</option>
-      </select>
-    </div>
-    <div className="grid grid-cols-2 gap-3">
-      <div>
-        <label className="block text-sm text-gray-400 mb-1">City</label>
-        <input
-          type="text"
-          value={city}
-          onChange={e => setCity(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Your city"
-          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-teal-500"
-        />
-      </div>
-      <div>
-        <label className="block text-sm text-gray-400 mb-1">State / Province</label>
-        <input
-          type="text"
-          value={state}
-          onChange={e => setState(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="State"
-          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-teal-500"
-        />
-      </div>
-    </div>
-    <div>
-      <label className="block text-sm text-gray-400 mb-1">ZIP / Postal code</label>
-      <input
-        type="text"
-        value={zip}
-        onChange={e => setZip(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder="12345"
-        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-teal-500"
-      />
-    </div>
-    <div>
-      <label className="block text-sm text-gray-400 mb-1">Phone number (optional)</label>
-      <input
-        type="tel"
-        value={phone}
-        onChange={e => setPhone(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder="+1 234 567 8900"
-        className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-teal-500"
-      />
-    </div>
-  </>
-)}
+            {mode === 'signup' && (
+              <>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Full name</label>
+                  <input
+                    type="text"
+                    value={fullName}
+                    onChange={e => setFullName(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Your full name"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-teal-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Country</label>
+                  <select
+                    value={country}
+                    onChange={e => setCountry(e.target.value)}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-teal-500">
+                    <option value="">Select your country</option>
+                    <option>Pakistan</option>
+                    <option>United States</option>
+                    <option>United Kingdom</option>
+                    <option>United Arab Emirates</option>
+                    <option>Saudi Arabia</option>
+                    <option>India</option>
+                    <option>Canada</option>
+                    <option>Australia</option>
+                    <option>Germany</option>
+                    <option>France</option>
+                    <option>Other</option>
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">City</label>
+                    <input
+                      type="text"
+                      value={city}
+                      onChange={e => setCity(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      placeholder="Your city"
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-teal-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">State / Province</label>
+                    <input
+                      type="text"
+                      value={state}
+                      onChange={e => setState(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      placeholder="State"
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-teal-500"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">ZIP / Postal code</label>
+                  <input
+                    type="text"
+                    value={zip}
+                    onChange={e => setZip(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="12345"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-teal-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Phone number (optional)</label>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={e => setPhone(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="+1 234 567 8900"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-teal-500"
+                  />
+                </div>
+              </>
+            )}
 
             {mode !== 'forgot' && (
               <div>

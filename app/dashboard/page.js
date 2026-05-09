@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { createBrowserClient } from '@supabase/ssr'
+import { createClient } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
 import Sidebar from './sidebar'
 
@@ -45,10 +45,7 @@ export default function Dashboard() {
     language: 'English',
   })
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  )
+  const supabase = createClient()
   const router = useRouter()
 
   useEffect(() => {
@@ -60,30 +57,41 @@ export default function Dashboard() {
   }, [])
 
   useEffect(() => {
-    async function init() {
-      const { data: { session } } = await supabase.auth.getSession()
-      const currentUser = session?.user || null
+    async function loadUser(currentUser) {
       setUser(currentUser)
-      if (currentUser) {
-        const { data: profile } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single()
-        setProfile(profile)
-        const { data: hist } = await supabase
-          .from('content_history')
-          .select('*')
-          .eq('user_id', currentUser.id)
-          .order('created_at', { ascending: false })
-        setHistory(hist || [])
-      }
+      const { data: profileData } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single()
+      setProfile(profileData)
+      const { data: hist } = await supabase
+        .from('content_history')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false })
+      setHistory(hist || [])
       setHistoryLoading(false)
       setLoading(false)
     }
-    init()
+
+    // onAuthStateChange fires immediately with any existing session
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        loadUser(session.user)
+      } else {
+        setUser(null)
+        setProfile(null)
+        setLoading(false)
+        setHistoryLoading(false)
+      }
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   // Handle logout and history fetch
   useEffect(() => {
     if (activeTab === 'logout') {
-      supabase.auth.signOut().then(() => router.push('/auth'))
+      supabase.auth.signOut().then(() => {
+        window.location.href = '/auth'
+      })
     }
     if (activeTab === 'history' && user) {
       fetchHistory()
@@ -175,8 +183,6 @@ export default function Dashboard() {
     })
     if (error) {
       console.error('History save error FULL:', JSON.stringify(error))
-      console.error('History save error message:', error.message)
-      console.error('History save error code:', error.code)
     } else {
       console.log('History saved successfully')
     }
@@ -203,7 +209,6 @@ export default function Dashboard() {
       })
       const data = await response.json()
       if (data.content) {
-        // data.content is an object: { content, metaTitle, metaDescription, titles }
         setResult(data.content)
         await incrementPostCount()
         await saveToHistory(data.content)
@@ -339,10 +344,8 @@ export default function Dashboard() {
               </div>
               {history.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-gray-400 text-sm">Your recent posts will appear here.</p>
-                  <button onClick={() => setActiveTab('generate')} className="mt-3 text-sm text-[#0D9488] hover:underline">
-                    Generate your first post →
-                  </button>
+                  <p className="text-gray-400 text-sm">No content generated yet.</p>
+                  <button onClick={() => setActiveTab('generate')} className="mt-3 text-[#0D9488] text-sm hover:underline">Generate your first post →</button>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -563,7 +566,6 @@ export default function Dashboard() {
               <div className="space-y-4">
                 {history.map(item => (
                   <div key={item.id} className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                    {/* Header row */}
                     <div className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors"
                       onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}>
                       <div className="flex items-center gap-3">
@@ -585,29 +587,24 @@ export default function Dashboard() {
                       </div>
                     </div>
 
-                    {/* Expanded content */}
                     {expandedId === item.id && (
                       <div className="px-5 pb-5 border-t border-gray-100 pt-4 space-y-3">
-
                         {item.meta_title && (
                           <div>
                             <p className="text-xs text-[#C9943A] font-medium uppercase tracking-wide mb-1">Meta Title</p>
                             <p className="text-sm text-gray-700">{item.meta_title}</p>
                           </div>
                         )}
-
                         {item.meta_description && (
                           <div>
                             <p className="text-xs text-[#C9943A] font-medium uppercase tracking-wide mb-1">Meta Description</p>
                             <p className="text-sm text-gray-700">{item.meta_description}</p>
                           </div>
                         )}
-
                         <div>
                           <p className="text-xs text-[#C9943A] font-medium uppercase tracking-wide mb-1">Content</p>
                           <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{item.content}</p>
                         </div>
-
                         {item.keywords && item.keywords.length > 0 && (
                           <div>
                             <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-1">Keywords</p>
@@ -618,14 +615,12 @@ export default function Dashboard() {
                             </div>
                           </div>
                         )}
-
                         {item.hashtags && item.hashtags.length > 0 && (
                           <div>
                             <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-1">Hashtags</p>
                             <p className="text-xs text-[#0D9488]">{item.hashtags.join(' ')}</p>
                           </div>
                         )}
-
                         <button
                           onClick={() => navigator.clipboard.writeText(item.content)}
                           className="w-full mt-2 bg-gray-50 hover:bg-gray-100 text-[#0D9488] py-2.5 rounded-lg text-sm font-medium border border-gray-200 transition-colors">
