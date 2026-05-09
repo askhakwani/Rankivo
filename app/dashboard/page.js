@@ -30,6 +30,9 @@ export default function Dashboard() {
   const [cookieAccepted, setCookieAccepted] = useState(false)
   const [showCookieBanner, setShowCookieBanner] = useState(false)
   const [activeTab, setActiveTab] = useState('dashboard')
+  const [history, setHistory] = useState([])
+  const [historyLoading, setHistoryLoading] = useState(true)
+  const [expandedId, setExpandedId] = useState(null)
 
   const [form, setForm] = useState({
     platform: 'Instagram',
@@ -57,12 +60,27 @@ export default function Dashboard() {
     getUser()
   }, [])
 
-  // Handle logout tab trigger
+  // Handle logout and history fetch
   useEffect(() => {
     if (activeTab === 'logout') {
       supabase.auth.signOut().then(() => router.push('/auth'))
     }
-  }, [activeTab])
+    if (activeTab === 'history' && user) {
+      fetchHistory()
+    }
+  }, [activeTab, user])
+
+  async function fetchHistory() {
+    if (!user) return
+    setHistoryLoading(true)
+    const { data, error } = await supabase
+      .from('content_history')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+    if (!error) setHistory(data || [])
+    setHistoryLoading(false)
+  }
 
   async function getUser() {
     const { data: { user } } = await supabase.auth.getUser()
@@ -70,6 +88,14 @@ export default function Dashboard() {
       setUser(user)
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       setProfile(profile)
+      // fetch history for dashboard recent posts
+      const { data: hist } = await supabase
+        .from('content_history')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+      setHistory(hist || [])
+      setHistoryLoading(false)
     }
     setLoading(false)
   }
@@ -127,6 +153,8 @@ export default function Dashboard() {
   async function saveToHistory(contentObj) {
     if (!user) { console.log('saveToHistory: no user'); return }
     const contentText = typeof contentObj === 'string' ? contentObj : contentObj?.content || ''
+    const h1 = contentObj?.titles?.[0] || null
+    const wordCount = contentText.trim().split(/\s+/).length
     const { error } = await supabase.from('content_history').insert({
       user_id: user.id,
       platform: form.platform,
@@ -135,6 +163,8 @@ export default function Dashboard() {
       hashtags: contentText?.match(/#\w+/g) || [],
       meta_title: contentObj?.metaTitle || null,
       meta_description: contentObj?.metaDescription || null,
+      h1: h1,
+      word_count: wordCount,
       content_length: form.length,
       language: form.language,
       tone: form.tone,
@@ -175,6 +205,7 @@ export default function Dashboard() {
         setResult(data.content)
         await incrementPostCount()
         await saveToHistory(data.content)
+        await fetchHistory()
       } else {
         alert('Generation failed. Please try again.')
       }
@@ -205,7 +236,7 @@ export default function Dashboard() {
   const isAdmin = user?.email === ADMIN_EMAIL
 
   return (
-   <div className="flex min-h-screen bg-gray-50 text-gray-800" style={{ backgroundColor: '#f9fafb' }}>
+    <div className="flex min-h-screen bg-gray-50 text-gray-800">
 
       {/* Cookie Banner */}
       {showCookieBanner && (
@@ -304,15 +335,28 @@ export default function Dashboard() {
                   View all
                 </button>
               </div>
-              <div className="text-center py-8">
-                <p className="text-gray-400 text-sm">Your recent posts will appear here.</p>
-                <button
-                  onClick={() => setActiveTab('generate')}
-                  className="mt-3 text-sm text-[#0D9488] hover:underline"
-                >
-                  Generate your first post →
-                </button>
-              </div>
+              {history.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-400 text-sm">Your recent posts will appear here.</p>
+                  <button onClick={() => setActiveTab('generate')} className="mt-3 text-sm text-[#0D9488] hover:underline">
+                    Generate your first post →
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {history.slice(0, 3).map(item => (
+                    <div key={item.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs bg-[#1B5FA8]/10 text-[#1B5FA8] px-2 py-0.5 rounded border border-[#1B5FA8]/20 font-medium">{item.platform}</span>
+                        <p className="text-sm text-gray-600 truncate max-w-xs">{item.content?.slice(0, 60)}...</p>
+                      </div>
+                      <span className="text-xs text-gray-400 ml-2 shrink-0">
+                        {new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -502,13 +546,95 @@ export default function Dashboard() {
 
         {/* HISTORY TAB */}
         {activeTab === 'history' && (
-          <div>
+          <div className="max-w-3xl">
             <h2 className="text-2xl font-bold text-gray-900 mb-1">Content History</h2>
-            <p className="text-gray-500">Your previously generated content will appear here.</p>
-            <div className="mt-8 bg-white rounded-xl p-8 text-center border border-gray-200 shadow-sm">
-              <p className="text-gray-400">No content generated yet.</p>
-              <button onClick={() => setActiveTab('generate')} className="mt-4 bg-[#0D9488] hover:bg-[#0D9488]/90 text-white px-6 py-2 rounded-lg text-sm font-semibold">Generate Your First Post</button>
-            </div>
+            <p className="text-gray-500 mb-6">All your previously generated content.</p>
+
+            {historyLoading ? (
+              <div className="text-center py-16 text-[#1B5FA8] font-medium">Loading history...</div>
+            ) : history.length === 0 ? (
+              <div className="bg-white rounded-xl p-8 text-center border border-gray-200 shadow-sm">
+                <p className="text-gray-400">No content generated yet.</p>
+                <button onClick={() => setActiveTab('generate')} className="mt-4 bg-[#0D9488] hover:bg-[#0D9488]/90 text-white px-6 py-2 rounded-lg text-sm font-semibold">Generate Your First Post</button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {history.map(item => (
+                  <div key={item.id} className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                    {/* Header row */}
+                    <div className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                      onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}>
+                      <div className="flex items-center gap-3">
+                        <span className="bg-[#1B5FA8]/10 text-[#1B5FA8] text-xs font-semibold px-2.5 py-1 rounded border border-[#1B5FA8]/20">
+                          {item.platform}
+                        </span>
+                        <span className="bg-[#0D9488]/10 text-[#0D9488] text-xs font-medium px-2.5 py-1 rounded border border-[#0D9488]/20">
+                          {item.content_length}
+                        </span>
+                        {item.tone && (
+                          <span className="text-xs text-gray-400">{item.tone}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className="text-xs text-gray-400">
+                          {new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                        <span className="text-gray-400 text-sm">{expandedId === item.id ? '▲' : '▼'}</span>
+                      </div>
+                    </div>
+
+                    {/* Expanded content */}
+                    {expandedId === item.id && (
+                      <div className="px-5 pb-5 border-t border-gray-100 pt-4 space-y-3">
+
+                        {item.meta_title && (
+                          <div>
+                            <p className="text-xs text-[#C9943A] font-medium uppercase tracking-wide mb-1">Meta Title</p>
+                            <p className="text-sm text-gray-700">{item.meta_title}</p>
+                          </div>
+                        )}
+
+                        {item.meta_description && (
+                          <div>
+                            <p className="text-xs text-[#C9943A] font-medium uppercase tracking-wide mb-1">Meta Description</p>
+                            <p className="text-sm text-gray-700">{item.meta_description}</p>
+                          </div>
+                        )}
+
+                        <div>
+                          <p className="text-xs text-[#C9943A] font-medium uppercase tracking-wide mb-1">Content</p>
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{item.content}</p>
+                        </div>
+
+                        {item.keywords && item.keywords.length > 0 && (
+                          <div>
+                            <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-1">Keywords</p>
+                            <div className="flex flex-wrap gap-1">
+                              {item.keywords.map((k, i) => (
+                                <span key={i} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">{k}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {item.hashtags && item.hashtags.length > 0 && (
+                          <div>
+                            <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-1">Hashtags</p>
+                            <p className="text-xs text-[#0D9488]">{item.hashtags.join(' ')}</p>
+                          </div>
+                        )}
+
+                        <button
+                          onClick={() => navigator.clipboard.writeText(item.content)}
+                          className="w-full mt-2 bg-gray-50 hover:bg-gray-100 text-[#0D9488] py-2.5 rounded-lg text-sm font-medium border border-gray-200 transition-colors">
+                          Copy Content
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
