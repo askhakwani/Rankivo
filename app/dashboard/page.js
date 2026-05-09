@@ -83,18 +83,20 @@ export default function Dashboard() {
   }
 
   async function getUser() {
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { session } } = await supabase.auth.getSession()
+    const user = session?.user
     if (user) {
       setUser(user)
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       setProfile(profile)
-      // fetch history for dashboard recent posts
       const { data: hist } = await supabase
         .from('content_history')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
       setHistory(hist || [])
+      setHistoryLoading(false)
+    } else {
       setHistoryLoading(false)
     }
     setLoading(false)
@@ -549,7 +551,7 @@ export default function Dashboard() {
           <div className="max-w-3xl">
             <h2 className="text-2xl font-bold text-gray-900 mb-1">Content History</h2>
             <p className="text-gray-500 mb-6">All your previously generated content.</p>
-{console.log('history state:', history, 'loading:', historyLoading)}
+
             {historyLoading ? (
               <div className="text-center py-16 text-[#1B5FA8] font-medium">Loading history...</div>
             ) : history.length === 0 ? (
