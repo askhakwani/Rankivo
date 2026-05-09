@@ -40,7 +40,7 @@ const [zip, setZip] = useState('')
     if (mode === 'login') {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) { setError(error.message); setLoading(false); return }
-      router.push('/dashboard')
+      window.location.href = '/dashboard'
     }
 
     if (mode === 'signup') {
