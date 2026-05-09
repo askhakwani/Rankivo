@@ -57,7 +57,26 @@ export default function Dashboard() {
       if (!cookie) setShowCookieBanner(true)
       else setCookieAccepted(true)
     }
-    getUser()
+  }, [])
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const currentUser = session?.user || null
+      setUser(currentUser)
+      if (currentUser) {
+        const { data: profile } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single()
+        setProfile(profile)
+        const { data: hist } = await supabase
+          .from('content_history')
+          .select('*')
+          .eq('user_id', currentUser.id)
+          .order('created_at', { ascending: false })
+        setHistory(hist || [])
+      }
+      setHistoryLoading(false)
+      setLoading(false)
+    })
+    return () => subscription.unsubscribe()
   }, [])
 
   // Handle logout and history fetch
@@ -80,26 +99,6 @@ export default function Dashboard() {
       .order('created_at', { ascending: false })
     if (!error) setHistory(data || [])
     setHistoryLoading(false)
-  }
-
-  async function getUser() {
-    const { data: { session } } = await supabase.auth.getSession()
-    const user = session?.user
-    if (user) {
-      setUser(user)
-      const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-      setProfile(profile)
-      const { data: hist } = await supabase
-        .from('content_history')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-      setHistory(hist || [])
-      setHistoryLoading(false)
-    } else {
-      setHistoryLoading(false)
-    }
-    setLoading(false)
   }
 
   function acceptCookies() {
