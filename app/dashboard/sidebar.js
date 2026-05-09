@@ -1,8 +1,15 @@
 'use client'
 import { useRouter } from 'next/navigation'
+import { createClient } from '../../lib/supabase'
 
 export default function Sidebar({ activeTab, setActiveTab, user, profile, isAdmin }) {
   const router = useRouter()
+  const supabase = createClient()
+
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    window.location.href = '/auth'
+  }
 
   const navItem = (id, label, section) => (
     <li
@@ -94,7 +101,7 @@ export default function Sidebar({ activeTab, setActiveTab, user, profile, isAdmi
               </div>
             </div>
             <button
-              onClick={() => setActiveTab('logout')}
+              onClick={handleLogout}
               className="w-full text-left px-3 py-2 text-sm text-gray-400 hover:text-red-400 transition-colors rounded-lg hover:bg-red-50"
             >
               Logout
@@ -105,9 +112,15 @@ export default function Sidebar({ activeTab, setActiveTab, user, profile, isAdmi
             <p className="text-xs text-gray-400 mb-2">Guest User</p>
             <button
               onClick={() => router.push('/auth')}
-              className="w-full bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white py-2 rounded-lg text-sm font-semibold"
+              className="w-full bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white py-2 rounded-lg text-sm font-semibold mb-2"
             >
               Sign Up Free
+            </button>
+            <button
+              onClick={handleLogout}
+              className="w-full text-left px-3 py-2 text-sm text-gray-400 hover:text-red-400 transition-colors rounded-lg hover:bg-red-50"
+            >
+              Logout
             </button>
           </div>
         )}
