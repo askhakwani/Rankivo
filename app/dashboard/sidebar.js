@@ -11,7 +11,7 @@ export default function Sidebar({ activeTab, setActiveTab, user, profile, isAdmi
     window.location.href = '/auth'
   }
 
-  const navItem = (id, label, section) => (
+  const navItem = (id, label) => (
     <li
       key={id}
       onClick={() => setActiveTab(id)}
@@ -26,64 +26,59 @@ export default function Sidebar({ activeTab, setActiveTab, user, profile, isAdmi
   )
 
   return (
-    <div className="h-screen w-64 bg-white border-r border-gray-200 flex flex-col justify-between fixed left-0 top-0">
+    <div className="h-screen w-64 bg-white border-r border-gray-200 flex flex-col fixed left-0 top-0">
 
       {/* Logo */}
-      <div>
-        <div className="px-6 py-5 border-b border-gray-100">
-          <a href="/" className="text-xl font-bold text-[#1B5FA8]">RANKIVO</a>
-          <p className="text-xs text-gray-400 mt-0.5">AI Content & SEO Platform</p>
-        </div>
-
-        <nav className="px-4 pt-4 space-y-5">
-
-          {/* Main */}
-          <div>
-            <p className="text-xs text-gray-400 font-medium mb-2 px-1">MAIN</p>
-            <ul className="space-y-1">
-              {navItem('dashboard', 'Dashboard', 'main')}
-            </ul>
-          </div>
-
-          {/* SEO Tools */}
-          <div>
-            <p className="text-xs text-gray-400 font-medium mb-2 px-1">SEO TOOLS</p>
-            <ul className="space-y-1">
-              {navItem('generate', 'Content Generator', 'seo')}
-              {navItem('history', 'Content History', 'seo')}
-              {navItem('seo', 'Keywords', 'seo')}
-            </ul>
-          </div>
-
-          {/* Human Services */}
-          <div>
-            <p className="text-xs text-gray-400 font-medium mb-2 px-1">HUMAN SERVICES</p>
-            <ul className="space-y-1">
-              {navItem('hire', 'Hire a Writer', 'human')}
-            </ul>
-          </div>
-
-          {/* Account */}
-          <div>
-            <p className="text-xs text-gray-400 font-medium mb-2 px-1">ACCOUNT</p>
-            <ul className="space-y-1">
-              {navItem('settings', 'Settings', 'account')}
-              {isAdmin && (
-                <li
-                  onClick={() => router.push('/admin')}
-                  className="px-3 py-2 rounded-lg cursor-pointer text-sm text-[#C9943A] hover:bg-yellow-50 border border-yellow-200/50"
-                >
-                  Admin Panel
-                </li>
-              )}
-            </ul>
-          </div>
-
-        </nav>
+      <div className="px-6 py-5 border-b border-gray-100 shrink-0">
+        <a href="/" className="text-xl font-bold text-[#1B5FA8]">RANKIVO</a>
+        <p className="text-xs text-gray-400 mt-0.5">AI Content & SEO Platform</p>
       </div>
 
-      {/* Bottom user block */}
-      <div className="p-4 border-t border-gray-100">
+      {/* Nav - scrollable */}
+      <nav className="px-4 pt-4 space-y-5 flex-1 overflow-y-auto">
+
+        <div>
+          <p className="text-xs text-gray-400 font-medium mb-2 px-1">MAIN</p>
+          <ul className="space-y-1">
+            {navItem('dashboard', 'Dashboard')}
+          </ul>
+        </div>
+
+        <div>
+          <p className="text-xs text-gray-400 font-medium mb-2 px-1">SEO TOOLS</p>
+          <ul className="space-y-1">
+            {navItem('generate', 'Content Generator')}
+            {navItem('history', 'Content History')}
+            {navItem('seo', 'Keywords')}
+          </ul>
+        </div>
+
+        <div>
+          <p className="text-xs text-gray-400 font-medium mb-2 px-1">HUMAN SERVICES</p>
+          <ul className="space-y-1">
+            {navItem('hire', 'Hire a Writer')}
+          </ul>
+        </div>
+
+        <div>
+          <p className="text-xs text-gray-400 font-medium mb-2 px-1">ACCOUNT</p>
+          <ul className="space-y-1">
+            {navItem('settings', 'Settings')}
+            {isAdmin && (
+              <li
+                onClick={() => router.push('/admin')}
+                className="px-3 py-2 rounded-lg cursor-pointer text-sm text-[#C9943A] hover:bg-yellow-50 border border-yellow-200/50"
+              >
+                Admin Panel
+              </li>
+            )}
+          </ul>
+        </div>
+
+      </nav>
+
+      {/* Bottom - always visible */}
+      <div className="p-4 border-t border-gray-100 shrink-0">
         {user ? (
           <div>
             <div className="bg-gray-50 rounded-lg p-3 mb-2">
@@ -102,7 +97,7 @@ export default function Sidebar({ activeTab, setActiveTab, user, profile, isAdmi
             </div>
             <button
               onClick={handleLogout}
-              className="w-full text-left px-3 py-2 text-sm text-gray-400 hover:text-red-400 transition-colors rounded-lg hover:bg-red-50"
+              className="w-full text-left px-3 py-2 text-sm text-red-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50"
             >
               Logout
             </button>
@@ -118,7 +113,7 @@ export default function Sidebar({ activeTab, setActiveTab, user, profile, isAdmi
             </button>
             <button
               onClick={handleLogout}
-              className="w-full text-left px-3 py-2 text-sm text-gray-400 hover:text-red-400 transition-colors rounded-lg hover:bg-red-50"
+              className="w-full text-left px-3 py-2 text-sm text-red-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50"
             >
               Logout
             </button>
