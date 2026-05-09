@@ -27,23 +27,18 @@ export default function Sidebar({ activeTab, setActiveTab, user, profile, isAdmi
 
   return (
     <div className="h-screen w-64 bg-white border-r border-gray-200 flex flex-col fixed left-0 top-0">
-
-      {/* Logo */}
       <div className="px-6 py-5 border-b border-gray-100 shrink-0">
         <a href="/" className="text-xl font-bold text-[#1B5FA8]">RANKIVO</a>
         <p className="text-xs text-gray-400 mt-0.5">AI Content & SEO Platform</p>
       </div>
 
-      {/* Nav - scrollable */}
       <nav className="px-4 pt-4 space-y-5 flex-1 overflow-y-auto">
-
         <div>
           <p className="text-xs text-gray-400 font-medium mb-2 px-1">MAIN</p>
           <ul className="space-y-1">
             {navItem('dashboard', 'Dashboard')}
           </ul>
         </div>
-
         <div>
           <p className="text-xs text-gray-400 font-medium mb-2 px-1">SEO TOOLS</p>
           <ul className="space-y-1">
@@ -52,14 +47,12 @@ export default function Sidebar({ activeTab, setActiveTab, user, profile, isAdmi
             {navItem('seo', 'Keywords')}
           </ul>
         </div>
-
         <div>
           <p className="text-xs text-gray-400 font-medium mb-2 px-1">HUMAN SERVICES</p>
           <ul className="space-y-1">
             {navItem('hire', 'Hire a Writer')}
           </ul>
         </div>
-
         <div>
           <p className="text-xs text-gray-400 font-medium mb-2 px-1">ACCOUNT</p>
           <ul className="space-y-1">
@@ -74,10 +67,8 @@ export default function Sidebar({ activeTab, setActiveTab, user, profile, isAdmi
             )}
           </ul>
         </div>
-
       </nav>
 
-      {/* Bottom - always visible */}
       <div className="p-4 border-t border-gray-100 shrink-0">
         {user ? (
           <div>
@@ -89,9 +80,7 @@ export default function Sidebar({ activeTab, setActiveTab, user, profile, isAdmi
                   {(profile?.plan || 'free').toUpperCase()}
                 </span>
                 <span className="text-xs text-gray-400">
-                  {!profile?.plan || profile?.plan === 'free'
-                    ? `${profile?.posts_count || 0}/3 posts`
-                    : 'Unlimited'}
+                  {!profile?.plan || profile?.plan === 'free' ? `${profile?.posts_count || 0}/3 posts` : 'Unlimited'}
                 </span>
               </div>
             </div>
@@ -105,23 +94,16 @@ export default function Sidebar({ activeTab, setActiveTab, user, profile, isAdmi
         ) : (
           <div>
             <p className="text-xs text-gray-400 mb-2">Guest User</p>
-            <button
-              onClick={() => router.push('/auth')}
-              className="w-full bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white py-2 rounded-lg text-sm font-semibold mb-2"
-            >
+            <button onClick={() => router.push('/auth')} className="w-full bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white py-2 rounded-lg text-sm font-semibold mb-2">
               Sign Up Free
             </button>
-            <button
-              onClick={handleLogout}
-              className="w-full text-left px-3 py-2 text-sm text-red-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50"
-            >
+            <button onClick={handleLogout} className="w-full text-left px-3 py-2 text-sm text-red-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50">
               Logout
             </button>
           </div>
         )}
         <p className="text-xs text-gray-300 mt-3 text-center">© Rankivo</p>
       </div>
-
     </div>
   )
 }
