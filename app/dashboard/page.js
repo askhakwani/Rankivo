@@ -60,7 +60,8 @@ export default function Dashboard() {
   }, [])
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    async function init() {
+      const { data: { session } } = await supabase.auth.getSession()
       const currentUser = session?.user || null
       setUser(currentUser)
       if (currentUser) {
@@ -75,8 +76,8 @@ export default function Dashboard() {
       }
       setHistoryLoading(false)
       setLoading(false)
-    })
-    return () => subscription.unsubscribe()
+    }
+    init()
   }, [])
 
   // Handle logout and history fetch
