@@ -1,23 +1,23 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { createClient } from '../../lib/supabase'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 const ADMIN_EMAIL = 'askhakwani@gmail.com'
 
 const TABS = [
-  { id: 'overview', label: '📊 Overview' },
-  { id: 'users', label: '👥 Users' },
-  { id: 'blog', label: '✍️ Blog Posts' },
-  { id: 'pages', label: '📄 Pages / CMS' },
-  { id: 'settings', label: '⚙️ Site Settings' },
+  { id: 'overview', label: 'Overview' },
+  { id: 'users', label: 'Users' },
+  { id: 'blog', label: 'Blog Posts' },
+  { id: 'pages', label: 'Pages / CMS' },
+  { id: 'settings', label: 'Site Settings' },
 ]
 
 function slugify(text) {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
 }
 
-export default function AdminPanel() {
+function AdminPanelInner() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const searchParams = useSearchParams()
@@ -25,28 +25,24 @@ export default function AdminPanel() {
   const supabase = createClient()
   const router = useRouter()
 
-  // Users
   const [users, setUsers] = useState([])
   const [usersLoading, setUsersLoading] = useState(false)
   const [stats, setStats] = useState({ total: 0, free: 0, pro: 0, premium: 0 })
 
-  // Blog
   const [posts, setPosts] = useState([])
   const [postsLoading, setPostsLoading] = useState(false)
   const [blogForm, setBlogForm] = useState({ id: null, title: '', slug: '', excerpt: '', content: '', meta_title: '', meta_description: '', published: false })
-  const [blogView, setBlogView] = useState('list') // list | form
+  const [blogView, setBlogView] = useState('list')
   const [blogMsg, setBlogMsg] = useState('')
   const [blogSaving, setBlogSaving] = useState(false)
 
-  // Pages CMS
   const [pages, setPages] = useState([])
   const [pagesLoading, setPagesLoading] = useState(false)
   const [pageForm, setPageForm] = useState({ id: null, title: '', slug: '', content: '', meta_title: '', meta_description: '', published: true })
-  const [pageView, setPageView] = useState('list') // list | form
+  const [pageView, setPageView] = useState('list')
   const [pageMsg, setPageMsg] = useState('')
   const [pageSaving, setPageSaving] = useState(false)
 
-  // Plan change
   const [planChanging, setPlanChanging] = useState(null)
 
   useEffect(() => {
@@ -104,7 +100,6 @@ export default function AdminPanel() {
     setPlanChanging(null)
   }
 
-  // Blog CRUD
   function newBlogPost() {
     setBlogForm({ id: null, title: '', slug: '', excerpt: '', content: '', meta_title: '', meta_description: '', published: false })
     setBlogMsg('')
@@ -148,7 +143,6 @@ export default function AdminPanel() {
     loadPosts()
   }
 
-  // Pages CMS CRUD
   function newPage() {
     setPageForm({ id: null, title: '', slug: '', content: '', meta_title: '', meta_description: '', published: true })
     setPageMsg('')
@@ -195,7 +189,6 @@ export default function AdminPanel() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <a href="/dashboard" className="text-xl font-bold text-[#1B5FA8]">RANKIVO</a>
@@ -204,12 +197,11 @@ export default function AdminPanel() {
         </div>
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-500 hidden sm:block">{user?.email}</span>
-          <a href="/dashboard" className="text-sm text-[#0D9488] hover:underline">← Dashboard</a>
+          <a href="/dashboard" className="text-sm text-[#0D9488] hover:underline">Back to Dashboard</a>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-        {/* Tabs */}
         <div className="flex flex-wrap gap-2 mb-6">
           {TABS.map(t => (
             <button
@@ -222,7 +214,6 @@ export default function AdminPanel() {
           ))}
         </div>
 
-        {/* OVERVIEW */}
         {activeTab === 'overview' && (
           <div>
             <h2 className="text-xl font-bold text-gray-900 mb-5">Overview</h2>
@@ -241,12 +232,11 @@ export default function AdminPanel() {
             </div>
             <div className="grid md:grid-cols-3 gap-4">
               {[
-                { label: 'Blog Posts', tab: 'blog', icon: '✍️', desc: 'Create and manage blog content' },
-                { label: 'Pages / CMS', tab: 'pages', icon: '📄', desc: 'Edit About, FAQ and custom pages' },
-                { label: 'Users', tab: 'users', icon: '👥', desc: 'Manage user plans and accounts' },
+                { label: 'Blog Posts', tab: 'blog', desc: 'Create and manage blog content' },
+                { label: 'Pages / CMS', tab: 'pages', desc: 'Edit About, FAQ and custom pages' },
+                { label: 'Users', tab: 'users', desc: 'Manage user plans and accounts' },
               ].map(c => (
                 <button key={c.tab} onClick={() => setActiveTab(c.tab)} className="bg-white border border-gray-200 rounded-xl p-5 text-left hover:border-[#1B5FA8]/40 hover:shadow-sm transition-all group">
-                  <div className="text-2xl mb-2">{c.icon}</div>
                   <p className="font-semibold text-gray-900 group-hover:text-[#1B5FA8]">{c.label}</p>
                   <p className="text-xs text-gray-500 mt-1">{c.desc}</p>
                 </button>
@@ -255,7 +245,6 @@ export default function AdminPanel() {
           </div>
         )}
 
-        {/* USERS */}
         {activeTab === 'users' && (
           <div>
             <h2 className="text-xl font-bold text-gray-900 mb-5">All Users</h2>
@@ -310,7 +299,6 @@ export default function AdminPanel() {
           </div>
         )}
 
-        {/* BLOG */}
         {activeTab === 'blog' && (
           <div>
             <div className="flex items-center justify-between mb-5">
@@ -322,7 +310,7 @@ export default function AdminPanel() {
               )}
               {blogView === 'form' && (
                 <button onClick={() => setBlogView('list')} className="text-sm text-gray-500 hover:text-gray-800 border border-gray-200 px-3 py-1.5 rounded-lg">
-                  ← Back to Posts
+                  Back to Posts
                 </button>
               )}
             </div>
@@ -332,7 +320,6 @@ export default function AdminPanel() {
                 <div className="space-y-3">
                   {posts.length === 0 && (
                     <div className="bg-white border border-dashed border-gray-300 rounded-xl p-10 text-center">
-                      <p className="text-3xl mb-3">✍️</p>
                       <p className="font-semibold text-gray-700 mb-1">No blog posts yet</p>
                       <p className="text-sm text-gray-400 mb-4">Create your first post to start your blog.</p>
                       <button onClick={newBlogPost} className="bg-[#1B5FA8] text-white px-5 py-2 rounded-lg text-sm font-semibold">Create First Post</button>
@@ -366,76 +353,53 @@ export default function AdminPanel() {
             {blogView === 'form' && (
               <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4 shadow-sm">
                 <h3 className="font-bold text-gray-900">{blogForm.id ? 'Edit Post' : 'New Blog Post'}</h3>
-
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
-                    <input
-                      type="text" value={blogForm.title} placeholder="Post title"
+                    <input type="text" value={blogForm.title} placeholder="Post title"
                       onChange={e => setBlogForm(prev => ({ ...prev, title: e.target.value, slug: prev.slug || slugify(e.target.value) }))}
-                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm"
-                    />
+                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Slug (URL)</label>
-                    <input
-                      type="text" value={blogForm.slug} placeholder="post-url-slug"
+                    <input type="text" value={blogForm.slug} placeholder="post-url-slug"
                       onChange={e => setBlogForm(prev => ({ ...prev, slug: e.target.value }))}
-                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm font-mono"
-                    />
+                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm font-mono" />
                   </div>
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Excerpt (short description)</label>
-                  <input
-                    type="text" value={blogForm.excerpt} placeholder="Short description shown on blog listing..."
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Excerpt</label>
+                  <input type="text" value={blogForm.excerpt} placeholder="Short description shown on blog listing..."
                     onChange={e => setBlogForm(prev => ({ ...prev, excerpt: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm"
-                  />
+                    className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm" />
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
-                  <textarea
-                    value={blogForm.content} rows={12} placeholder="Write your blog post content here. Each new line becomes a paragraph."
+                  <textarea value={blogForm.content} rows={12} placeholder="Write your blog post content here..."
                     onChange={e => setBlogForm(prev => ({ ...prev, content: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-4 py-3 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm resize-y font-mono"
-                  />
+                    className="w-full border border-gray-200 rounded-lg px-4 py-3 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm resize-y" />
                 </div>
-
                 <div className="grid md:grid-cols-2 gap-4 border-t border-gray-100 pt-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Meta Title (SEO)</label>
-                    <input
-                      type="text" value={blogForm.meta_title} placeholder="SEO title (defaults to post title)"
+                    <input type="text" value={blogForm.meta_title} placeholder="SEO title"
                       onChange={e => setBlogForm(prev => ({ ...prev, meta_title: e.target.value }))}
-                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm"
-                    />
+                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Meta Description (SEO)</label>
-                    <input
-                      type="text" value={blogForm.meta_description} placeholder="SEO description (150-160 chars)"
+                    <input type="text" value={blogForm.meta_description} placeholder="SEO description (150-160 chars)"
                       onChange={e => setBlogForm(prev => ({ ...prev, meta_description: e.target.value }))}
-                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm"
-                    />
+                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm" />
                   </div>
                 </div>
-
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox" checked={blogForm.published}
-                      onChange={e => setBlogForm(prev => ({ ...prev, published: e.target.checked }))}
-                      className="w-4 h-4 rounded accent-[#0D9488]"
-                    />
-                    <span className="text-sm text-gray-700 font-medium">Publish immediately</span>
-                  </label>
-                </div>
-
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={blogForm.published}
+                    onChange={e => setBlogForm(prev => ({ ...prev, published: e.target.checked }))}
+                    className="w-4 h-4 rounded accent-[#0D9488]" />
+                  <span className="text-sm text-gray-700 font-medium">Publish immediately</span>
+                </label>
                 {blogMsg && <p className={`text-sm font-medium ${blogMsg.startsWith('Error') ? 'text-red-500' : 'text-[#0D9488]'}`}>{blogMsg}</p>}
-
                 <div className="flex gap-3">
                   <button onClick={saveBlogPost} disabled={blogSaving} className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-6 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-50 transition-colors">
                     {blogSaving ? 'Saving...' : (blogForm.id ? 'Update Post' : 'Create Post')}
@@ -447,7 +411,6 @@ export default function AdminPanel() {
           </div>
         )}
 
-        {/* PAGES CMS */}
         {activeTab === 'pages' && (
           <div>
             <div className="flex items-center justify-between mb-5">
@@ -462,7 +425,7 @@ export default function AdminPanel() {
               )}
               {pageView === 'form' && (
                 <button onClick={() => setPageView('list')} className="text-sm text-gray-500 hover:text-gray-800 border border-gray-200 px-3 py-1.5 rounded-lg">
-                  ← Back to Pages
+                  Back to Pages
                 </button>
               )}
             </div>
@@ -472,9 +435,8 @@ export default function AdminPanel() {
                 <div className="space-y-3">
                   {pages.length === 0 && (
                     <div className="bg-white border border-dashed border-gray-300 rounded-xl p-10 text-center">
-                      <p className="text-3xl mb-3">📄</p>
                       <p className="font-semibold text-gray-700 mb-1">No custom pages yet</p>
-                      <p className="text-sm text-gray-400 mb-4">Create custom pages like About, FAQ, Terms etc.</p>
+                      <p className="text-sm text-gray-400 mb-4">Create pages like About, FAQ, Terms etc.</p>
                       <button onClick={newPage} className="bg-[#1B5FA8] text-white px-5 py-2 rounded-lg text-sm font-semibold">Create First Page</button>
                     </div>
                   )}
@@ -502,67 +464,47 @@ export default function AdminPanel() {
             {pageView === 'form' && (
               <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4 shadow-sm">
                 <h3 className="font-bold text-gray-900">{pageForm.id ? 'Edit Page' : 'New Page'}</h3>
-
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Page Title *</label>
-                    <input
-                      type="text" value={pageForm.title} placeholder="e.g. About Us"
+                    <input type="text" value={pageForm.title} placeholder="e.g. About Us"
                       onChange={e => setPageForm(prev => ({ ...prev, title: e.target.value, slug: prev.slug || slugify(e.target.value) }))}
-                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm"
-                    />
+                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Slug (URL path)</label>
-                    <input
-                      type="text" value={pageForm.slug} placeholder="about-us"
+                    <input type="text" value={pageForm.slug} placeholder="about-us"
                       onChange={e => setPageForm(prev => ({ ...prev, slug: e.target.value }))}
-                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm font-mono"
-                    />
+                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm font-mono" />
                   </div>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
-                  <textarea
-                    value={pageForm.content} rows={12} placeholder="Page content. Each new line becomes a paragraph."
+                  <textarea value={pageForm.content} rows={12} placeholder="Page content..."
                     onChange={e => setPageForm(prev => ({ ...prev, content: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-4 py-3 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm resize-y"
-                  />
+                    className="w-full border border-gray-200 rounded-lg px-4 py-3 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm resize-y" />
                 </div>
-
                 <div className="grid md:grid-cols-2 gap-4 border-t border-gray-100 pt-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Meta Title (SEO)</label>
-                    <input
-                      type="text" value={pageForm.meta_title} placeholder="SEO title"
+                    <input type="text" value={pageForm.meta_title} placeholder="SEO title"
                       onChange={e => setPageForm(prev => ({ ...prev, meta_title: e.target.value }))}
-                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm"
-                    />
+                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Meta Description (SEO)</label>
-                    <input
-                      type="text" value={pageForm.meta_description} placeholder="SEO description"
+                    <input type="text" value={pageForm.meta_description} placeholder="SEO description"
                       onChange={e => setPageForm(prev => ({ ...prev, meta_description: e.target.value }))}
-                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm"
-                    />
+                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm" />
                   </div>
                 </div>
-
-                <div className="flex items-center gap-3">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox" checked={pageForm.published}
-                      onChange={e => setPageForm(prev => ({ ...prev, published: e.target.checked }))}
-                      className="w-4 h-4 rounded accent-[#0D9488]"
-                    />
-                    <span className="text-sm text-gray-700 font-medium">Published</span>
-                  </label>
-                </div>
-
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={pageForm.published}
+                    onChange={e => setPageForm(prev => ({ ...prev, published: e.target.checked }))}
+                    className="w-4 h-4 rounded accent-[#0D9488]" />
+                  <span className="text-sm text-gray-700 font-medium">Published</span>
+                </label>
                 {pageMsg && <p className={`text-sm font-medium ${pageMsg.startsWith('Error') ? 'text-red-500' : 'text-[#0D9488]'}`}>{pageMsg}</p>}
-
                 <div className="flex gap-3">
                   <button onClick={savePage} disabled={pageSaving} className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-6 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-50 transition-colors">
                     {pageSaving ? 'Saving...' : (pageForm.id ? 'Update Page' : 'Create Page')}
@@ -574,12 +516,11 @@ export default function AdminPanel() {
           </div>
         )}
 
-        {/* SETTINGS */}
         {activeTab === 'settings' && (
           <div className="max-w-xl">
             <h2 className="text-xl font-bold text-gray-900 mb-5">Site Settings</h2>
             <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4 shadow-sm">
-              <p className="text-sm text-gray-500">Site-wide settings will be available here. Currently managed via Supabase.</p>
+              <p className="text-sm text-gray-500">Site-wide settings are managed via Supabase.</p>
               <div className="bg-[#1B5FA8]/5 border border-[#1B5FA8]/20 rounded-lg p-4">
                 <p className="text-sm font-semibold text-[#1B5FA8] mb-1">Admin Email</p>
                 <p className="text-sm text-gray-600">{ADMIN_EMAIL}</p>
@@ -589,5 +530,17 @@ export default function AdminPanel() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function AdminPanel() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-[#1B5FA8] font-semibold">Loading...</div>
+      </div>
+    }>
+      <AdminPanelInner />
+    </Suspense>
   )
 }
