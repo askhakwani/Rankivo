@@ -21,6 +21,80 @@ const LENGTH_INFO = {
   Long:   { label: 'Long',   words: '~800 words', actual: 800 },
 }
 
+const PLAN_LIMITS = { free: 3, starter: 50, pro: 300, agency: Infinity }
+
+// ── Upgrade Banner Component ──
+function UpgradeBanner({ profile, onUpgrade }) {
+  const plan = profile?.plan || 'free'
+  const used = profile?.posts_count || 0
+  const limit = PLAN_LIMITS[plan] || 3
+  if (limit === Infinity) return null
+  const pct = Math.min((used / limit) * 100, 100)
+  const remaining = Math.max(limit - used, 0)
+  if (pct < 70) return null
+
+  return (
+    <div className={`mb-6 rounded-xl border px-5 py-4 flex items-center justify-between gap-4 ${
+      pct >= 100
+        ? 'bg-[#C9943A]/10 border-[#C9943A]/40'
+        : 'bg-yellow-50 border-yellow-200'
+    }`}>
+      <div className="flex items-center gap-3">
+        <span className="text-xl">{pct >= 100 ? '🚫' : '⚠️'}</span>
+        <div>
+          <p className={`text-sm font-semibold ${pct >= 100 ? 'text-[#C9943A]' : 'text-yellow-800'}`}>
+            {pct >= 100 ? 'Monthly limit reached' : `Only ${remaining} post${remaining !== 1 ? 's' : ''} remaining`}
+          </p>
+          <p className={`text-xs mt-0.5 ${pct >= 100 ? 'text-[#C9943A]/80' : 'text-yellow-700'}`}>
+            {pct >= 100
+              ? 'Upgrade your plan to keep generating content this month.'
+              : `You've used ${used} of ${limit} posts this month.`}
+          </p>
+        </div>
+      </div>
+      <button
+        onClick={onUpgrade}
+        className="shrink-0 bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+      >
+        Upgrade Now
+      </button>
+    </div>
+  )
+}
+
+// ── Limit Reached Modal ──
+function LimitModal({ isGuest, onUpgrade, onClose }) {
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-7 text-center">
+        <div className="text-5xl mb-4">{isGuest ? '👋' : '🚀'}</div>
+        <h3 className="text-xl font-bold text-gray-900 mb-2">
+          {isGuest ? 'Create a free account' : 'You\'ve reached your limit'}
+        </h3>
+        <p className="text-sm text-gray-500 mb-6">
+          {isGuest
+            ? 'Sign up for free to get 3 posts per month and full content history.'
+            : 'You\'ve used all your posts for this month. Upgrade to keep creating content.'}
+        </p>
+        <div className="space-y-3">
+          <button
+            onClick={onUpgrade}
+            className="w-full bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white py-3 rounded-xl text-sm font-bold transition-colors"
+          >
+            {isGuest ? 'Sign Up Free' : 'View Upgrade Plans'}
+          </button>
+          <button
+            onClick={onClose}
+            className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 py-2.5 rounded-xl text-sm font-medium transition-colors"
+          >
+            Maybe Later
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Dashboard() {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
@@ -33,6 +107,8 @@ export default function Dashboard() {
   const [history, setHistory] = useState([])
   const [historyLoading, setHistoryLoading] = useState(true)
   const [expandedId, setExpandedId] = useState(null)
+  const [showLimitModal, setShowLimitModal] = useState(false)
+  const [isGuestLimit, setIsGuestLimit] = useState(false)
 
   // Settings state
   const [settingsTab, setSettingsTab] = useState('profile')
@@ -84,14 +160,8 @@ export default function Dashboard() {
     }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        loadUser(session.user)
-      } else {
-        setUser(null)
-        setProfile(null)
-        setLoading(false)
-        setHistoryLoading(false)
-      }
+      if (session?.user) loadUser(session.user)
+      else { setUser(null); setProfile(null); setLoading(false); setHistoryLoading(false) }
     })
     return () => subscription.unsubscribe()
   }, [])
@@ -130,7 +200,11 @@ export default function Dashboard() {
     if (user) {
       const { data: fp } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       if (fp) setProfile(fp)
-      if (fp?.plan && fp.plan !== 'free') return true
+      if (fp?.plan && fp.plan !== 'free') {
+        const limit = PLAN_LIMITS[fp.plan] || Infinity
+        if (limit === Infinity) return true
+        return (fp.posts_count || 0) < limit
+      }
       const now = new Date()
       if (fp?.reset_date && new Date(fp.reset_date) < now) {
         await supabase.from('profiles').update({ posts_count: 0, reset_date: new Date(now.setMonth(now.getMonth() + 1)) }).eq('id', user.id)
@@ -169,18 +243,31 @@ export default function Dashboard() {
 
   async function generateContent() {
     if (!cookieAccepted) { setShowCookieBanner(true); return }
-    if (!form.topic.trim()) { alert('Please enter a topic!'); return }
+    if (!form.topic.trim()) {
+      // inline validation — no alert
+      document.getElementById('topic-input')?.focus()
+      return
+    }
     const allowed = await checkPostLimit()
     if (!allowed) {
-      if (user) alert('You have used all 3 free posts this month. Please upgrade to continue!')
-      else { alert('Create a free account for 3 posts/month!'); router.push('/auth') }
+      if (!user) {
+        setIsGuestLimit(true)
+        setShowLimitModal(true)
+      } else {
+        setIsGuestLimit(false)
+        setShowLimitModal(true)
+      }
       return
     }
     setGenerating(true); setResult(null)
     try {
       const res = await fetch('/api/generate', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, keywords: form.keywords.slice(0, getKeywordLimit()).filter(k => k.trim()), wordCount: LENGTH_INFO[form.length].actual }),
+        body: JSON.stringify({
+          ...form,
+          keywords: form.keywords.slice(0, getKeywordLimit()).filter(k => k.trim()),
+          wordCount: LENGTH_INFO[form.length].actual
+        }),
       })
       const data = await res.json()
       if (data.content) {
@@ -188,12 +275,17 @@ export default function Dashboard() {
         await incrementPostCount()
         await saveToHistory(data.content)
         await fetchHistory()
-      } else alert('Generation failed. Please try again.')
-    } catch { alert('Generation failed. Please try again.') }
+      } else {
+        // no alert — show inline error
+        setResult({ error: 'Generation failed. Please try again.' })
+      }
+    } catch {
+      setResult({ error: 'Generation failed. Please try again.' })
+    }
     setGenerating(false)
   }
 
-  // ── Settings handlers ──
+  // Settings handlers
   async function saveProfile() {
     setProfileSaving(true); setProfileMsg({ text: '', ok: true })
     const { error } = await supabase.from('profiles').update(profileForm).eq('id', user.id)
@@ -215,7 +307,7 @@ export default function Dashboard() {
   }
 
   async function deleteAccount() {
-    if (deleteConfirm !== 'DELETE') { alert('Type DELETE to confirm.'); return }
+    if (deleteConfirm !== 'DELETE') return
     setDeleting(true)
     await supabase.from('content_history').delete().eq('user_id', user.id)
     await supabase.from('profiles').delete().eq('id', user.id)
@@ -236,10 +328,25 @@ export default function Dashboard() {
   const ctas = ['None', 'Buy Now', 'Contact Us', 'Sign Up', 'Learn More', 'Visit Us', 'Book Now']
   const languages = ['English', 'Spanish', 'French', 'German', 'Arabic', 'Urdu']
   const countries = ['Pakistan','United States','United Kingdom','United Arab Emirates','Saudi Arabia','India','Canada','Australia','Germany','France','Other']
+  const planLimit = PLAN_LIMITS[profile?.plan || 'free'] || 3
 
   return (
     <div className="flex min-h-screen bg-gray-50 text-gray-800">
 
+      {/* Limit Modal */}
+      {showLimitModal && (
+        <LimitModal
+          isGuest={isGuestLimit}
+          onUpgrade={() => {
+            setShowLimitModal(false)
+            if (isGuestLimit) router.push('/auth')
+            else router.push('/upgrade')
+          }}
+          onClose={() => setShowLimitModal(false)}
+        />
+      )}
+
+      {/* Cookie Banner */}
       {showCookieBanner && (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-50 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
           <p className="text-gray-600 text-sm">RANKIVO uses cookies to provide your free content generation.</p>
@@ -261,31 +368,48 @@ export default function Dashboard() {
               Welcome back{profile?.full_name ? `, ${profile.full_name}` : user?.email ? `, ${user.email.split('@')[0]}` : ''}!
             </h2>
             <p className="text-gray-500 mb-6">Here's your RANKIVO overview.</p>
+
+            <UpgradeBanner profile={profile} onUpgrade={() => router.push('/upgrade')} />
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
                 <p className="text-xs text-gray-400 mb-1">Posts Used</p>
-                <p className="text-2xl font-bold text-gray-900">{profile?.posts_count || 0}<span className="text-gray-400 text-lg font-normal"> / 3</span></p>
+                <p className="text-2xl font-bold text-gray-900">{profile?.posts_count || 0}<span className="text-gray-400 text-lg font-normal"> / {planLimit === Infinity ? '∞' : planLimit}</span></p>
                 <div className="mt-3 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full" style={{ width: `${Math.min(((profile?.posts_count || 0) / 3) * 100, 100)}%`, backgroundColor: (profile?.posts_count || 0) >= 3 ? '#C9943A' : '#0D9488' }} />
+                  <div className="h-full rounded-full" style={{
+                    width: `${planLimit === Infinity ? 20 : Math.min(((profile?.posts_count || 0) / planLimit) * 100, 100)}%`,
+                    backgroundColor: (profile?.posts_count || 0) >= planLimit ? '#C9943A' : '#0D9488'
+                  }} />
                 </div>
-                <p className="text-xs text-gray-400 mt-1">{3 - (profile?.posts_count || 0)} remaining</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  {planLimit === Infinity ? 'Unlimited' : `${Math.max(planLimit - (profile?.posts_count || 0), 0)} remaining`}
+                </p>
               </div>
               <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
                 <p className="text-xs text-gray-400 mb-1">Current Plan</p>
                 <p className="text-2xl font-bold text-[#0D9488]">{(profile?.plan || 'free').toUpperCase()}</p>
-                <p className="text-xs text-gray-400 mt-3">{profile?.plan === 'free' ? 'Free tier — 3 posts/month' : 'Full access'}</p>
+                <button onClick={() => router.push('/upgrade')} className="text-xs text-[#1B5FA8] hover:underline mt-3 block">
+                  {profile?.plan === 'free' || !profile?.plan ? 'Upgrade plan →' : 'Manage plan →'}
+                </button>
               </div>
               <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
                 <p className="text-xs text-gray-400 mb-1">Status</p>
-                <p className="text-2xl font-bold text-[#C9943A]">{profile?.plan === 'free' ? 'Limited' : 'Unlimited'}</p>
-                <p className="text-xs text-gray-400 mt-3">{profile?.plan === 'free' ? 'Upgrade for unlimited posts' : 'No restrictions'}</p>
+                <p className="text-2xl font-bold text-[#C9943A]">{planLimit === Infinity ? 'Unlimited' : 'Limited'}</p>
+                <p className="text-xs text-gray-400 mt-3">{planLimit === Infinity ? 'No restrictions' : 'Upgrade for more posts'}</p>
               </div>
             </div>
+
             <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm mb-6">
               <h3 className="font-semibold text-gray-800 mb-1">Quick Generate</h3>
               <p className="text-sm text-gray-400 mb-4">Jump straight into creating content.</p>
-              <button onClick={() => setActiveTab('generate')} className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-6 py-2.5 rounded-lg text-sm font-semibold">Generate New Content</button>
+              <div className="flex gap-3">
+                <button onClick={() => setActiveTab('generate')} className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-6 py-2.5 rounded-lg text-sm font-semibold transition-colors">Generate New Content</button>
+                {(profile?.plan === 'free' || !profile?.plan) && (
+                  <button onClick={() => router.push('/upgrade')} className="bg-[#C9943A]/10 hover:bg-[#C9943A]/20 text-[#C9943A] border border-[#C9943A]/30 px-6 py-2.5 rounded-lg text-sm font-semibold transition-colors">Upgrade Plan</button>
+                )}
+              </div>
             </div>
+
             <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-gray-800">Recent Posts</h3>
@@ -318,6 +442,9 @@ export default function Dashboard() {
           <div className="max-w-3xl">
             <h2 className="text-2xl font-bold text-gray-900 mb-1">Generate Content</h2>
             <p className="text-gray-500 mb-6">Fill in the details below and let AI create your content.</p>
+
+            <UpgradeBanner profile={profile} onUpgrade={() => router.push('/upgrade')} />
+
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-3">Platform</label>
@@ -329,7 +456,7 @@ export default function Dashboard() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Topic</label>
-                <input type="text" value={form.topic} onChange={e => setForm({ ...form, topic: e.target.value })} placeholder="e.g. Best coffee shop in New York" className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#0D9488]" />
+                <input id="topic-input" type="text" value={form.topic} onChange={e => setForm({ ...form, topic: e.target.value })} placeholder="e.g. Best coffee shop in New York" className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#0D9488]" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-3">Content Length</label>
@@ -377,10 +504,16 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
-            <button onClick={generateContent} disabled={generating} className="w-full mt-6 bg-[#0D9488] hover:bg-[#0D9488]/90 text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50">
+
+            <button onClick={generateContent} disabled={generating} className="w-full mt-6 bg-[#0D9488] hover:bg-[#0D9488]/90 text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50 transition-colors">
               {generating ? 'Generating...' : 'Generate Content'}
             </button>
-            {result && (
+
+            {result && result.error && (
+              <div className="mt-4 bg-red-50 border border-red-200 rounded-xl p-4 text-red-600 text-sm text-center">{result.error}</div>
+            )}
+
+            {result && !result.error && (
               <div className="mt-8 space-y-4">
                 <h3 className="text-lg font-semibold text-[#0D9488]">Generated Content</h3>
                 {config.meta && result.metaTitle && <div className="bg-white border border-gray-200 rounded-xl p-4"><p className="text-xs text-[#C9943A] mb-1 font-medium uppercase">Meta Title</p><p className="text-gray-800">{result.metaTitle}</p></div>}
@@ -472,103 +605,57 @@ export default function Dashboard() {
           <div className="max-w-2xl">
             <h2 className="text-2xl font-bold text-gray-900 mb-1">Account Settings</h2>
             <p className="text-gray-500 mb-6">Manage your profile, password, and account.</p>
-
             <div className="flex gap-2 mb-6">
-              {[
-                { id: 'profile', label: 'Edit Profile' },
-                { id: 'password', label: 'Change Password' },
-                { id: 'danger', label: 'Danger Zone' },
-              ].map(t => (
+              {[{ id: 'profile', label: 'Edit Profile' }, { id: 'password', label: 'Change Password' }, { id: 'danger', label: 'Danger Zone' }].map(t => (
                 <button key={t.id} onClick={() => setSettingsTab(t.id)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${settingsTab === t.id ? (t.id === 'danger' ? 'bg-red-500 text-white border-red-500' : 'bg-[#1B5FA8] text-white border-[#1B5FA8]') : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'}`}>
                   {t.label}
                 </button>
               ))}
             </div>
-
-            {/* Profile */}
             {settingsTab === 'profile' && (
               <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                  <input type="text" value={profileForm.full_name} onChange={e => setProfileForm({ ...profileForm, full_name: e.target.value })} className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488]" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
+                <div><label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label><input type="text" value={profileForm.full_name} onChange={e => setProfileForm({ ...profileForm, full_name: e.target.value })} className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488]" /></div>
+                <div><label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
                   <select value={profileForm.country} onChange={e => setProfileForm({ ...profileForm, country: e.target.value })} className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488]">
                     <option value="">Select country</option>
                     {countries.map(c => <option key={c}>{c}</option>)}
                   </select>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
-                    <input type="text" value={profileForm.city} onChange={e => setProfileForm({ ...profileForm, city: e.target.value })} className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488]" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
-                    <input type="text" value={profileForm.state} onChange={e => setProfileForm({ ...profileForm, state: e.target.value })} className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488]" />
-                  </div>
+                  <div><label className="block text-sm font-medium text-gray-700 mb-1">City</label><input type="text" value={profileForm.city} onChange={e => setProfileForm({ ...profileForm, city: e.target.value })} className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488]" /></div>
+                  <div><label className="block text-sm font-medium text-gray-700 mb-1">State</label><input type="text" value={profileForm.state} onChange={e => setProfileForm({ ...profileForm, state: e.target.value })} className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488]" /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">ZIP / Postal Code</label>
-                    <input type="text" value={profileForm.zip} onChange={e => setProfileForm({ ...profileForm, zip: e.target.value })} className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488]" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                    <input type="tel" value={profileForm.phone} onChange={e => setProfileForm({ ...profileForm, phone: e.target.value })} className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488]" />
-                  </div>
+                  <div><label className="block text-sm font-medium text-gray-700 mb-1">ZIP</label><input type="text" value={profileForm.zip} onChange={e => setProfileForm({ ...profileForm, zip: e.target.value })} className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488]" /></div>
+                  <div><label className="block text-sm font-medium text-gray-700 mb-1">Phone</label><input type="tel" value={profileForm.phone} onChange={e => setProfileForm({ ...profileForm, phone: e.target.value })} className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488]" /></div>
                 </div>
                 {profileMsg.text && <p className={`text-sm font-medium ${profileMsg.ok ? 'text-[#0D9488]' : 'text-red-500'}`}>{profileMsg.text}</p>}
-                <button onClick={saveProfile} disabled={profileSaving} className="bg-[#0D9488] hover:bg-[#0D9488]/90 text-white px-6 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-50">
-                  {profileSaving ? 'Saving...' : 'Save Changes'}
-                </button>
+                <button onClick={saveProfile} disabled={profileSaving} className="bg-[#0D9488] hover:bg-[#0D9488]/90 text-white px-6 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-50">{profileSaving ? 'Saving...' : 'Save Changes'}</button>
               </div>
             )}
-
-            {/* Password */}
             {settingsTab === 'password' && (
               <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm space-y-4">
                 <p className="text-sm text-gray-500">You are already logged in so no current password is needed.</p>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
-                  <input type="password" value={passwordForm.newPass} onChange={e => setPasswordForm({ ...passwordForm, newPass: e.target.value })} className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488]" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
-                  <input type="password" value={passwordForm.confirm} onChange={e => setPasswordForm({ ...passwordForm, confirm: e.target.value })} className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488]" />
-                </div>
+                <div><label className="block text-sm font-medium text-gray-700 mb-1">New Password</label><input type="password" value={passwordForm.newPass} onChange={e => setPasswordForm({ ...passwordForm, newPass: e.target.value })} className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488]" /></div>
+                <div><label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label><input type="password" value={passwordForm.confirm} onChange={e => setPasswordForm({ ...passwordForm, confirm: e.target.value })} className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488]" /></div>
                 {passwordMsg.text && <p className={`text-sm font-medium ${passwordMsg.ok ? 'text-[#0D9488]' : 'text-red-500'}`}>{passwordMsg.text}</p>}
-                <button onClick={changePassword} disabled={passwordSaving} className="bg-[#0D9488] hover:bg-[#0D9488]/90 text-white px-6 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-50">
-                  {passwordSaving ? 'Updating...' : 'Update Password'}
-                </button>
+                <button onClick={changePassword} disabled={passwordSaving} className="bg-[#0D9488] hover:bg-[#0D9488]/90 text-white px-6 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-50">{passwordSaving ? 'Updating...' : 'Update Password'}</button>
               </div>
             )}
-
-            {/* Danger Zone */}
             {settingsTab === 'danger' && (
               <div className="bg-white border border-red-200 rounded-xl p-6 shadow-sm space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                  <h3 className="text-red-500 font-semibold">Delete Account</h3>
+                <h3 className="text-red-500 font-semibold">Delete Account</h3>
+                <p className="text-sm text-gray-500">This will permanently delete your account, profile, and all content history. Cannot be undone.</p>
+                <div className="bg-red-50 border border-red-100 rounded-lg p-4 space-y-1">
+                  {['Your profile and personal information', 'All generated content history', 'Your account and login credentials'].map(i => (
+                    <p key={i} className="text-sm text-gray-500">• {i}</p>
+                  ))}
                 </div>
-                <p className="text-sm text-gray-500">This will permanently delete your account, profile, and all content history. This cannot be undone.</p>
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 space-y-3">
-                  <p className="text-sm font-medium text-gray-700">What will be deleted:</p>
-                  <ul className="text-sm text-gray-500 space-y-1 list-disc list-inside">
-                    <li>Your profile and personal information</li>
-                    <li>All generated content history</li>
-                    <li>Your account and login credentials</li>
-                  </ul>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Type <span className="font-bold text-red-500">DELETE</span> to confirm</label>
+                <div><label className="block text-sm font-medium text-gray-700 mb-1">Type <span className="font-bold text-red-500">DELETE</span> to confirm</label>
                   <input type="text" value={deleteConfirm} onChange={e => setDeleteConfirm(e.target.value)} placeholder="DELETE" className="w-full border border-red-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-red-400" />
                 </div>
-                <button onClick={deleteAccount} disabled={deleting || deleteConfirm !== 'DELETE'} className="bg-red-500 hover:bg-red-600 text-white px-6 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-40 transition-colors">
-                  {deleting ? 'Deleting...' : 'Delete My Account'}
-                </button>
+                <button onClick={deleteAccount} disabled={deleting || deleteConfirm !== 'DELETE'} className="bg-red-500 hover:bg-red-600 text-white px-6 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-40">{deleting ? 'Deleting...' : 'Delete My Account'}</button>
               </div>
             )}
           </div>
