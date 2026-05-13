@@ -210,7 +210,7 @@ export default function UpgradePage() {
                 {isCurrent ? (
                   <button disabled className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-100 text-gray-400 cursor-not-allowed">Current Plan</button>
                 ) : plan.id === 'free' ? (
-                  <button disabled className="w-full py-2.5 rounded-xl text-sm font-semibold bg-gray-50 text-gray-400 border border-gray-200 cursor-not-allowed">Free Plan</button>
+                  <button onClick={() => router.push('/auth?mode=signup&redirect=dashboard&activated=free')} className="w-full py-2.5 rounded-xl text-sm font-semibold border-2 border-gray-300 text-gray-600 hover:border-gray-400 hover:text-gray-800 transition-colors">Get Started Free</button>
                 ) : (
                   <button onClick={() => handleUpgradeClick(plan)} className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-colors ${c.btn}`}>
                     Get Notified — {plan.name}
