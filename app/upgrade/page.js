@@ -29,7 +29,7 @@ const PLANS = [
     searches: 100, searchesLabel: '100 keyword searches/day',
     features: ['100 posts/month', '100 keyword searches/day', '500 keywords per search', 'Full filters + clustering', 'Intent detection', 'Trend graphs', 'Priority speed'],
     missing: [],
-    color: 'blue', popular: true, anchor: 'Ahrefs costs $249/month — Rankivo Pro is $29',
+    color: 'blue', popular: true, anchor: 'Why pay $100+ for SEO tools when Rankivo gives you what you need for $29?',
   },
   {
     id: 'agency', name: 'Agency', price: '$79', period: 'per month',
@@ -148,7 +148,7 @@ export default function UpgradePage() {
               </div>
               <div className="text-right">
                 <p className="text-xs text-gray-400">Posts Used</p>
-                <p className="text-xl font-bold text-gray-900">{postsUsed} <span className="text-gray-400 font-normal text-base">/ {limit === Infinity ? '∞' : limit}</span></p>
+                <p className="text-xl font-bold text-gray-900">{postsUsed} <span className="text-gray-400 font-normal text-base">/ {postLimit === Infinity ? '∞' : postLimit}</span></p>
               </div>
             </div>
             <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden mb-2">
