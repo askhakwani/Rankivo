@@ -1,7 +1,7 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { createClient } from '../../lib/supabase'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Sidebar from './sidebar'
 
 const ADMIN_EMAIL = 'askhakwani@gmail.com'
@@ -137,7 +137,7 @@ function OnboardingBanner({ onDismiss }) {
   )
 }
 
-export default function Dashboard() {
+function DashboardInner() {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -178,6 +178,15 @@ export default function Dashboard() {
 
   const supabase = createClient()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const [showActivated, setShowActivated] = useState(false)
+
+  useEffect(() => {
+    if (searchParams.get('activated') === 'free') {
+      setShowActivated(true)
+      window.history.replaceState({}, '', '/dashboard')
+    }
+  }, [searchParams])
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -450,6 +459,18 @@ console.log('RAW CONTENT:', data.content.content)
             </h2>
             <p className="text-gray-500 mb-5 text-sm">Here's your RANKIVO overview.</p>
 
+            {showActivated && (
+              <div className="bg-[#0D9488]/10 border border-[#0D9488]/30 rounded-xl px-5 py-4 mb-5 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🎉</span>
+                  <div>
+                    <p className="text-sm font-semibold text-[#0D9488]">Your free plan is activated!</p>
+                    <p className="text-xs text-gray-500 mt-0.5">You have 3 posts/month and 3 keyword searches/day. Start generating now.</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowActivated(false)} className="text-gray-300 hover:text-gray-500 text-xl shrink-0">×</button>
+              </div>
+            )}
             {!user && <GuestBanner onSignup={() => router.push('/auth?mode=signup')} />}
             {user && showOnboarding && <OnboardingBanner onDismiss={dismissOnboarding} />}
             {user && <UpgradeBanner profile={profile} onUpgrade={() => router.push('/upgrade')} />}
@@ -822,5 +843,17 @@ console.log('RAW CONTENT:', data.content.content)
 
       </div>
     </div>
+  )
+}
+
+export default function Dashboard() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-[#1B5FA8] text-xl font-semibold">Loading RANKIVO...</div>
+      </div>
+    }>
+      <DashboardInner />
+    </Suspense>
   )
 }

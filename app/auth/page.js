@@ -27,6 +27,19 @@ function AuthForm() {
     if (m === 'forgot') setMode('forgot')
   }, [searchParams])
 
+  const redirectTo = searchParams.get('redirect') || 'dashboard'
+  const activated = searchParams.get('activated') || ''
+
+  // After email verification, Supabase returns the user to this page with a session
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (session?.user) {
+        window.location.href = `/${redirectTo}${activated ? '?activated=' + activated : ''}`
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [redirectTo, activated])
+
   async function handleSubmit() {
     setError('')
     setMessage('')
@@ -37,7 +50,7 @@ function AuthForm() {
     if (mode === 'login') {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) { setError(error.message); setLoading(false); return }
-      window.location.href = '/dashboard'
+      window.location.href = `/${redirectTo}${activated ? '?activated=' + activated : ''}`
     }
 
     if (mode === 'signup') {
@@ -48,7 +61,7 @@ function AuthForm() {
         options: { data: { phone: phone, full_name: fullName, country: country } }
       })
       if (error) { setError(error.message); setLoading(false); return }
-      setMessage('Account created! Please check your email to verify your account.')
+      setMessage('Account created! Please check your email to verify your account, then you\'ll be redirected to your dashboard.')
     }
 
     if (mode === 'forgot') {
@@ -67,63 +80,65 @@ function AuthForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
 
         <div className="text-center mb-8">
-          <a href="/" className="text-3xl font-bold text-teal-400">RANKIVO</a>
-          <p className="text-gray-400 text-sm mt-2">AI Content and SEO Platform</p>
+          <a href="/" className="text-3xl font-bold text-[#1B5FA8]">RANKIVO</a>
+          <div className="mt-2">
+            <span className="inline-block bg-[#C9943A]/10 text-[#C9943A] text-xs px-3 py-1 rounded-full font-medium border border-[#C9943A]/20">AI Content and SEO Platform</span>
+          </div>
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8">
-          <h2 className="text-xl font-bold text-white mb-6">
+        <div className="bg-white border border-gray-200 shadow-lg rounded-2xl p-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-6">
             {mode === 'login' ? 'Welcome back' : mode === 'signup' ? 'Create your account' : 'Reset your password'}
           </h2>
 
           {error && (
-            <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm px-4 py-3 rounded-lg mb-4">
+            <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-lg mb-4">
               {error}
             </div>
           )}
 
           {message && (
-            <div className="bg-teal-500/10 border border-teal-500/30 text-teal-400 text-sm px-4 py-3 rounded-lg mb-4">
+            <div className="bg-[#0D9488]/10 border border-[#0D9488]/30 text-[#0D9488] text-sm px-4 py-3 rounded-lg mb-4">
               {message}
             </div>
           )}
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Email address</label>
+              <label className="block text-sm text-gray-600 mb-1">Email address</label>
               <input
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="you@example.com"
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-teal-500"
+                className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#0D9488]"
               />
             </div>
 
             {mode === 'signup' && (
               <>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Full name</label>
+                  <label className="block text-sm text-gray-600 mb-1">Full name</label>
                   <input
                     type="text"
                     value={fullName}
                     onChange={e => setFullName(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Your full name"
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-teal-500"
+                    className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#0D9488]"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Country</label>
+                  <label className="block text-sm text-gray-600 mb-1">Country</label>
                   <select
                     value={country}
                     onChange={e => setCountry(e.target.value)}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-teal-500">
+                    className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-teal-500">
                     <option value="">Select your country</option>
                     <option>Pakistan</option>
                     <option>United States</option>
@@ -140,48 +155,48 @@ function AuthForm() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">City</label>
+                    <label className="block text-sm text-gray-600 mb-1">City</label>
                     <input
                       type="text"
                       value={city}
                       onChange={e => setCity(e.target.value)}
                       onKeyDown={handleKeyDown}
                       placeholder="Your city"
-                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-teal-500"
+                      className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#0D9488]"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">State / Province</label>
+                    <label className="block text-sm text-gray-600 mb-1">State / Province</label>
                     <input
                       type="text"
                       value={state}
                       onChange={e => setState(e.target.value)}
                       onKeyDown={handleKeyDown}
                       placeholder="State"
-                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-teal-500"
+                      className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#0D9488]"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">ZIP / Postal code</label>
+                  <label className="block text-sm text-gray-600 mb-1">ZIP / Postal code</label>
                   <input
                     type="text"
                     value={zip}
                     onChange={e => setZip(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="12345"
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-teal-500"
+                    className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#0D9488]"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Phone number (optional)</label>
+                  <label className="block text-sm text-gray-600 mb-1">Phone number (optional)</label>
                   <input
                     type="tel"
                     value={phone}
                     onChange={e => setPhone(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="+1 234 567 8900"
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-teal-500"
+                    className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#0D9488]"
                   />
                 </div>
               </>
@@ -189,21 +204,21 @@ function AuthForm() {
 
             {mode !== 'forgot' && (
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Password</label>
+                <label className="block text-sm text-gray-600 mb-1">Password</label>
                 <input
                   type="password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Enter your password"
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-teal-500"
+                  className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#0D9488]"
                 />
               </div>
             )}
 
             {mode === 'login' && (
               <div className="text-right">
-                <button onClick={() => setMode('forgot')} className="text-teal-400 text-sm hover:text-teal-300 transition-colors">
+                <button onClick={() => setMode('forgot')} className="text-[#0D9488] text-sm hover:text-[#0D9488]/80 transition-colors">
                   Forgot password?
                 </button>
               </div>
@@ -212,21 +227,21 @@ function AuthForm() {
             <button
               onClick={handleSubmit}
               disabled={loading}
-              className="w-full bg-gradient-to-r from-teal-500 to-teal-400 hover:from-teal-400 hover:to-teal-300 text-white py-3 rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+              className="w-full bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white py-3 rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed">
               {loading ? 'Please wait...' : mode === 'login' ? 'Login to RANKIVO' : mode === 'signup' ? 'Create Account' : 'Send Reset Link'}
             </button>
           </div>
 
           <div className="mt-6 text-center text-sm text-gray-400">
             {mode === 'login' ? (
-              <p>No account? <button onClick={() => setMode('signup')} className="text-teal-400 hover:text-teal-300">Sign up free</button></p>
+              <p>No account? <button onClick={() => setMode('signup')} className="text-[#1B5FA8] hover:text-[#1B5FA8]/80">Sign up free</button></p>
             ) : (
-              <p>Already have an account? <button onClick={() => setMode('login')} className="text-teal-400 hover:text-teal-300">Login</button></p>
+              <p>Already have an account? <button onClick={() => setMode('login')} className="text-[#1B5FA8] hover:text-[#1B5FA8]/80">Login</button></p>
             )}
           </div>
         </div>
 
-        <p className="text-center text-gray-600 text-xs mt-6">
+        <p className="text-center text-gray-400 text-xs mt-6">
           By signing up you agree to our Terms of Service and Privacy Policy.
         </p>
 
@@ -238,7 +253,7 @@ function AuthForm() {
 export default function Auth() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-teal-400">Loading...</div>
       </div>
     }>
