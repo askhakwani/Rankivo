@@ -27,7 +27,8 @@ export default function Sidebar({ activeTab, setActiveTab, user, profile, isAdmi
   )
 
   return (
-    <div className="h-screen w-64 bg-white border-r border-gray-200 flex flex-col fixed left-0 top-0 z-20">
+    <div className="h-screen w-64 bg-white border-r border-gray-200 flex flex-col">
+
       {/* Logo */}
       <div className="px-6 py-5 border-b border-gray-100 shrink-0">
         <a href="/" className="flex items-center gap-2 group">
@@ -36,7 +37,9 @@ export default function Sidebar({ activeTab, setActiveTab, user, profile, isAdmi
         <p className="text-xs text-gray-400 mt-0.5">AI Content & SEO Platform</p>
       </div>
 
+      {/* Main nav */}
       <nav className="px-4 pt-4 space-y-5 flex-1 overflow-y-auto">
+
         <div>
           <p className="text-xs text-gray-400 font-medium mb-2 px-1 uppercase tracking-wider">Main</p>
           <ul className="space-y-1">
@@ -60,6 +63,33 @@ export default function Sidebar({ activeTab, setActiveTab, user, profile, isAdmi
           </ul>
         </div>
 
+        {/* ✅ ADMIN NOW IN MAIN NAV */}
+        {isAdmin && (
+          <div>
+            <p className="text-xs text-[#C9943A] font-medium mb-2 px-1 uppercase tracking-wider">Admin</p>
+            <ul className="space-y-1">
+              <li
+                onClick={() => router.push('/admin')}
+                className="px-3 py-2 rounded-lg cursor-pointer text-sm text-[#C9943A] hover:bg-[#C9943A]/10 border border-[#C9943A]/20 flex items-center gap-2 font-medium"
+              >
+                <span>🛡️</span> Admin Panel
+              </li>
+              <li
+                onClick={() => router.push('/admin?tab=blog')}
+                className="px-3 py-2 rounded-lg cursor-pointer text-sm text-[#C9943A] hover:bg-[#C9943A]/10 flex items-center gap-2"
+              >
+                <span>✍️</span> Manage Blog
+              </li>
+              <li
+                onClick={() => router.push('/admin?tab=pages')}
+                className="px-3 py-2 rounded-lg cursor-pointer text-sm text-[#C9943A] hover:bg-[#C9943A]/10 flex items-center gap-2"
+              >
+                <span>📄</span> Manage Pages
+              </li>
+            </ul>
+          </div>
+        )}
+
         <div>
           <p className="text-xs text-gray-400 font-medium mb-2 px-1 uppercase tracking-wider">Account</p>
           <ul className="space-y-1">
@@ -67,35 +97,10 @@ export default function Sidebar({ activeTab, setActiveTab, user, profile, isAdmi
           </ul>
         </div>
 
-        {isAdmin && (
-          <div>
-            <p className="text-xs text-[#C9943A] font-medium mb-2 px-1 uppercase tracking-wider">Admin</p>
-            <ul className="space-y-1">
-              <li
-                onClick={() => router.push('/admin')}
-                className="px-3 py-2 rounded-lg cursor-pointer text-sm text-[#C9943A] hover:bg-[#C9943A]/5 border border-[#C9943A]/20 flex items-center gap-2 font-medium"
-              >
-                <span>🛡️</span> Admin Panel
-              </li>
-              <li
-                onClick={() => router.push('/admin?tab=blog')}
-                className="px-3 py-2 rounded-lg cursor-pointer text-sm text-[#C9943A] hover:bg-[#C9943A]/5 border border-[#C9943A]/10 flex items-center gap-2"
-              >
-                <span>✍️</span> Manage Blog
-              </li>
-              <li
-                onClick={() => router.push('/admin?tab=pages')}
-                className="px-3 py-2 rounded-lg cursor-pointer text-sm text-[#C9943A] hover:bg-[#C9943A]/5 border border-[#C9943A]/10 flex items-center gap-2"
-              >
-                <span>📄</span> Manage Pages
-              </li>
-            </ul>
-          </div>
-        )}
       </nav>
 
-      {/* User info */}
-      <div className="p-4 border-t border-gray-100 shrink-0">
+      {/* Bottom user section */}
+      <div className="shrink-0 border-t border-gray-100 p-4">
         {user ? (
           <div>
             <div className="bg-gray-50 rounded-lg p-3 mb-2">
@@ -115,6 +120,7 @@ export default function Sidebar({ activeTab, setActiveTab, user, profile, isAdmi
                 </span>
               </div>
             </div>
+
             <button
               onClick={handleLogout}
               className="w-full text-left px-3 py-2 text-sm text-red-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50"
@@ -128,16 +134,26 @@ export default function Sidebar({ activeTab, setActiveTab, user, profile, isAdmi
               <p className="text-xs text-gray-500 mb-0.5">Guest User</p>
               <p className="text-xs text-gray-400">Sign up to save your work</p>
             </div>
-            <button onClick={() => router.push('/auth')} className="w-full bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white py-2 rounded-lg text-sm font-semibold mb-2 transition-colors">
+
+            <button
+              onClick={() => router.push('/auth')}
+              className="w-full bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white py-2 rounded-lg text-sm font-semibold mb-2 transition-colors"
+            >
               Sign Up Free
             </button>
-            <button onClick={handleLogout} className="w-full text-left px-3 py-2 text-sm text-red-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50">
+
+            <button
+              onClick={handleLogout}
+              className="w-full text-left px-3 py-2 text-sm text-red-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50"
+            >
               Logout
             </button>
           </div>
         )}
+
         <p className="text-xs text-gray-300 mt-3 text-center">© 2025 Rankivo</p>
       </div>
+
     </div>
   )
 }

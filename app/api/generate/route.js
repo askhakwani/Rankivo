@@ -2,86 +2,270 @@ import Groq from 'groq-sdk'
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 
-export const maxDuration = 30
+export const maxDuration = 60
+
+function countWords(text) {
+  return text.trim().split(/\s+/).filter(Boolean).length
+}
+
+function isValid(content, wordCount) {
+  const words = countWords(content)
+  const hasHeadings = content.includes('## ')
+  const hasBullets = content.includes('\n- ')
+  const hasLineBreaks = content.includes('\n')
+  const wordMatch = Math.abs(words - wordCount) <= 20
+  return wordMatch && hasHeadings && hasBullets && hasLineBreaks
+}
+
+function buildBlogPrompt(topic, tone, language, keywords, audience, cta, wordCount) {
+  const kwText = keywords?.length ? `Use these SEO keywords naturally: ${keywords.join(', ')}.` : ''
+  const audText = audience ? `Target audience: ${audience}.` : ''
+  const ctaText = cta && cta !== 'None' ? `End with a "${cta}" call to action.` : ''
+
+  let structure = ''
+  if (wordCount <= 200) {
+    structure = `
+## Introduction
+Write 2-3 sentences introducing the topic.
+
+## Key Points
+- Point 1
+- Point 2
+- Point 3
+
+## Conclusion
+Write 1-2 sentences wrapping up.`
+  } else if (wordCount <= 500) {
+    structure = `
+## Introduction
+Write a short paragraph introducing the topic.
+
+## Why It Matters
+Write a paragraph explaining the importance.
+
+## Key Benefits
+- Benefit 1
+- Benefit 2
+- Benefit 3
+- Benefit 4
+
+## How It Works
+Write a paragraph explaining how it works.
+
+## Conclusion
+Write a closing paragraph.`
+  } else {
+    structure = `
+## Introduction
+Write a strong opening paragraph.
+
+## Background
+Write a paragraph with context and background.
+
+## Key Benefits
+- Benefit 1
+- Benefit 2
+- Benefit 3
+- Benefit 4
+
+## How It Works
+Write a detailed paragraph.
+
+### Step by Step
+- Step 1
+- Step 2
+- Step 3
+
+## Real World Applications
+Write a paragraph with examples.
+
+## Challenges to Consider
+Write a paragraph about challenges.
+
+## Best Practices
+- Practice 1
+- Practice 2
+- Practice 3
+
+## Conclusion
+Write a strong closing paragraph.`
+  }
+
+  return `You are a blog writer. Fill in the template below. Replace placeholder text with real content about: ${topic}
+
+Tone: ${tone}
+Language: ${language}
+${kwText}
+${audText}
+${ctaText}
+Target word count: EXACTLY ${wordCount} words for the blog body.
+
+RULES YOU MUST FOLLOW:
+- Keep every ## and ### heading exactly as shown
+- Keep every - bullet point exactly as shown  
+- Add a blank line before and after every ## heading
+- Add a blank line between every paragraph
+- Add a blank line between bullet lists and paragraphs
+- Each bullet point on its own line
+- NEVER write everything as one paragraph
+- Count words and adjust until EXACTLY ${wordCount} words
+
+OUTPUT THIS EXACT FORMAT:
+META_TITLE: (write SEO title here under 60 chars)
+META_DESC: (write SEO description here under 160 chars)
+H1: (write H1 heading here)
+---
+${structure}`
+}
+
+function buildHashtagPrompt(platform, topic, tone, language, keywords, audience, cta, wordCount) {
+  const kwText = keywords?.length ? `Use these keywords naturally: ${keywords.join(', ')}.` : ''
+  const audText = audience ? `Target audience: ${audience}.` : ''
+  const ctaText = cta && cta !== 'None' ? `End with a "${cta}" call to action.` : ''
+
+  return `Write a ${platform} post about: ${topic}
+
+Tone: ${tone}
+Language: ${language}
+${kwText}
+${audText}
+${ctaText}
+
+RULES:
+- Hook sentence first
+- Then 2-3 short paragraphs separated by blank lines
+- Include bullet points using "- " format
+- End with exactly 15 hashtags each on its own line starting with #
+- Content body must be EXACTLY ${wordCount} words (not counting hashtags)
+- Add blank lines between sections`
+}
+
+function buildOtherPrompt(platform, topic, tone, language, keywords, audience, cta, wordCount) {
+  const kwText = keywords?.length ? `Use these keywords naturally: ${keywords.join(', ')}.` : ''
+  const audText = audience ? `Target audience: ${audience}.` : ''
+  const ctaText = cta && cta !== 'None' ? `End with a "${cta}" call to action.` : ''
+
+  let structure = ''
+  if (wordCount <= 200) {
+    structure = `
+Write a short opening paragraph.
+
+## Key Points
+- Point 1
+- Point 2
+- Point 3
+
+Write a closing sentence.`
+  } else {
+    structure = `
+Write an opening paragraph.
+
+## Main Section
+Write a paragraph here.
+
+## Key Benefits
+- Benefit 1
+- Benefit 2
+- Benefit 3
+
+## Conclusion
+Write a closing paragraph.`
+  }
+
+  return `Write a ${platform} post about: ${topic}
+
+Tone: ${tone}
+Language: ${language}
+${kwText}
+${audText}
+${ctaText}
+Target word count: EXACTLY ${wordCount} words.
+
+RULES:
+- Keep every ## heading exactly as shown
+- Keep every - bullet on its own line
+- Add blank lines between sections
+- NEVER write as one paragraph
+
+OUTPUT:
+${structure}`
+}
+
+function parseBlogMeta(raw) {
+  const lines = raw.split('\n')
+  let metaTitle = '', metaDescription = '', h1 = '', contentStart = 0
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].startsWith('META_TITLE:')) metaTitle = lines[i].replace('META_TITLE:', '').trim()
+    else if (lines[i].startsWith('META_DESC:')) metaDescription = lines[i].replace('META_DESC:', '').trim()
+    else if (lines[i].startsWith('H1:')) h1 = lines[i].replace('H1:', '').trim()
+    else if (lines[i].trim() === '---') { contentStart = i + 1; break }
+  }
+  const content = lines.slice(contentStart).join('\n').trim()
+  return { metaTitle, metaDescription, h1, content }
+}
+
+async function callGroq(prompt) {
+  const completion = await groq.chat.completions.create({
+    messages: [{ role: 'user', content: prompt }],
+    model: 'llama-3.1-8b-instant',
+    temperature: 0,
+    max_tokens: 4000,
+  })
+  return completion.choices[0]?.message?.content || ''
+}
 
 export async function POST(request) {
   try {
-    const { platform, topic, keywords, tone, audience, cta, length, language, wordCount } = await request.json()
+    const { platform, topic, keywords, tone, audience, cta, length, language } = await request.json()
 
-    const keywordText = keywords && keywords.length > 0 ? `SEO keywords to include naturally: ${keywords.join(', ')}.` : ''
-    const audienceText = audience ? `Target audience: ${audience}.` : ''
-    const ctaText = cta && cta !== 'None' ? `End with a "${cta}" call to action.` : ''
     const isBlog = platform === 'Blog'
     const needsHashtags = platform === 'Instagram' || platform === 'TikTok'
+    const wordCount = length === 'Long' ? 800 : length === 'Medium' ? 400 : 150
 
-    // Adjust word count to be realistic within token limits
-    const actualWordCount = length === 'Long' ? 800 : length === 'Medium' ? 400 : 150
-
-    const systemPrompt = `You are a professional content writer. You ALWAYS respond with ONLY a valid JSON object. Never include any text outside the JSON. Never use markdown. Never use code blocks. Only output the raw JSON object.`
-
-    let userPrompt = ''
-
+    let prompt = ''
     if (isBlog) {
-      userPrompt = `Write a detailed blog post in ${language} about: ${topic}
-Tone: ${tone}
-Write approximately ${actualWordCount} words. Be detailed and thorough.
-${keywordText}
-${audienceText}
-${ctaText}
-
-Respond with this exact JSON:
-{"metaTitle":"SEO title under 60 chars","metaDescription":"SEO description under 160 chars","titles":["H1 option 1","H1 option 2","H1 option 3"],"content":"Full blog post here"}`
+      prompt = buildBlogPrompt(topic, tone, language, keywords, audience, cta, wordCount)
     } else if (needsHashtags) {
-      userPrompt = `Write a ${platform} post in ${language} about: ${topic}
-Tone: ${tone}
-${keywordText}
-${audienceText}
-${ctaText}
-End with 15 relevant hashtags starting with #.
-
-Respond with this exact JSON:
-{"metaTitle":"","metaDescription":"","titles":[],"content":"Full ${platform} post with hashtags at the end"}`
+      prompt = buildHashtagPrompt(platform, topic, tone, language, keywords, audience, cta, wordCount)
     } else {
-      userPrompt = `Write a ${platform} post in ${language} about: ${topic}
-Tone: ${tone}
-${keywordText}
-${audienceText}
-${ctaText}
-
-Respond with this exact JSON:
-{"metaTitle":"","metaDescription":"","titles":[],"content":"Full ${platform} post here"}`
+      prompt = buildOtherPrompt(platform, topic, tone, language, keywords, audience, cta, wordCount)
     }
 
-    const completion = await groq.chat.completions.create({
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      model: 'llama-3.3-70b-versatile',
-      temperature: 0.7,
-      max_tokens: 2500,
-    })
+    let rawText = ''
+    let metaTitle = '', metaDescription = '', h1 = ''
+    let content = ''
 
-    let text = completion.choices[0]?.message?.content || ''
-    text = text.replace(/```json/gi, '').replace(/```/g, '').trim()
-    text = text.replace(/[\x00-\x1F\x7F]/g, (char) => {
-      if (char === '\n') return '\\n'
-      if (char === '\r') return '\\r'
-      if (char === '\t') return '\\t'
-      return ''
-    })
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt === 0) {
+        rawText = await callGroq(prompt)
+      } else {
+        const v = countWords(content)
+        const issues = []
+        if (!content.includes('## ')) issues.push('MISSING ## headings — every section MUST start with ## on its own line')
+        if (!content.includes('\n- ')) issues.push('MISSING bullet points — use "- " at the start of each bullet on its own line')
+        if (!content.includes('\n')) issues.push('MISSING line breaks — add blank lines between every section')
+        if (Math.abs(v - wordCount) > 20) issues.push(`WRONG word count — got ${v} words, need EXACTLY ${wordCount} words`)
 
-    const jsonStart = text.indexOf('{')
-    const jsonEnd = text.lastIndexOf('}')
-    if (jsonStart === -1 || jsonEnd === -1) throw new Error('No JSON found in response')
-    text = text.substring(jsonStart, jsonEnd + 1)
+        const retryPrompt = `Your previous response had these problems:\n${issues.join('\n')}\n\nFix ALL problems. Return the complete corrected content only.\n\nPrevious content:\n${content}`
+        rawText = await callGroq(retryPrompt)
+      }
 
-    const parsed = JSON.parse(text)
-    if (parsed.content) {
-      parsed.content = parsed.content.replace(/\\n/g, '\n').replace(/\\t/g, '\t')
+      if (isBlog) {
+        const parsed = parseBlogMeta(rawText)
+        if (attempt === 0 || parsed.metaTitle) metaTitle = parsed.metaTitle
+        if (attempt === 0 || parsed.metaDescription) metaDescription = parsed.metaDescription
+        if (attempt === 0 || parsed.h1) h1 = parsed.h1
+        content = parsed.content
+      } else {
+        content = rawText.trim()
+      }
+
+      if (isValid(content, wordCount)) break
     }
 
-    return Response.json({ content: parsed })
+    return Response.json({
+      content: { metaTitle, metaDescription, titles: h1 ? [h1] : [], content }
+    })
 
   } catch (error) {
     console.error('Generation error:', error)

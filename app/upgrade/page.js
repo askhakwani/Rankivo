@@ -8,32 +8,45 @@ import Footer from '../../components/Footer'
 
 const PLANS = [
   {
-    id: 'free', name: 'Free', price: '$0', period: 'forever', posts: 3, postsLabel: '3 posts/month',
-    features: ['3 posts per month', 'All platforms', '6 languages', 'SEO optimization', 'Content history'],
-    missing: ['Unlimited posts', 'Priority generation', 'Priority support'],
-    color: 'gray',
+    id: 'free', name: 'Free', price: '$0', period: 'forever',
+    postsLabel: '3 posts/month',
+    searches: 3, searchesLabel: '3 keyword searches/day',
+    features: ['3 posts/month', '3 keyword searches/day', '25 keywords per search', 'Basic metrics only (Volume + Competition)', 'Content history'],
+    missing: ['Keyword Difficulty', 'Intent Detection', 'CSV Export', 'Clustering', 'Filters'],
+    color: 'gray', anchor: null,
   },
   {
-    id: 'pro', name: 'Pro', price: '$9', period: 'per month', posts: 50, postsLabel: '50 posts/month',
-    features: ['50 posts per month', 'All platforms', '6 languages', 'Full SEO tools', 'Priority generation', 'Email support'],
-    missing: ['Unlimited posts', 'Priority support'],
-    color: 'teal', popular: true,
+    id: 'starter', name: 'Starter', price: '$9', period: 'per month',
+    postsLabel: '30 posts/month',
+    searches: 30, searchesLabel: '30 keyword searches/day',
+    features: ['30 posts/month', '30 keyword searches/day', '100 keywords per search', 'CSV export', 'Basic filters', 'Limited clustering (3 groups)'],
+    missing: ['Intent Detection', 'Full filters', 'Trend graphs'],
+    color: 'teal', anchor: null,
   },
   {
-    id: 'premium', name: 'Premium', price: '$29', period: 'per month', posts: 300, postsLabel: '300 posts/month',
-    features: ['300 posts per month', 'All platforms', '6 languages', 'Full SEO tools', 'Priority generation', 'Priority support'],
-    missing: ['Unlimited posts'],
-    color: 'blue',
-  },
-  {
-    id: 'agency', name: 'Agency', price: '$79', period: 'per month', posts: Infinity, postsLabel: 'Unlimited posts',
-    features: ['Unlimited posts', 'All platforms', '6 languages', 'Full SEO tools', 'Priority generation', 'Priority support', 'API access', 'Dedicated support'],
+    id: 'pro', name: 'Pro', price: '$29', period: 'per month',
+    postsLabel: '100 posts/month',
+    searches: 100, searchesLabel: '100 keyword searches/day',
+    features: ['100 posts/month', '100 keyword searches/day', '500 keywords per search', 'Full filters + clustering', 'Intent detection', 'Trend graphs', 'Priority speed'],
     missing: [],
-    color: 'gold',
+    color: 'blue', popular: true, anchor: 'Ahrefs costs $249/month — Rankivo Pro is $29',
+  },
+  {
+    id: 'agency', name: 'Agency', price: '$79', period: 'per month',
+    postsLabel: 'Unlimited posts',
+    searches: 300, searchesLabel: '300 keyword searches/day',
+    features: ['Unlimited posts', '300 keyword searches/day', '1000 keywords per search', 'Everything in Pro', 'Future API access', 'Team access (coming soon)'],
+    missing: [],
+    color: 'gold', anchor: null,
   },
 ]
 
-const PLAN_LIMITS = { free: 3, pro: 50, premium: 300, agency: Infinity }
+const PLAN_LIMITS = {
+  free:    { posts: 3,        searches: 3,   keywordsPerSearch: 25   },
+  starter: { posts: 30,       searches: 30,  keywordsPerSearch: 100  },
+  pro:     { posts: 100,      searches: 100, keywordsPerSearch: 500  },
+  agency:  { posts: Infinity, searches: 300, keywordsPerSearch: 1000 },
+}
 
 const colorMap = {
   gray: { border: 'border-gray-200', btn: 'border-2 border-gray-300 text-gray-500 hover:border-gray-400', badge: 'bg-gray-100 text-gray-600' },
@@ -86,11 +99,11 @@ export default function UpgradePage() {
     setNotifySent(true)
   }
 
-  const currentPlan = profile?.plan || 'free'
+  const currentPlan = user ? (profile?.plan || 'free') : null
   const postsUsed = profile?.posts_count || 0
-  const limit = PLAN_LIMITS[currentPlan] || 3
-  const pct = limit === Infinity ? 10 : Math.min((postsUsed / limit) * 100, 100)
-  const remaining = limit === Infinity ? '∞' : Math.max(limit - postsUsed, 0)
+  const postLimit = PLAN_LIMITS[currentPlan]?.posts ?? 3
+  const pct = postLimit === Infinity ? 10 : Math.min((postsUsed / postLimit) * 100, 100)
+  const remaining = postLimit === Infinity ? '∞' : Math.max(postLimit - postsUsed, 0)
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50">
@@ -157,7 +170,7 @@ export default function UpgradePage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-14">
           {PLANS.map(plan => {
             const c = colorMap[plan.color]
-            const isCurrent = currentPlan === plan.id
+            const isCurrent = currentPlan !== null && currentPlan === plan.id
             return (
               <div key={plan.id} className={`bg-white border-2 ${c.border} rounded-2xl p-6 flex flex-col relative shadow-sm ${c.ring || ''}`}>
                 {plan.popular && (
@@ -177,6 +190,10 @@ export default function UpgradePage() {
                     <span className="text-gray-400 text-sm ml-1">/{plan.period}</span>
                   </div>
                   <p className="text-xs text-[#0D9488] font-medium mt-1">{plan.postsLabel}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{plan.searchesLabel}</p>
+                  {plan.anchor && (
+                    <p className="text-xs text-[#C9943A] font-medium mt-2 bg-[#C9943A]/10 px-2 py-1 rounded-lg">💡 {plan.anchor}</p>
+                  )}
                 </div>
                 <ul className="space-y-2 flex-1 mb-6">
                   {plan.features.map((f, i) => (
@@ -202,6 +219,36 @@ export default function UpgradePage() {
               </div>
             )
           })}
+        </div>
+
+        {/* Pay As You Go */}
+        <div className="max-w-2xl mx-auto mb-14">
+          <div className="text-center mb-6">
+            <h2 className="text-xl font-bold text-gray-900">💳 Pay As You Go</h2>
+            <p className="text-gray-500 text-sm mt-1">Need more searches without upgrading? Buy extra credits anytime.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white border-2 border-[#0D9488] rounded-2xl p-6 text-center shadow-sm">
+              <div className="text-3xl font-bold text-gray-900 mb-1">$5</div>
+              <div className="text-[#0D9488] font-semibold text-sm mb-1">+100 Searches</div>
+              <div className="text-gray-400 text-xs mb-4">Perfect for occasional use</div>
+              <button onClick={() => { setNotifyPlan('+100 Searches Credit Pack'); setShowNotify(true); setNotifySent(false); }} className="w-full bg-[#0D9488] hover:bg-[#0D9488]/90 text-white py-2 rounded-xl text-sm font-semibold transition-colors">
+                Get Notified
+              </button>
+            </div>
+            <div className="bg-white border-2 border-[#1B5FA8] rounded-2xl p-6 text-center shadow-sm relative">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <span className="bg-[#1B5FA8] text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap">BEST VALUE</span>
+              </div>
+              <div className="text-3xl font-bold text-gray-900 mb-1">$19</div>
+              <div className="text-[#1B5FA8] font-semibold text-sm mb-1">+500 Searches</div>
+              <div className="text-gray-400 text-xs mb-4">Save $6 vs buying 5 packs</div>
+              <button onClick={() => { setNotifyPlan('+500 Searches Credit Pack'); setShowNotify(true); setNotifySent(false); }} className="w-full bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white py-2 rounded-xl text-sm font-semibold transition-colors">
+                Get Notified
+              </button>
+            </div>
+          </div>
+          <p className="text-center text-xs text-gray-400 mt-4">Credits never expire. Use them anytime across all tools.</p>
         </div>
 
         {/* FAQ */}
