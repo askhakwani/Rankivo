@@ -123,21 +123,46 @@ function buildHashtagPrompt(platform, topic, tone, language, keywords, audience,
   const audText = audience ? `Target audience: ${audience}.` : ''
   const ctaText = cta && cta !== 'None' ? `End with a "${cta}" call to action.` : ''
 
-  return `Write a ${platform} post about: ${topic}
+  if (platform === 'Instagram') {
+    return `You are a strict Instagram content generator.
 
-Tone: ${tone}
-Language: ${language}
-${kwText}
-${audText}
-${ctaText}
+Write an Instagram post about: ${topic}
+Tone: ${tone} | Language: ${language}
+${kwText} ${audText} ${ctaText}
 
-RULES:
-- Hook sentence first
-- Then 2-3 short paragraphs separated by blank lines
-- Include bullet points using "- " format
-- End with exactly 15 hashtags each on its own line starting with #
-- Content body must be EXACTLY ${wordCount} words (not counting hashtags)
-- Add blank lines between sections`
+MANDATORY RULES — VIOLATIONS WILL BE REJECTED:
+- Line 1: A powerful hook (max 8 words)
+- Every sentence MUST be on its own new line
+- Max 8 words per line — hard limit
+- Use 2–5 emojis placed naturally within lines
+- End with a CTA line
+- Then add 5–10 hashtags, each on its own line starting with #
+- NO paragraphs — every line is standalone
+- NO formal tone
+- NO blog-style writing
+
+OUTPUT ONLY the post. No explanations.`
+  }
+
+  if (platform === 'TikTok') {
+    return `You are a strict TikTok/Reels content generator.
+
+Write a TikTok caption post about: ${topic}
+Tone: ${tone} | Language: ${language}
+${kwText} ${audText} ${ctaText}
+
+MANDATORY RULES — VIOLATIONS WILL BE REJECTED:
+- Line 1: Viral hook (under 10 words)
+- Lines 2–5: Short punchy engaging lines (each under 10 words)
+- Each line must feel like on-screen text
+- Final lines: Caption + CTA
+- Add 3–5 hashtags, each on its own line starting with #
+- Fast, catchy, viral energy throughout
+- NO script paragraphs
+- NO blog-style writing
+
+OUTPUT ONLY the post. No explanations.`
+  }
 }
 
 function buildOtherPrompt(platform, topic, tone, language, keywords, audience, cta, wordCount) {
@@ -145,40 +170,126 @@ function buildOtherPrompt(platform, topic, tone, language, keywords, audience, c
   const audText = audience ? `Target audience: ${audience}.` : ''
   const ctaText = cta && cta !== 'None' ? `End with a "${cta}" call to action.` : ''
 
-  let structure = ''
-  if (wordCount <= 200) {
-    structure = `
-Write a short opening paragraph.
+  if (platform === 'LinkedIn') {
+    return `You are a strict LinkedIn content generator.
 
-## Key Points
-- Point 1
-- Point 2
-- Point 3
+Write a LinkedIn post about: ${topic}
+Tone: ${tone} | Language: ${language}
+${kwText} ${audText} ${ctaText}
 
-Write a closing sentence.`
-  } else {
-    structure = `
-Write an opening paragraph.
+MANDATORY RULES — VIOLATIONS WILL BE REJECTED:
+- Line 1–2: Strong professional hook
+- Body: Short paragraphs, max 2 lines each
+- Separate every paragraph with a blank line
+- End with an insight or open question
+- Max 2 emojis total in the entire post
+- Professional tone throughout
+- NO casual slang
+- NO Instagram-style formatting
 
-## Main Section
-Write a paragraph here.
-
-## Key Benefits
-- Benefit 1
-- Benefit 2
-- Benefit 3
-
-## Conclusion
-Write a closing paragraph.`
+OUTPUT ONLY the post. No explanations.`
   }
 
-  return `Write a ${platform} post about: ${topic}
+  if (platform === 'Twitter' || platform === 'Twitter/X') {
+    return `You are a strict Twitter/X content generator.
 
-Tone: ${tone}
-Language: ${language}
-${kwText}
-${audText}
-${ctaText}
+Write a Twitter thread about: ${topic}
+Tone: ${tone} | Language: ${language}
+${kwText} ${audText} ${ctaText}
+
+MANDATORY RULES — VIOLATIONS WILL BE REJECTED:
+- Write 5–10 tweets
+- Each tweet on its own line
+- Max 20 words per tweet — hard limit
+- First tweet = hook
+- Last tweet = CTA or summary
+- NO paragraphs
+- NO multi-line tweets
+
+OUTPUT ONLY the tweets, one per line. No explanations.`
+  }
+
+  if (platform === 'Email') {
+    return `You are a strict email copywriter.
+
+Write a marketing email about: ${topic}
+Tone: ${tone} | Language: ${language}
+${kwText} ${audText} ${ctaText}
+
+MANDATORY RULES — VIOLATIONS WILL BE REJECTED:
+- Start with a greeting
+- Body: conversational tone, short paragraphs (2–3 lines each)
+- Include a clear CTA
+- End with a professional closing
+- NO hashtags
+- NO social media tone or emojis
+
+OUTPUT ONLY the email. No explanations.`
+  }
+
+  if (platform === 'Ads') {
+    return `You are a strict ad copywriter focused on conversion.
+
+Write ad copy about: ${topic}
+Tone: ${tone} | Language: ${language}
+${kwText} ${audText} ${ctaText}
+
+MANDATORY RULES — VIOLATIONS WILL BE REJECTED:
+- Line 1: Pain point or key benefit (under 10 words)
+- Lines 2–4: Supporting lines (each under 10 words)
+- Final line: Urgent CTA (under 10 words)
+- Every line under 10 words — hard limit
+- Add urgency throughout
+- NO storytelling
+- NO long explanations
+
+OUTPUT ONLY the ad copy. No explanations.`
+  }
+
+  if (platform === 'YouTube') {
+    return `You are a strict YouTube script generator.
+
+Write a YouTube video script about: ${topic}
+Tone: ${tone} | Language: ${language}
+${kwText} ${audText} ${ctaText}
+
+MANDATORY RULES — VIOLATIONS WILL BE REJECTED:
+- Start with a strong hook (spoken style)
+- Then intro section
+- Then main content section
+- End with outro + CTA
+- Use frequent line breaks — spoken delivery style
+- Keep it engaging throughout
+- NO blog paragraphs
+- NO formal essay structure
+
+OUTPUT ONLY the script. No explanations.`
+  }
+
+  if (platform === 'Pinterest') {
+    return `You are a strict Pinterest content generator.
+
+Write a Pinterest pin description about: ${topic}
+Tone: ${tone} | Language: ${language}
+${kwText} ${audText} ${ctaText}
+
+MANDATORY RULES — VIOLATIONS WILL BE REJECTED:
+- Write 1–2 short keyword-focused lines only
+- Then add 3–6 hashtags, each on its own line starting with #
+- NO long text
+- NO paragraphs
+
+OUTPUT ONLY the pin description. No explanations.`
+  }
+
+  // Fallback for any unlisted platform
+  const structure = wordCount <= 200
+    ? `Write a short opening paragraph.\n\n## Key Points\n- Point 1\n- Point 2\n- Point 3\n\nWrite a closing sentence.`
+    : `Write an opening paragraph.\n\n## Main Section\nWrite a paragraph here.\n\n## Key Benefits\n- Benefit 1\n- Benefit 2\n- Benefit 3\n\n## Conclusion\nWrite a closing paragraph.`
+
+  return `Write a ${platform} post about: ${topic}
+Tone: ${tone} | Language: ${language}
+${kwText} ${audText} ${ctaText}
 Target word count: EXACTLY ${wordCount} words.
 
 RULES:
@@ -207,9 +318,9 @@ function parseBlogMeta(raw) {
 async function callGroq(prompt) {
   const completion = await groq.chat.completions.create({
     messages: [{ role: 'user', content: prompt }],
-    model: 'llama-3.1-8b-instant',
-    temperature: 0,
-    max_tokens: 4000,
+    model: 'llama3-8b-8192',
+    temperature: 0.7,
+    max_tokens: 1024,
   })
   return completion.choices[0]?.message?.content || ''
 }
@@ -217,6 +328,8 @@ async function callGroq(prompt) {
 export async function POST(request) {
   try {
     const { platform, topic, keywords, tone, audience, cta, length, language } = await request.json()
+
+    console.log('[RANKIVO] platform received:', platform)
 
     const isBlog = platform === 'Blog'
     const needsHashtags = platform === 'Instagram' || platform === 'TikTok'
@@ -231,6 +344,12 @@ export async function POST(request) {
       prompt = buildOtherPrompt(platform, topic, tone, language, keywords, audience, cta, wordCount)
     }
 
+    console.log('[RANKIVO] prompt being sent to Groq (first 200 chars):', prompt?.slice(0, 200))
+
+    if (!prompt) {
+      return Response.json({ error: 'Unsupported platform: ' + platform }, { status: 400 })
+    }
+
     let rawText = ''
     let metaTitle = '', metaDescription = '', h1 = ''
     let content = ''
@@ -239,6 +358,9 @@ export async function POST(request) {
       if (attempt === 0) {
         rawText = await callGroq(prompt)
       } else {
+        // Retry logic only applies to Blog — non-blog platforms do not require headings/bullets
+        if (!isBlog) break
+
         const v = countWords(content)
         const issues = []
         if (!content.includes('## ')) issues.push('MISSING ## headings — every section MUST start with ## on its own line')
@@ -260,7 +382,9 @@ export async function POST(request) {
         content = rawText.trim()
       }
 
-      if (isValid(content, wordCount)) break
+      // Only validate structure for Blog — non-blog platforms break after first successful generation
+      if (isBlog && isValid(content, wordCount)) break
+      if (!isBlog) break
     }
 
     return Response.json({
