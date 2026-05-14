@@ -320,7 +320,7 @@ async function callGroq(prompt) {
     messages: [{ role: 'user', content: prompt }],
     model: 'llama3-8b-8192',
     temperature: 0.7,
-    max_tokens: 1024,
+    max_tokens: 512,
   })
   return completion.choices[0]?.message?.content || ''
 }
@@ -329,7 +329,7 @@ export async function POST(request) {
   try {
     const { platform, topic, keywords, tone, audience, cta, length, language } = await request.json()
 
-    console.log('[RANKIVO] platform received:', platform)
+    console.log('Platform:', platform)
 
     const isBlog = platform === 'Blog'
     const needsHashtags = platform === 'Instagram' || platform === 'TikTok'
@@ -344,7 +344,7 @@ export async function POST(request) {
       prompt = buildOtherPrompt(platform, topic, tone, language, keywords, audience, cta, wordCount)
     }
 
-    console.log('[RANKIVO] prompt being sent to Groq (first 200 chars):', prompt?.slice(0, 200))
+    console.log('Prompt used:', prompt?.slice(0, 300))
 
     if (!prompt) {
       return Response.json({ error: 'Unsupported platform: ' + platform }, { status: 400 })
