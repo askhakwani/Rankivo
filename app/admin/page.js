@@ -100,6 +100,20 @@ function AdminPanelInner() {
     setPlanChanging(null)
   }
 
+  async function adminAction(action, userId, label) {
+    if (!confirm(`Are you sure you want to ${label}? This cannot be undone.`)) return
+    const res = await fetch('/api/admin/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, userId, requesterId: user.id })
+    })
+    const data = await res.json()
+    if (data.error) { alert('Error: ' + data.error); return }
+    alert(data.message)
+    if (action === 'delete_user') setUsers(prev => prev.filter(u => u.id !== userId))
+    if (action === 'reset_count') setUsers(prev => prev.map(u => u.id === userId ? { ...u, posts_count: 0 } : u))
+  }
+
   function newBlogPost() {
     setBlogForm({ id: null, title: '', slug: '', excerpt: '', content: '', meta_title: '', meta_description: '', published: false })
     setBlogMsg('')
@@ -261,6 +275,7 @@ function AdminPanelInner() {
                         <th className="text-left px-4 py-3 text-gray-500 font-medium">Plan</th>
                         <th className="text-left px-4 py-3 text-gray-500 font-medium">Posts Used</th>
                         <th className="text-left px-4 py-3 text-gray-500 font-medium">Change Plan</th>
+                        <th className="text-left px-4 py-3 text-gray-500 font-medium">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -286,7 +301,24 @@ function AdminPanelInner() {
                               <option value="free">Free</option>
                               <option value="pro">Pro</option>
                               <option value="premium">Premium</option>
+                              <option value="agency">Agency</option>
                             </select>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => adminAction('reset_count', u.id, 'reset post count')}
+                                className="text-xs px-2 py-1 rounded border border-[#0D9488]/40 text-[#0D9488] hover:bg-[#0D9488]/5 transition-colors"
+                              >Reset</button>
+                              <button
+                                onClick={() => adminAction('delete_posts', u.id, 'delete all posts for this user')}
+                                className="text-xs px-2 py-1 rounded border border-orange-200 text-orange-500 hover:bg-orange-50 transition-colors"
+                              >Del Posts</button>
+                              <button
+                                onClick={() => adminAction('delete_user', u.id, 'permanently delete this user')}
+                                className="text-xs px-2 py-1 rounded border border-red-200 text-red-500 hover:bg-red-50 transition-colors"
+                              >Delete</button>
+                            </div>
                           </td>
                         </tr>
                       ))}
