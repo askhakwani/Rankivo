@@ -318,7 +318,7 @@ function parseBlogMeta(raw) {
 async function callGroq(prompt) {
   const completion = await groq.chat.completions.create({
     messages: [{ role: 'user', content: prompt }],
-    model: 'llama3-8b-8192',
+    model: 'mixtral-8x7b-32768',
     temperature: 0.7,
     max_tokens: 512,
   })
