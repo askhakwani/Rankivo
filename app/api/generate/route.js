@@ -327,13 +327,13 @@ async function callGroq(prompt) {
 
 export async function POST(request) {
   try {
-    const { platform, topic, keywords, tone, audience, cta, length, language } = await request.json()
+    const { platform, topic, keywords, tone, audience, cta, length, language, wordCount: wc } = await request.json()
 
     console.log('Platform:', platform)
 
     const isBlog = platform === 'Blog'
     const needsHashtags = platform === 'Instagram' || platform === 'TikTok'
-    const wordCount = length === 'Long' ? 800 : length === 'Medium' ? 400 : 150
+    const wordCount = wc || (length === 'Long' ? 800 : length === 'Medium' ? 400 : 150)
 
     let prompt = ''
     if (isBlog) {

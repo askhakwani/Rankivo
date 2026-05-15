@@ -316,7 +316,7 @@ function DashboardInner() {
     try {
       const res = await fetch('/api/generate', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, keywords: form.keywords.slice(0, getKeywordLimit()).filter(k => k.trim()), wordCount: LENGTH_INFO[form.length].actual }),
+        body: JSON.stringify({ ...form, platform: form.platform === 'Twitter/X' ? 'Twitter' : form.platform, keywords: form.keywords.slice(0, getKeywordLimit()).filter(k => k.trim()), wordCount: LENGTH_INFO[form.length].actual }),
       })
       const data = await res.json()
 console.log('DEBUG:', JSON.stringify(data?.content?.content?.substring(0, 200)))
@@ -640,13 +640,16 @@ console.log('RAW CONTENT:', data.content.content)
                 <div className="bg-white border border-gray-200 rounded-xl p-4">
                   <p className="text-xs text-[#C9943A] mb-2 font-medium uppercase">Content</p>
                   <div className="space-y-3">
-  {result.content.split(/\n+/).map((line, i) => {
-    if (line.startsWith('## ')) return <h2 key={i} className="text-xl font-bold text-[#1B5FA8] mt-6 mb-1">{line.slice(3)}</h2>
-    if (line.startsWith('### ')) return <h3 key={i} className="text-base font-semibold text-[#0D9488] mt-4 mb-1">{line.slice(4)}</h3>
-    if (line.startsWith('- ')) return <li key={i} className="ml-5 list-disc text-gray-700">{line.slice(2)}</li>
-    if (line.trim() === '') return <div key={i} className="h-1" />
-    return <p key={i} className="text-gray-800 leading-relaxed">{line}</p>
-  })}
+  {form.platform === 'Blog'
+    ? result.content.split(/\n+/).map((line, i) => {
+        if (line.startsWith('## ')) return <h2 key={i} className="text-xl font-bold text-[#1B5FA8] mt-6 mb-1">{line.slice(3)}</h2>
+        if (line.startsWith('### ')) return <h3 key={i} className="text-base font-semibold text-[#0D9488] mt-4 mb-1">{line.slice(4)}</h3>
+        if (line.startsWith('- ')) return <li key={i} className="ml-5 list-disc text-gray-700">{line.slice(2)}</li>
+        if (line.trim() === '') return <div key={i} className="h-1" />
+        return <p key={i} className="text-gray-800 leading-relaxed">{line}</p>
+      })
+    : <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">{result.content}</p>
+  }
 </div>
                 </div>
                 <button onClick={() => navigator.clipboard.writeText(result.content)} className="w-full bg-gray-50 hover:bg-gray-100 text-[#0D9488] py-3 rounded-lg font-medium border border-gray-200">Copy Content</button>
