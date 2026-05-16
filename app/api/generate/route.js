@@ -1,5 +1,6 @@
 import Groq from 'groq-sdk'
 import { checkGenerationPolicy, incrementPostCount } from '../../../lib/usagePolicy'
+import { cookies } from 'next/headers'
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 
@@ -14,7 +15,7 @@ function isValid(content, wordCount) {
   const hasHeadings = content.includes('## ')
   const hasBullets = content.includes('\n- ')
   const hasLineBreaks = content.includes('\n')
-  const wordMatch = Math.abs(words - wordCount) <= 20
+  const wordMatch = Math.abs(words - wordCount) <= 40
   return wordMatch && hasHeadings && hasBullets && hasLineBreaks
 }
 
@@ -27,89 +28,94 @@ function buildBlogPrompt(topic, tone, language, keywords, audience, cta, wordCou
   if (wordCount <= 200) {
     structure = `
 ## Introduction
-Write 2-3 sentences introducing the topic.
+Write 2-3 sentences introducing the topic. Make it engaging and relevant.
 
 ## Key Points
-- Point 1
-- Point 2
-- Point 3
+- Write a full sentence explaining point 1 with detail
+- Write a full sentence explaining point 2 with detail
+- Write a full sentence explaining point 3 with detail
 
 ## Conclusion
-Write 1-2 sentences wrapping up.`
+Write 2 sentences wrapping up the key takeaway.`
   } else if (wordCount <= 500) {
     structure = `
 ## Introduction
-Write a short paragraph introducing the topic.
+Write a compelling 3-4 sentence paragraph introducing the topic and why it matters.
 
 ## Why It Matters
-Write a paragraph explaining the importance.
+Write a 3-4 sentence paragraph explaining the importance and real-world impact.
 
 ## Key Benefits
-- Benefit 1
-- Benefit 2
-- Benefit 3
-- Benefit 4
+- Write a full sentence describing benefit 1 with explanation
+- Write a full sentence describing benefit 2 with explanation
+- Write a full sentence describing benefit 3 with explanation
+- Write a full sentence describing benefit 4 with explanation
 
 ## How It Works
-Write a paragraph explaining how it works.
+Write a 3-4 sentence paragraph explaining the process or mechanism clearly.
 
 ## Conclusion
-Write a closing paragraph.`
+Write a 2-3 sentence closing paragraph summarizing the main message.`
   } else {
+    // 800-word structure — each section must be substantive
     structure = `
 ## Introduction
-Write a strong opening paragraph.
+Write a strong 4-5 sentence opening paragraph that hooks the reader, introduces the topic, and previews what the article will cover.
 
 ## Background
-Write a paragraph with context and background.
+Write a 4-5 sentence paragraph providing context, history, or foundational information the reader needs to understand the topic.
 
 ## Key Benefits
-- Benefit 1
-- Benefit 2
-- Benefit 3
-- Benefit 4
+- Write a complete 2-sentence explanation of benefit 1, including why it matters
+- Write a complete 2-sentence explanation of benefit 2, including why it matters
+- Write a complete 2-sentence explanation of benefit 3, including why it matters
+- Write a complete 2-sentence explanation of benefit 4, including why it matters
 
 ## How It Works
-Write a detailed paragraph.
+Write a detailed 5-6 sentence paragraph explaining the mechanics, process, or methodology in clear terms.
 
 ### Step by Step
-- Step 1
-- Step 2
-- Step 3
+- Write a full sentence describing step 1 with what to do and why
+- Write a full sentence describing step 2 with what to do and why
+- Write a full sentence describing step 3 with what to do and why
+- Write a full sentence describing step 4 with what to do and why
 
 ## Real World Applications
-Write a paragraph with examples.
+Write a 4-5 sentence paragraph with concrete examples of how this topic plays out in real life or business scenarios.
 
 ## Challenges to Consider
-Write a paragraph about challenges.
+Write a 4-5 sentence paragraph honestly discussing common pitfalls, limitations, or things readers should watch out for.
 
 ## Best Practices
-- Practice 1
-- Practice 2
-- Practice 3
+- Write a complete sentence describing best practice 1 with actionable advice
+- Write a complete sentence describing best practice 2 with actionable advice
+- Write a complete sentence describing best practice 3 with actionable advice
+- Write a complete sentence describing best practice 4 with actionable advice
 
 ## Conclusion
-Write a strong closing paragraph.`
+Write a strong 4-5 sentence closing paragraph that summarizes the key takeaways, reinforces the main message, and ends with a forward-looking statement or call to action.`
   }
 
-  return `You are a blog writer. Fill in the template below. Replace placeholder text with real content about: ${topic}
+  return `You are an expert blog writer. Fill in the template below with rich, detailed content about: ${topic}
 
 Tone: ${tone}
 Language: ${language}
 ${kwText}
 ${audText}
 ${ctaText}
-Target word count: EXACTLY ${wordCount} words for the blog body.
+Target word count: EXACTLY ${wordCount} words for the blog body (between the --- and end of content).
 
 RULES YOU MUST FOLLOW:
 - Keep every ## and ### heading exactly as shown
-- Keep every - bullet point exactly as shown  
+- Replace ALL placeholder text with real, detailed, substantive content
+- Each bullet point must be a FULL SENTENCE or TWO — not a short phrase
+- Each paragraph must be MULTIPLE SENTENCES — never one sentence per paragraph
 - Add a blank line before and after every ## heading
 - Add a blank line between every paragraph
 - Add a blank line between bullet lists and paragraphs
 - Each bullet point on its own line
-- NEVER write everything as one paragraph
-- Count words and adjust until EXACTLY ${wordCount} words
+- NEVER write thin or vague content — every section must be fully developed
+- Write until you reach EXACTLY ${wordCount} words — count carefully
 
 OUTPUT THIS EXACT FORMAT:
 META_TITLE: (write SEO title here under 60 chars)
@@ -316,12 +322,24 @@ function parseBlogMeta(raw) {
   return { metaTitle, metaDescription, h1, content }
 }
 
-async function callGroq(prompt) {
+async function callGroq(prompt, isBlog) {
+  const messages = isBlog
+    ? [
+        {
+          role: 'system',
+          content: 'You are an expert blog writer. You ALWAYS write complete, fully developed blog posts. You NEVER truncate or summarize. You write every section in full. You count words carefully and hit the exact target word count specified.'
+        },
+        { role: 'user', content: prompt }
+      ]
+    : [
+        { role: 'user', content: prompt }
+      ]
+
   const completion = await groq.chat.completions.create({
-    messages: [{ role: 'user', content: prompt }],
+    messages,
     model: 'meta-llama/llama-4-scout-17b-16e-instruct',
     temperature: 0.7,
-    max_tokens: 2000,
+    max_tokens: 3000,
   })
   return completion.choices[0]?.message?.content || ''
 }
@@ -330,7 +348,8 @@ export async function POST(request) {
   try {
 
     // ── STEP 1: Check usage policy ──────────────────────────────────────────
-    const policy = await checkGenerationPolicy()
+    const cookieStore = cookies()
+    const policy = await checkGenerationPolicy(cookieStore)
 
     if (!policy.allowed) {
       return Response.json({
@@ -373,9 +392,8 @@ export async function POST(request) {
 
     for (let attempt = 0; attempt < 3; attempt++) {
       if (attempt === 0) {
-        rawText = await callGroq(prompt)
+        rawText = await callGroq(prompt, isBlog)
       } else {
-        // Retry logic only applies to Blog — non-blog platforms do not require headings/bullets
         if (!isBlog) break
 
         const v = countWords(content)
@@ -383,10 +401,10 @@ export async function POST(request) {
         if (!content.includes('## ')) issues.push('MISSING ## headings — every section MUST start with ## on its own line')
         if (!content.includes('\n- ')) issues.push('MISSING bullet points — use "- " at the start of each bullet on its own line')
         if (!content.includes('\n')) issues.push('MISSING line breaks — add blank lines between every section')
-        if (Math.abs(v - wordCount) > 20) issues.push(`WRONG word count — got ${v} words, need EXACTLY ${wordCount} words`)
+        if (Math.abs(v - wordCount) > 40) issues.push(`WRONG word count — got ${v} words, need EXACTLY ${wordCount} words. Add more detail to every section until you reach ${wordCount} words.`)
 
-        const retryPrompt = `Your previous response had these problems:\n${issues.join('\n')}\n\nFix ALL problems. Return the complete corrected content only.\n\nPrevious content:\n${content}`
-        rawText = await callGroq(retryPrompt)
+        const retryPrompt = `Your previous response had these problems:\n${issues.join('\n')}\n\nFix ALL problems. Expand every section with more detail. Return the COMPLETE corrected content only — do not truncate.\n\nPrevious content:\n${content}`
+        rawText = await callGroq(retryPrompt, isBlog)
       }
 
       if (isBlog) {
@@ -399,13 +417,12 @@ export async function POST(request) {
         content = rawText.trim()
       }
 
-      // Only validate structure for Blog — non-blog platforms break after first successful generation
       if (isBlog && isValid(content, wordCount)) break
       if (!isBlog) break
     }
 
     // ── STEP 2: Increment post count after successful generation ────────────
-    await incrementPostCount(policy.user?.id)
+    await incrementPostCount(policy.user?.id, policy.isGuest, cookieStore)
     // ── END increment ───────────────────────────────────────────────────────
 
     return Response.json({
