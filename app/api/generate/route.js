@@ -1,4 +1,5 @@
 import Groq from 'groq-sdk'
+import { checkGenerationPolicy, incrementPostCount } from '../../../lib/usagePolicy'
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 
@@ -327,6 +328,22 @@ async function callGroq(prompt) {
 
 export async function POST(request) {
   try {
+
+    // ── STEP 1: Check usage policy ──────────────────────────────────────────
+    const policy = await checkGenerationPolicy()
+
+    if (!policy.allowed) {
+      return Response.json({
+        error:      'LIMIT_REACHED',
+        message:    policy.message,
+        upgrade:    true,
+        postsUsed:  policy.postsUsed,
+        postsLimit: policy.postsLimit,
+        plan:       policy.plan,
+      }, { status: 403 })
+    }
+    // ── END policy check ────────────────────────────────────────────────────
+
     const { platform, topic, keywords, tone, audience, cta, length, language, wordCount: wc } = await request.json()
 
     console.log('Platform:', platform)
@@ -386,6 +403,10 @@ export async function POST(request) {
       if (isBlog && isValid(content, wordCount)) break
       if (!isBlog) break
     }
+
+    // ── STEP 2: Increment post count after successful generation ────────────
+    await incrementPostCount(policy.user?.id)
+    // ── END increment ───────────────────────────────────────────────────────
 
     return Response.json({
       content: { metaTitle, metaDescription, titles: h1 ? [h1] : [], content }

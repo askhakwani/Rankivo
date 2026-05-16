@@ -11,6 +11,7 @@ export default function Sidebar({ activeTab, setActiveTab, user, profile, isAdmi
     window.location.href = '/auth'
   }
 
+  // Internal dashboard tab item (uses setActiveTab)
   const navItem = (id, label, icon = '') => (
     <li
       key={id}
@@ -20,6 +21,18 @@ export default function Sidebar({ activeTab, setActiveTab, user, profile, isAdmi
           ? 'bg-[#0D9488]/10 text-[#0D9488] font-semibold border border-[#0D9488]/20'
           : 'text-gray-600 hover:bg-gray-100'
       }`}
+    >
+      {icon && <span className="text-base">{icon}</span>}
+      {label}
+    </li>
+  )
+
+  // External tool page item (uses router.push — separate /tools/* pages)
+  const toolPageItem = (href, label, icon = '') => (
+    <li
+      key={href}
+      onClick={() => router.push(href)}
+      className="px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors flex items-center gap-2 text-gray-600 hover:bg-gray-100"
     >
       {icon && <span className="text-base">{icon}</span>}
       {label}
@@ -50,9 +63,13 @@ export default function Sidebar({ activeTab, setActiveTab, user, profile, isAdmi
         <div>
           <p className="text-xs text-gray-400 font-medium mb-2 px-1 uppercase tracking-wider">SEO Tools</p>
           <ul className="space-y-1">
+            {/* Internal dashboard tabs — unchanged */}
             {navItem('generate', 'Content Generator', '✨')}
             {navItem('history', 'Content History', '📋')}
             {navItem('seo', 'Keywords', '🔍')}
+            {/* External tool pages — navigate to /tools/* */}
+            {toolPageItem('/tools/meta-tags-generator', 'Meta Tags Generator', '🏷️')}
+            {toolPageItem('/tools/seo-score-checker', 'SEO Score Checker', '📊')}
           </ul>
         </div>
 
@@ -63,7 +80,7 @@ export default function Sidebar({ activeTab, setActiveTab, user, profile, isAdmi
           </ul>
         </div>
 
-        {/* ✅ ADMIN NOW IN MAIN NAV */}
+        {/* Admin */}
         {isAdmin && (
           <div>
             <p className="text-xs text-[#C9943A] font-medium mb-2 px-1 uppercase tracking-wider">Admin</p>
