@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import Navbar from '../../../components/Navbar'
 import Footer from '../../../components/Footer'
 
@@ -70,6 +71,8 @@ function FormattedContent({ content }) {
 }
 
 export default function BlogGeneratorPage() {
+  const router = useRouter()
+
   const [form, setForm] = useState({
     topic:    '',
     keywords: [],
@@ -80,10 +83,11 @@ export default function BlogGeneratorPage() {
     language: 'English',
   })
 
-  const [result,   setResult]   = useState(null)
-  const [loading,  setLoading]  = useState(false)
-  const [error,    setError]    = useState('')
-  const [copied,   setCopied]   = useState(false)
+  const [result,    setResult]    = useState(null)
+  const [isPreview, setIsPreview] = useState(false)
+  const [loading,   setLoading]   = useState(false)
+  const [error,     setError]     = useState('')
+  const [copied,    setCopied]    = useState(false)
   const [activeTab, setActiveTab] = useState('content')
 
   function updateForm(field, value) {
@@ -95,9 +99,9 @@ export default function BlogGeneratorPage() {
     setLoading(true)
     setError('')
     setResult(null)
+    setIsPreview(false)
 
     try {
-      // Calls existing /api/generate — no duplication
       const res  = await fetch('/api/generate', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -115,7 +119,9 @@ export default function BlogGeneratorPage() {
       const data = await res.json()
 
       if (data.error) { setError(data.error); return }
+
       setResult(data.content)
+      setIsPreview(data.isPreview || false)
       setActiveTab('content')
     } catch {
       setError('Something went wrong. Please try again.')
@@ -125,7 +131,7 @@ export default function BlogGeneratorPage() {
   }
 
   function copyContent() {
-    if (!result) return
+    if (!result || isPreview) return
     const full = [
       result.metaTitle       ? `META TITLE:\n${result.metaTitle}` : '',
       result.metaDescription ? `META DESCRIPTION:\n${result.metaDescription}` : '',
@@ -177,39 +183,38 @@ export default function BlogGeneratorPage() {
                     onChange={e => updateForm('topic', e.target.value)}
                     placeholder="e.g. How to improve website SEO in 2025"
                     rows={3}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D9488] text-gray-800 resize-none"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-800 resize-none focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
                   />
                 </div>
 
                 {/* Keywords */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    SEO Keywords
-                    <span className="text-gray-400 font-normal ml-1">(up to 3, press Enter)</span>
+                    SEO Keywords <span className="text-gray-400 font-normal">(up to 3)</span>
                   </label>
                   <TagInput
                     value={form.keywords}
                     onChange={v => updateForm('keywords', v)}
-                    placeholder="Type keyword + Enter…"
+                    placeholder="Type keyword, press Enter…"
                   />
                 </div>
 
                 {/* Length */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Length</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Length</label>
                   <div className="grid grid-cols-3 gap-2">
                     {LENGTHS.map(l => (
                       <button
                         key={l.value}
                         onClick={() => updateForm('length', l.value)}
-                        className={`py-2 px-3 rounded-xl border text-xs font-medium transition-colors ${
+                        className={`py-2 rounded-xl border text-xs font-medium transition-colors ${
                           form.length === l.value
                             ? 'bg-[#1B5FA8] text-white border-[#1B5FA8]'
-                            : 'border-gray-200 text-gray-600 hover:border-[#0D9488]'
+                            : 'border-gray-200 text-gray-500 hover:border-[#0D9488]'
                         }`}
                       >
-                        <div className="font-semibold">{l.label}</div>
-                        <div className="opacity-70">{l.desc}</div>
+                        <span className="block font-semibold">{l.label}</span>
+                        <span className="opacity-70">{l.desc}</span>
                       </button>
                     ))}
                   </div>
@@ -221,7 +226,7 @@ export default function BlogGeneratorPage() {
                   <select
                     value={form.tone}
                     onChange={e => updateForm('tone', e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D9488] text-gray-800"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
                   >
                     {TONES.map(t => <option key={t}>{t}</option>)}
                   </select>
@@ -230,14 +235,13 @@ export default function BlogGeneratorPage() {
                 {/* Audience */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Target Audience
-                    <span className="text-gray-400 font-normal ml-1">(optional)</span>
+                    Target Audience <span className="text-gray-400 font-normal">(optional)</span>
                   </label>
                   <input
                     value={form.audience}
                     onChange={e => updateForm('audience', e.target.value)}
                     placeholder="e.g. Small business owners"
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D9488] text-gray-800"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
                   />
                 </div>
 
@@ -247,7 +251,7 @@ export default function BlogGeneratorPage() {
                   <select
                     value={form.cta}
                     onChange={e => updateForm('cta', e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D9488] text-gray-800"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
                   >
                     {CTA_OPTIONS.map(c => <option key={c}>{c}</option>)}
                   </select>
@@ -259,7 +263,7 @@ export default function BlogGeneratorPage() {
                   <select
                     value={form.language}
                     onChange={e => updateForm('language', e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D9488] text-gray-800"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
                   >
                     {LANGUAGES.map(l => <option key={l}>{l}</option>)}
                   </select>
@@ -310,7 +314,7 @@ export default function BlogGeneratorPage() {
               {result && !loading && (
                 <div className="space-y-4">
 
-                  {/* Tabs */}
+                  {/* Content card — with preview wall if guest */}
                   <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                     <div className="flex border-b border-gray-100 px-4 pt-3 gap-1">
                       {[
@@ -331,95 +335,134 @@ export default function BlogGeneratorPage() {
                       ))}
                       <div className="ml-auto pb-2 flex items-center gap-2">
                         <span className="text-xs text-gray-400">{wordCount} words</span>
-                        <button
-                          onClick={copyContent}
-                          className="text-xs border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 text-gray-500 transition-colors"
-                        >
-                          {copied ? '✅ Copied' : '📋 Copy All'}
-                        </button>
+                        {!isPreview && (
+                          <button
+                            onClick={copyContent}
+                            className="text-xs border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 text-gray-500 transition-colors"
+                          >
+                            {copied ? '✅ Copied' : '📋 Copy All'}
+                          </button>
+                        )}
                       </div>
                     </div>
 
-                    <div className="p-6">
-                      {activeTab === 'content' && (
-                        <>
+                    {/* Content tab */}
+                    {activeTab === 'content' && (
+                      <div className="relative">
+                        <div className={`p-6 ${isPreview ? 'max-h-72 overflow-hidden' : ''}`}>
                           {result.titles?.[0] && (
                             <h1 className="text-xl font-bold text-[#1B5FA8] mb-4 pb-3 border-b border-gray-100">
                               {result.titles[0]}
                             </h1>
                           )}
                           <FormattedContent content={result.content} />
-                        </>
-                      )}
+                        </div>
 
-                      {activeTab === 'meta' && (
-                        <div className="space-y-5">
-                          {result.metaTitle && (
-                            <div>
-                              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">SEO Title</p>
-                              <p className="text-sm font-medium text-gray-800 bg-gray-50 rounded-xl px-4 py-3">{result.metaTitle}</p>
-                              <p className={`text-xs mt-1 ${result.metaTitle.length >= 50 && result.metaTitle.length <= 60 ? 'text-[#0D9488]' : 'text-[#C9943A]'}`}>
-                                {result.metaTitle.length} chars · Ideal: 50–60
-                              </p>
-                            </div>
-                          )}
-                          {result.metaDescription && (
-                            <div>
-                              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Meta Description</p>
-                              <p className="text-sm text-gray-700 bg-gray-50 rounded-xl px-4 py-3">{result.metaDescription}</p>
-                              <p className={`text-xs mt-1 ${result.metaDescription.length >= 140 && result.metaDescription.length <= 160 ? 'text-[#0D9488]' : 'text-[#C9943A]'}`}>
-                                {result.metaDescription.length} chars · Ideal: 140–160
-                              </p>
-                            </div>
-                          )}
-                          {result.titles?.[0] && (
-                            <div>
-                              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">H1 Heading</p>
-                              <p className="text-sm font-medium text-gray-800 bg-gray-50 rounded-xl px-4 py-3">{result.titles[0]}</p>
-                            </div>
-                          )}
-
-                          {/* SERP preview */}
-                          <div>
-                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">SERP Preview</p>
-                            <div className="border border-gray-200 rounded-xl p-4 bg-gray-50">
-                              <p className="text-xs text-green-700 mb-1">https://yourwebsite.com/blog/post</p>
-                              <p className="text-blue-700 text-sm font-medium hover:underline cursor-pointer leading-snug mb-1">{result.metaTitle}</p>
-                              <p className="text-gray-600 text-xs leading-relaxed">{result.metaDescription}</p>
+                        {/* ── Guest preview wall ── */}
+                        {isPreview && (
+                          <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center justify-end pb-8"
+                            style={{ background: 'linear-gradient(to bottom, transparent 0%, white 45%)' }}
+                          >
+                            <div className="text-center px-6">
+                              <p className="text-sm font-bold text-gray-800 mb-1">Your blog post is ready</p>
+                              <p className="text-xs text-gray-500 mb-4">Sign up free to read the full post, save your history and get 3 posts/month.</p>
+                              <button
+                                onClick={() => router.push('/auth?mode=signup')}
+                                className="bg-[#1B5FA8] hover:bg-[#0D9488] text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-md"
+                              >
+                                Sign Up Free to Read Full Post →
+                              </button>
                             </div>
                           </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Meta tab — hide for guests */}
+                    {activeTab === 'meta' && (
+                      <div className="p-6">
+                        {isPreview ? (
+                          <div className="text-center py-10">
+                            <p className="text-sm font-semibold text-gray-700 mb-1">Meta tags are ready</p>
+                            <p className="text-xs text-gray-400 mb-4">Sign up free to access your SEO title, meta description and H1.</p>
+                            <button
+                              onClick={() => router.push('/auth?mode=signup')}
+                              className="bg-[#1B5FA8] hover:bg-[#0D9488] text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-colors"
+                            >
+                              Sign Up Free →
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="space-y-5">
+                            {result.metaTitle && (
+                              <div>
+                                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">SEO Title</p>
+                                <p className="text-sm font-medium text-gray-800 bg-gray-50 rounded-xl px-4 py-3">{result.metaTitle}</p>
+                                <p className={`text-xs mt-1 ${result.metaTitle.length >= 50 && result.metaTitle.length <= 60 ? 'text-[#0D9488]' : 'text-[#C9943A]'}`}>
+                                  {result.metaTitle.length} chars · Ideal: 50–60
+                                </p>
+                              </div>
+                            )}
+                            {result.metaDescription && (
+                              <div>
+                                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Meta Description</p>
+                                <p className="text-sm text-gray-700 bg-gray-50 rounded-xl px-4 py-3">{result.metaDescription}</p>
+                                <p className={`text-xs mt-1 ${result.metaDescription.length >= 140 && result.metaDescription.length <= 160 ? 'text-[#0D9488]' : 'text-[#C9943A]'}`}>
+                                  {result.metaDescription.length} chars · Ideal: 140–160
+                                </p>
+                              </div>
+                            )}
+                            {result.titles?.[0] && (
+                              <div>
+                                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">H1 Heading</p>
+                                <p className="text-sm font-medium text-gray-800 bg-gray-50 rounded-xl px-4 py-3">{result.titles[0]}</p>
+                              </div>
+                            )}
+                            {/* SERP preview */}
+                            <div>
+                              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">SERP Preview</p>
+                              <div className="border border-gray-200 rounded-xl p-4 bg-gray-50">
+                                <p className="text-xs text-green-700 mb-1">https://yourwebsite.com/blog/post</p>
+                                <p className="text-blue-700 text-sm font-medium hover:underline cursor-pointer leading-snug mb-1">{result.metaTitle}</p>
+                                <p className="text-gray-600 text-xs leading-relaxed">{result.metaDescription}</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* CTAs — only show for logged-in users */}
+                  {!isPreview && (
+                    <>
+                      <div className="bg-[#0D9488]/5 border border-[#0D9488]/20 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div>
+                          <p className="text-sm font-semibold text-[#0D9488]">Check how well this content is optimized</p>
+                          <p className="text-xs text-gray-500 mt-0.5">Paste it into the SEO Score Checker for a full breakdown.</p>
                         </div>
-                      )}
-                    </div>
-                  </div>
+                        <Link
+                          href="/tools/seo-score-checker"
+                          className="shrink-0 bg-[#0D9488] hover:bg-[#0D9488]/90 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors"
+                        >
+                          Check SEO Score →
+                        </Link>
+                      </div>
 
-                  {/* Check SEO Score CTA */}
-                  <div className="bg-[#0D9488]/5 border border-[#0D9488]/20 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-semibold text-[#0D9488]">Check how well this content is optimized</p>
-                      <p className="text-xs text-gray-500 mt-0.5">Paste it into the SEO Score Checker for a full breakdown.</p>
-                    </div>
-                    <Link
-                      href="/tools/seo-score-checker"
-                      className="shrink-0 bg-[#0D9488] hover:bg-[#0D9488]/90 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors"
-                    >
-                      Check SEO Score →
-                    </Link>
-                  </div>
-
-                  {/* Dashboard CTA */}
-                  <div className="bg-gradient-to-r from-[#1B5FA8] to-[#0D9488] rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div>
-                      <p className="text-white font-bold">Save, manage and optimize all your content</p>
-                      <p className="text-white/80 text-sm mt-0.5">Sign up free to access your full content dashboard.</p>
-                    </div>
-                    <Link
-                      href="/auth?mode=signup"
-                      className="shrink-0 bg-white text-[#1B5FA8] hover:bg-gray-50 px-5 py-2.5 rounded-xl text-sm font-bold transition-colors"
-                    >
-                      Get Started Free →
-                    </Link>
-                  </div>
+                      <div className="bg-gradient-to-r from-[#1B5FA8] to-[#0D9488] rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div>
+                          <p className="text-white font-bold">Save, manage and optimize all your content</p>
+                          <p className="text-white/80 text-sm mt-0.5">Access your full content dashboard.</p>
+                        </div>
+                        <Link
+                          href="/dashboard"
+                          className="shrink-0 bg-white text-[#1B5FA8] hover:bg-gray-50 px-5 py-2.5 rounded-xl text-sm font-bold transition-colors"
+                        >
+                          Go to Dashboard →
+                        </Link>
+                      </div>
+                    </>
+                  )}
 
                 </div>
               )}

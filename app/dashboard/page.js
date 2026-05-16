@@ -143,6 +143,7 @@ function DashboardInner() {
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [result, setResult] = useState(null)
+  const [isPreview, setIsPreview] = useState(false)
   const [generateError, setGenerateError] = useState('')
   const [cookieAccepted, setCookieAccepted] = useState(false)
   const [showCookieBanner, setShowCookieBanner] = useState(false)
@@ -261,19 +262,18 @@ function DashboardInner() {
   }
 
   async function checkPostLimit() {
-    if (user) {
-      const { data: fp } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-      if (fp) setProfile(fp)
-      const limit = PLAN_LIMITS[fp?.plan || 'free'] || 3
-      if (limit === Infinity) return true
-      const now = new Date()
-      if (fp?.reset_date && new Date(fp.reset_date) < now) {
-        await supabase.from('profiles').update({ posts_count: 0, reset_date: new Date(now.setMonth(now.getMonth() + 1)) }).eq('id', user.id)
-        return true
-      }
-      return (fp?.posts_count || 0) < limit
+    // Guests always allowed — API returns preview content, no DB tracking needed
+    if (!user) return true
+    const { data: fp } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+    if (fp) setProfile(fp)
+    const limit = PLAN_LIMITS[fp?.plan || 'free'] || 3
+    if (limit === Infinity) return true
+    const now = new Date()
+    if (fp?.reset_date && new Date(fp.reset_date) < now) {
+      await supabase.from('profiles').update({ posts_count: 0, reset_date: new Date(now.setMonth(now.getMonth() + 1)) }).eq('id', user.id)
+      return true
     }
-    return parseInt(localStorage.getItem('rankivo_guest_posts') || '0') < 1
+    return (fp?.posts_count || 0) < limit
   }
 
   async function incrementPostCount() {
@@ -281,9 +281,8 @@ function DashboardInner() {
       const newCount = (profile.posts_count || 0) + 1
       await supabase.from('profiles').update({ posts_count: newCount }).eq('id', user.id)
       setProfile(prev => ({ ...prev, posts_count: newCount }))
-    } else {
-      localStorage.setItem('rankivo_guest_posts', '1')
     }
+    // Guests: no tracking — API already handles preview truncation
   }
 
   async function saveToHistory(contentObj) {
@@ -312,27 +311,29 @@ function DashboardInner() {
       setShowLimitModal(true)
       return
     }
-    setGenerating(true); setResult(null)
+    setGenerating(true); setResult(null); setIsPreview(false)
     try {
       const res = await fetch('/api/generate', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...form, platform: form.platform === 'Twitter/X' ? 'Twitter' : form.platform, keywords: form.keywords.slice(0, getKeywordLimit()).filter(k => k.trim()), wordCount: LENGTH_INFO[form.length].actual }),
       })
       const data = await res.json()
-console.log('DEBUG:', JSON.stringify(data?.content?.content?.substring(0, 200)))
       if (data.content) {
-console.log('RAW CONTENT:', data.content.content)
         setResult(data.content)
-        await incrementPostCount()
-        await saveToHistory(data.content)
-        await fetchHistory()
+        setIsPreview(data.isPreview || false)
+        // Only track usage and save history for logged-in users
+        if (!data.isGuest) {
+          await incrementPostCount()
+          await saveToHistory(data.content)
+          await fetchHistory()
+        }
       } else {
         setGenerateError('Generation failed. Please try again.')
       }
-   } catch (err) {
-  console.log('CATCH ERROR:', err)
-  setGenerateError('Generation failed. Please try again.')
-}
+    } catch (err) {
+      console.log('CATCH ERROR:', err)
+      setGenerateError('Generation failed. Please try again.')
+    }
     setGenerating(false)
   }
 
@@ -637,9 +638,9 @@ console.log('RAW CONTENT:', data.content.content)
                     {result.titles.map((t, i) => <p key={i} className="text-gray-800 mb-1"><span className="text-[#0D9488] font-bold text-xs mr-2">#{i+1}</span>{t}</p>)}
                   </div>
                 )}
-                <div className="bg-white border border-gray-200 rounded-xl p-4">
+                <div className="bg-white border border-gray-200 rounded-xl p-4 relative overflow-hidden">
                   <p className="text-xs text-[#C9943A] mb-2 font-medium uppercase">Content</p>
-                  <div className="space-y-3">
+                  <div className={`space-y-3 ${isPreview ? 'max-h-48 overflow-hidden' : ''}`}>
   {form.platform === 'Blog'
     ? result.content.split(/\n+/).map((line, i) => {
         if (line.startsWith('## ')) return <h2 key={i} className="text-xl font-bold text-[#1B5FA8] mt-6 mb-1">{line.slice(3)}</h2>
@@ -651,8 +652,24 @@ console.log('RAW CONTENT:', data.content.content)
     : <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">{result.content}</p>
   }
 </div>
+                  {isPreview && (
+                    <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center justify-end pb-5"
+                      style={{ background: 'linear-gradient(to bottom, transparent 0%, white 50%)' }}
+                    >
+                      <p className="text-sm font-bold text-gray-800 mb-1">Your content is ready</p>
+                      <p className="text-xs text-gray-500 mb-3">Sign up free to read the full content and save your history.</p>
+                      <button
+                        onClick={() => router.push('/auth?mode=signup')}
+                        className="bg-[#1B5FA8] hover:bg-[#0D9488] text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-colors"
+                      >
+                        Sign Up Free to Read Full Content →
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <button onClick={() => navigator.clipboard.writeText(result.content)} className="w-full bg-gray-50 hover:bg-gray-100 text-[#0D9488] py-3 rounded-lg font-medium border border-gray-200">Copy Content</button>
+                {!isPreview && (
+                  <button onClick={() => navigator.clipboard.writeText(result.content)} className="w-full bg-gray-50 hover:bg-gray-100 text-[#0D9488] py-3 rounded-lg font-medium border border-gray-200">Copy Content</button>
+                )}
               </div>
             )}
           </div>
