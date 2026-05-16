@@ -321,7 +321,7 @@ async function callGroq(prompt) {
     messages: [{ role: 'user', content: prompt }],
     model: 'meta-llama/llama-4-scout-17b-16e-instruct',
     temperature: 0.7,
-    max_tokens: 512,
+    max_tokens: 2000,
   })
   return completion.choices[0]?.message?.content || ''
 }
