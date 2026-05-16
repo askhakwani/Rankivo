@@ -1,6 +1,5 @@
 import Groq from 'groq-sdk'
 import { checkGenerationPolicy, incrementPostCount } from '../../../lib/usagePolicy'
-import { cookies } from 'next/headers'
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 
@@ -17,6 +16,21 @@ function isValid(content, wordCount) {
   const hasLineBreaks = content.includes('\n')
   const wordMatch = Math.abs(words - wordCount) <= 40
   return wordMatch && hasHeadings && hasBullets && hasLineBreaks
+}
+
+// ── Guest preview: return first ~55% of content ───────────────────────────────
+// For blogs: splits on ## sections and returns the first half.
+// For short-form: splits on lines and returns the first half.
+function getPreviewContent(content) {
+  const sections = content.split(/(?=\n## )/)
+  if (sections.length >= 3) {
+    const cutoff = Math.ceil(sections.length * 0.55)
+    return sections.slice(0, cutoff).join('').trim()
+  }
+  // Fallback: line-based for short-form content
+  const lines = content.split('\n').filter(l => l.trim() !== '')
+  const cutoff = Math.ceil(lines.length * 0.55)
+  return lines.slice(0, cutoff).join('\n').trim()
 }
 
 function buildBlogPrompt(topic, tone, language, keywords, audience, cta, wordCount) {
@@ -57,7 +71,6 @@ Write a 3-4 sentence paragraph explaining the process or mechanism clearly.
 ## Conclusion
 Write a 2-3 sentence closing paragraph summarizing the main message.`
   } else {
-    // 800-word structure — each section must be substantive
     structure = `
 ## Introduction
 Write a strong 4-5 sentence opening paragraph that hooks the reader, introduces the topic, and previews what the article will cover.
@@ -289,7 +302,7 @@ MANDATORY RULES — VIOLATIONS WILL BE REJECTED:
 OUTPUT ONLY the pin description. No explanations.`
   }
 
-  // Fallback for any unlisted platform
+  // Fallback
   const structure = wordCount <= 200
     ? `Write a short opening paragraph.\n\n## Key Points\n- Point 1\n- Point 2\n- Point 3\n\nWrite a closing sentence.`
     : `Write an opening paragraph.\n\n## Main Section\nWrite a paragraph here.\n\n## Key Benefits\n- Benefit 1\n- Benefit 2\n- Benefit 3\n\n## Conclusion\nWrite a closing paragraph.`
@@ -347,22 +360,6 @@ async function callGroq(prompt, isBlog) {
 export async function POST(request) {
   try {
 
-    // ── STEP 1: Check usage policy ──────────────────────────────────────────
-    const cookieStore = cookies()
-    const policy = await checkGenerationPolicy(cookieStore)
-
-    if (!policy.allowed) {
-      return Response.json({
-        error:      'LIMIT_REACHED',
-        message:    policy.message,
-        upgrade:    true,
-        postsUsed:  policy.postsUsed,
-        postsLimit: policy.postsLimit,
-        plan:       policy.plan,
-      }, { status: 403 })
-    }
-    // ── END policy check ────────────────────────────────────────────────────
-
     const { platform, topic, keywords, tone, audience, cta, length, language, wordCount: wc } = await request.json()
 
     console.log('Platform:', platform)
@@ -380,12 +377,26 @@ export async function POST(request) {
       prompt = buildOtherPrompt(platform, topic, tone, language, keywords, audience, cta, wordCount)
     }
 
-    console.log('Prompt used:', prompt?.slice(0, 300))
-
     if (!prompt) {
       return Response.json({ error: 'Unsupported platform: ' + platform }, { status: 400 })
     }
 
+    // ── STEP 1: Auth check — limits only apply to logged-in users ─────────────
+    const policy = await checkGenerationPolicy()
+    const isGuest = policy.isGuest
+
+    if (!isGuest && !policy.allowed) {
+      return Response.json({
+        error:      'LIMIT_REACHED',
+        message:    policy.message,
+        upgrade:    true,
+        postsUsed:  policy.postsUsed,
+        postsLimit: policy.postsLimit,
+        plan:       policy.plan,
+      }, { status: 403 })
+    }
+
+    // ── STEP 2: Generate full content (always) ────────────────────────────────
     let rawText = ''
     let metaTitle = '', metaDescription = '', h1 = ''
     let content = ''
@@ -401,7 +412,7 @@ export async function POST(request) {
         if (!content.includes('## ')) issues.push('MISSING ## headings — every section MUST start with ## on its own line')
         if (!content.includes('\n- ')) issues.push('MISSING bullet points — use "- " at the start of each bullet on its own line')
         if (!content.includes('\n')) issues.push('MISSING line breaks — add blank lines between every section')
-        if (Math.abs(v - wordCount) > 40) issues.push(`WRONG word count — got ${v} words, need EXACTLY ${wordCount} words. Add more detail to every section until you reach ${wordCount} words.`)
+        if (Math.abs(v - wordCount) > 40) issues.push(`WRONG word count — got ${v} words, need EXACTLY ${wordCount} words. Expand every section with more detail.`)
 
         const retryPrompt = `Your previous response had these problems:\n${issues.join('\n')}\n\nFix ALL problems. Expand every section with more detail. Return the COMPLETE corrected content only — do not truncate.\n\nPrevious content:\n${content}`
         rawText = await callGroq(retryPrompt, isBlog)
@@ -421,12 +432,23 @@ export async function POST(request) {
       if (!isBlog) break
     }
 
-    // ── STEP 2: Increment post count after successful generation ────────────
-    await incrementPostCount(policy.user?.id, policy.isGuest, cookieStore)
-    // ── END increment ───────────────────────────────────────────────────────
+    // ── STEP 3: Track usage — logged-in users only ────────────────────────────
+    if (!isGuest) {
+      await incrementPostCount(policy.user?.id)
+    }
+
+    // ── STEP 4: Return preview for guests, full content for logged-in ─────────
+    const returnContent = isGuest ? getPreviewContent(content) : content
 
     return Response.json({
-      content: { metaTitle, metaDescription, titles: h1 ? [h1] : [], content }
+      isGuest,
+      isPreview: isGuest,
+      content: {
+        metaTitle,
+        metaDescription,
+        titles: h1 ? [h1] : [],
+        content: returnContent,
+      }
     })
 
   } catch (error) {
