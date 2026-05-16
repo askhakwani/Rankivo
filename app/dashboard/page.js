@@ -640,7 +640,7 @@ function DashboardInner() {
                 )}
                 <div className="bg-white border border-gray-200 rounded-xl p-4 relative overflow-hidden">
                   <p className="text-xs text-[#C9943A] mb-2 font-medium uppercase">Content</p>
-                  <div className={`space-y-3 ${isPreview ? 'max-h-48 overflow-hidden' : ''}`}>
+                  <div className={`space-y-3 ${isPreview ? 'max-h-64 overflow-hidden' : ''}`}>
   {form.platform === 'Blog'
     ? result.content.split(/\n+/).map((line, i) => {
         if (line.startsWith('## ')) return <h2 key={i} className="text-xl font-bold text-[#1B5FA8] mt-6 mb-1">{line.slice(3)}</h2>
@@ -653,18 +653,30 @@ function DashboardInner() {
   }
 </div>
                   {isPreview && (
-                    <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center justify-end pb-5"
-                      style={{ background: 'linear-gradient(to bottom, transparent 0%, white 50%)' }}
-                    >
-                      <p className="text-sm font-bold text-gray-800 mb-1">Your content is ready</p>
-                      <p className="text-xs text-gray-500 mb-3">Sign up free to read the full content and save your history.</p>
-                      <button
-                        onClick={() => router.push('/auth?mode=signup')}
-                        className="bg-[#1B5FA8] hover:bg-[#0D9488] text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-colors"
+                    <>
+                      {/* Blur layer over last portion */}
+                      <div className="absolute bottom-16 left-0 right-0 h-24"
+                        style={{ backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', background: 'linear-gradient(to bottom, transparent, rgba(255,255,255,0.6))' }}
+                      />
+                      {/* CTA wall */}
+                      <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center justify-end pb-5 px-4"
+                        style={{ background: 'linear-gradient(to bottom, transparent 0%, white 30%)' }}
                       >
-                        Sign Up Free to Read Full Content →
-                      </button>
-                    </div>
+                        <p className="text-sm font-bold text-gray-800 mb-0.5">Preview Generated – Unlock Full Article</p>
+                        <p className="text-xs text-gray-500 mb-3">Create a free account to access the complete content.</p>
+                        <button
+                          onClick={() => router.push('/auth?mode=signup')}
+                          className="bg-[#1B5FA8] hover:bg-[#0D9488] text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-md mb-3"
+                        >
+                          Unlock Full Article (Free) →
+                        </button>
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <span>✅ Full article access</span>
+                          <span>✅ Save &amp; edit later</span>
+                          <span>✅ 3 free generations/month</span>
+                        </div>
+                      </div>
+                    </>
                   )}
                 </div>
                 {!isPreview && (

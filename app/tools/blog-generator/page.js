@@ -349,7 +349,7 @@ export default function BlogGeneratorPage() {
                     {/* Content tab */}
                     {activeTab === 'content' && (
                       <div className="relative">
-                        <div className={`p-6 ${isPreview ? 'max-h-72 overflow-hidden' : ''}`}>
+                        <div className={`p-6 ${isPreview ? 'max-h-96 overflow-hidden' : ''}`}>
                           {result.titles?.[0] && (
                             <h1 className="text-xl font-bold text-[#1B5FA8] mb-4 pb-3 border-b border-gray-100">
                               {result.titles[0]}
@@ -359,22 +359,30 @@ export default function BlogGeneratorPage() {
                         </div>
 
                         {/* ── Guest preview wall ── */}
-                        {isPreview && (
-                          <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center justify-end pb-8"
-                            style={{ background: 'linear-gradient(to bottom, transparent 0%, white 45%)' }}
-                          >
-                            <div className="text-center px-6">
-                              <p className="text-sm font-bold text-gray-800 mb-1">Your blog post is ready</p>
-                              <p className="text-xs text-gray-500 mb-4">Sign up free to read the full post, save your history and get 3 posts/month.</p>
-                              <button
-                                onClick={() => router.push('/auth?mode=signup')}
-                                className="bg-[#1B5FA8] hover:bg-[#0D9488] text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-md"
-                              >
-                                Sign Up Free to Read Full Post →
-                              </button>
-                            </div>
-                          </div>
-                        )}
+                   {isPreview && (
+  <>
+    <div className="absolute bottom-20 left-0 right-0 h-28"
+      style={{ backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', background: 'linear-gradient(to bottom, transparent, rgba(255,255,255,0.6))' }}
+    />
+    <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center justify-end pb-6 px-6"
+      style={{ background: 'linear-gradient(to bottom, transparent 0%, white 25%)' }}
+    >
+      <p className="text-sm font-bold text-gray-800 mb-0.5">Preview Generated – Unlock Full Article</p>
+      <p className="text-xs text-gray-500 mb-4">Create a free account to read the complete blog post.</p>
+      <button
+        onClick={() => router.push('/auth?mode=signup')}
+        className="bg-[#1B5FA8] hover:bg-[#0D9488] text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-md mb-3"
+      >
+        Unlock Full Article (Free) →
+      </button>
+      <div className="flex items-center gap-4 text-xs text-gray-500">
+        <span>✅ Full article access</span>
+        <span>✅ Save &amp; edit later</span>
+        <span>✅ 3 free generations/month</span>
+      </div>
+    </div>
+  </>
+)}
                       </div>
                     )}
 
@@ -383,14 +391,20 @@ export default function BlogGeneratorPage() {
                       <div className="p-6">
                         {isPreview ? (
                           <div className="text-center py-10">
-                            <p className="text-sm font-semibold text-gray-700 mb-1">Meta tags are ready</p>
-                            <p className="text-xs text-gray-400 mb-4">Sign up free to access your SEO title, meta description and H1.</p>
+                            <div className="text-3xl mb-3">🔒</div>
+                            <p className="text-sm font-bold text-gray-800 mb-1">Preview Generated – Unlock Full Article</p>
+                            <p className="text-xs text-gray-500 mb-4">Your SEO title, meta description and H1 are ready — sign up free to access them.</p>
                             <button
                               onClick={() => router.push('/auth?mode=signup')}
-                              className="bg-[#1B5FA8] hover:bg-[#0D9488] text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-colors"
+                              className="bg-[#1B5FA8] hover:bg-[#0D9488] text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-md mb-3"
                             >
-                              Sign Up Free →
+                              Unlock Full Article (Free) →
                             </button>
+                            <div className="flex items-center justify-center gap-4 text-xs text-gray-500">
+                              <span>✅ Full article access</span>
+                              <span>✅ Save &amp; edit later</span>
+                              <span>✅ 3 free generations/month</span>
+                            </div>
                           </div>
                         ) : (
                           <div className="space-y-5">
