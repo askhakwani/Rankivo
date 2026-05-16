@@ -331,7 +331,33 @@ function parseBlogMeta(raw) {
     else if (lines[i].startsWith('H1:')) h1 = lines[i].replace('H1:', '').trim()
     else if (lines[i].trim() === '---') { contentStart = i + 1; break }
   }
-  const content = lines.slice(contentStart).join('\n').trim()
+  // If no --- was found, extract meta from all lines
+  if (contentStart === 0) {
+    for (const line of lines) {
+      if (!metaTitle && line.startsWith('META_TITLE:')) metaTitle = line.replace('META_TITLE:', '').trim()
+      if (!metaDescription && (line.startsWith('META_DESC:') || line.startsWith('META_DESCRIPTION:'))) {
+        metaDescription = line.replace(/^META_DESC(?:RIPTION)?:/, '').trim()
+      }
+      if (!h1 && line.startsWith('H1:')) h1 = line.replace('H1:', '').trim()
+    }
+  }
+
+  // Strip leaked META/H1/--- lines from content body
+  const content = lines
+    .slice(contentStart)
+    .filter(line => {
+      const t = line.trim()
+      return (
+        !t.startsWith('META_TITLE:') &&
+        !t.startsWith('META_DESC:') &&
+        !t.startsWith('META_DESCRIPTION:') &&
+        !t.startsWith('H1:') &&
+        t !== '---'
+      )
+    })
+    .join('\n')
+    .trim()
+
   return { metaTitle, metaDescription, h1, content }
 }
 
