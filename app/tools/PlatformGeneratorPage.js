@@ -1,8 +1,8 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Navbar from '../../../components/Navbar'
-import Footer from '../../../components/Footer'
+import Navbar from '../../components/Navbar'
+import Footer from '../../components/Footer'
 
 const TONES = ['Professional', 'Casual', 'Friendly', 'Authoritative', 'Conversational', 'Humorous']
 const LANGUAGES = ['English', 'Spanish', 'French', 'German', 'Portuguese', 'Arabic', 'Urdu']
