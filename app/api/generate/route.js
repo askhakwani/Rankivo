@@ -406,7 +406,7 @@ export async function POST(request) {
       const limit = LIMITS[plan] ?? 3
       const used  = profile?.posts_count || 0
       const currentMonth = new Date().toISOString().slice(0, 7)
-      if (profile?.reset_date !== currentMonth) {
+      if (!profile?.reset_date || profile.reset_date.slice(0, 7) !== currentMonth) {
         await supabase.from('profiles').update({ posts_count: 0, reset_date: currentMonth }).eq('id', serverUser.id)
       } else if (limit !== Infinity && used >= limit) {
         return Response.json({
