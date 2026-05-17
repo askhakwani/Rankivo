@@ -47,6 +47,25 @@ function TagInput({ value, onChange, placeholder }) {
   )
 }
 
+// Renders formatted content for single-output platforms (Email, YouTube)
+function FormattedContent({ text }) {
+  if (!text) return null
+  return (
+    <div className="space-y-2">
+      {text.split('\n').map((line, i) => {
+        // Strip markdown bold/italic
+        const clean = line.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1')
+        if (clean.trim() === '') return <div key={i} className="h-2" />
+        // Section headers (INTRO, OUTRO, HOOK etc)
+        if (/^[A-Z][A-Z\s]+:?$/.test(clean.trim())) {
+          return <p key={i} className="text-xs font-bold text-[#0D9488] uppercase tracking-wider mt-3">{clean.trim().replace(/:$/, '')}</p>
+        }
+        return <p key={i} className="text-sm text-gray-700 leading-relaxed">{clean}</p>
+      })}
+    </div>
+  )
+}
+
 function VariationCard({ index, text, isBlurred, isGuest, onCopy, copied, onUnlock, total }) {
   return (
     <div className={`relative border rounded-2xl overflow-hidden transition-all ${isBlurred ? 'border-gray-100 bg-gray-50/50' : 'border-gray-200 bg-white'}`}>
@@ -375,8 +394,8 @@ export default function PlatformGeneratorPage({ config }) {
 
                   {/* Preview for guests */}
                   <div className="relative">
-                    <div className={`p-6 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed ${isPreview ? 'max-h-48 overflow-hidden' : ''}`}>
-                      {singleResult}
+                    <div className={`p-6 ${isPreview ? 'max-h-64 overflow-hidden' : ''}`}>
+                      <FormattedContent text={singleResult} />
                     </div>
 
                     {isPreview && (
