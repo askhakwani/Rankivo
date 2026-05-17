@@ -1,56 +1,23 @@
-'use client' 
+'use client'
 import { useState, useEffect, Suspense } from 'react'
 import { createClient } from '../../lib/supabase'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Sidebar from './sidebar'
 
 const ADMIN_EMAIL = 'askhakwani@gmail.com'
+const PLAN_LIMITS = { free: 3, starter: 50, pro: 200, agency: Infinity }
 
-const PLATFORM_CONFIG = {
-  Instagram:  { lengths: ['Short'], meta: false },
-  TikTok:     { lengths: ['Short'], meta: false },
-  LinkedIn:   { lengths: ['Short', 'Medium'], meta: false },
-  Blog:       { lengths: ['Short', 'Medium', 'Long'], meta: true },
-  Email:      { lengths: ['Short', 'Medium'], meta: false },
-  Ads:        { lengths: ['Short'], meta: false },
-  YouTube:    { lengths: ['Short', 'Medium', 'Long'], meta: false },
-  'Twitter/X':{ lengths: ['Short'], meta: false },
-  Pinterest:  { lengths: ['Short'], meta: false },
-}
-
-const LENGTH_INFO = {
-  Short:  { label: 'Short',  words: '~150 words', actual: 150 },
-  Medium: { label: 'Medium', words: '~400 words', actual: 400 },
-  Long:   { label: 'Long',   words: '~800 words', actual: 800 },
-}
-
-const PLAN_LIMITS = { free: 3, pro: 50, premium: 300, agency: Infinity }
-
-const TEMPLATES = [
-  { label: 'Product Launch', platform: 'Instagram', topic: 'New product launch announcement', tone: 'Persuasive', cta: 'Buy Now' },
-  { label: 'Blog Post Intro', platform: 'Blog', topic: 'How to grow your business with AI tools', tone: 'Informative', cta: 'Learn More' },
-  { label: 'LinkedIn Thought Leadership', platform: 'LinkedIn', topic: 'The future of work and AI automation', tone: 'Professional', cta: 'None' },
-  { label: 'YouTube Script', platform: 'YouTube', topic: 'Top 5 productivity tips for entrepreneurs', tone: 'Casual', cta: 'Sign Up' },
-  { label: 'Email Newsletter', platform: 'Email', topic: 'Monthly updates and tips for our subscribers', tone: 'Casual', cta: 'Learn More' },
-  { label: 'Ad Copy', platform: 'Ads', topic: 'Limited time offer for new customers', tone: 'Persuasive', cta: 'Buy Now' },
+// ── Create New Content tool list ──────────────────────────────────────────────
+const CREATE_TOOLS = [
+  { label: 'Blog Post',         href: '/tools/blog-generator',              icon: '📝', color: 'bg-[#1B5FA8]/10 text-[#1B5FA8] border-[#1B5FA8]/20' },
+  { label: 'Instagram Caption', href: '/tools/instagram-caption-generator', icon: '📸', color: 'bg-pink-50 text-pink-600 border-pink-200' },
+  { label: 'TikTok Caption',    href: '/tools/tiktok-caption-generator',    icon: '🎵', color: 'bg-gray-100 text-gray-800 border-gray-300' },
+  { label: 'LinkedIn Post',     href: '/tools/linkedin-post-generator',     icon: '💼', color: 'bg-blue-50 text-blue-700 border-blue-200' },
+  { label: 'X Post',            href: '/tools/x-post-generator',            icon: '✖️',  color: 'bg-gray-100 text-gray-900 border-gray-300' },
+  { label: 'Email',             href: '/tools/email-generator',             icon: '✉️',  color: 'bg-[#0D9488]/10 text-[#0D9488] border-[#0D9488]/20' },
+  { label: 'YouTube Script',    href: '/tools/youtube-script-generator',    icon: '🎬', color: 'bg-red-50 text-red-600 border-red-200' },
+  { label: 'Ad Copy',           href: '/tools/ad-copy-generator',           icon: '📣', color: 'bg-[#C9943A]/10 text-[#C9943A] border-[#C9943A]/20' },
 ]
-
-function GuestBanner({ onSignup }) {
-  return (
-    <div className="bg-[#1B5FA8]/5 border border-[#1B5FA8]/20 rounded-xl px-5 py-4 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-      <div className="flex items-center gap-3">
-        <span className="text-xl shrink-0">👋</span>
-        <div>
-          <p className="text-sm font-semibold text-[#1B5FA8]">You're using RANKIVO as a guest</p>
-          <p className="text-xs text-gray-500 mt-0.5">Sign up free to save your work, access content history and get 3 posts/month.</p>
-        </div>
-      </div>
-      <button onClick={onSignup} className="shrink-0 bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap">
-        Sign Up Free
-      </button>
-    </div>
-  )
-}
 
 function UpgradeBanner({ profile, onUpgrade }) {
   const plan = profile?.plan || 'free'
@@ -69,7 +36,7 @@ function UpgradeBanner({ profile, onUpgrade }) {
             {pct >= 100 ? 'Monthly limit reached' : `Only ${remaining} post${remaining !== 1 ? 's' : ''} remaining`}
           </p>
           <p className={`text-xs mt-0.5 ${pct >= 100 ? 'text-[#C9943A]/80' : 'text-yellow-700'}`}>
-            {pct >= 100 ? 'Upgrade your plan to keep generating.' : `You've used ${used} of ${limit} posts.`}
+            {pct >= 100 ? 'Upgrade your plan to keep generating.' : `You've used ${used} of ${limit} posts this month.`}
           </p>
         </div>
       </div>
@@ -80,17 +47,15 @@ function UpgradeBanner({ profile, onUpgrade }) {
   )
 }
 
-function LimitModal({ isGuest, onUpgrade, onClose }) {
+function LimitModal({ onUpgrade, onClose }) {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-7 text-center">
-        <div className="text-5xl mb-4">{isGuest ? '👋' : '🚀'}</div>
-        <h3 className="text-xl font-bold text-gray-900 mb-2">{isGuest ? 'Create a free account' : "You've reached your limit"}</h3>
-        <p className="text-sm text-gray-500 mb-6">
-          {isGuest ? 'Sign up free to get 3 posts per month and save your content history.' : 'You have used all your posts for this month. Upgrade when payments launch.'}
-        </p>
+        <div className="text-5xl mb-4">🚀</div>
+        <h3 className="text-xl font-bold text-gray-900 mb-2">You've reached your limit</h3>
+        <p className="text-sm text-gray-500 mb-6">You have used all your posts for this month. Upgrade to keep generating.</p>
         <div className="space-y-3">
-          <button onClick={onUpgrade} className="w-full bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white py-3 rounded-xl text-sm font-bold">{isGuest ? 'Sign Up Free' : 'View Upgrade Plans'}</button>
+          <button onClick={onUpgrade} className="w-full bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white py-3 rounded-xl text-sm font-bold">View Upgrade Plans</button>
           <button onClick={onClose} className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 py-2.5 rounded-xl text-sm font-medium">Maybe Later</button>
         </div>
       </div>
@@ -98,89 +63,38 @@ function LimitModal({ isGuest, onUpgrade, onClose }) {
   )
 }
 
-function OnboardingBanner({ onDismiss }) {
-  const [step, setStep] = useState(0)
-  const steps = [
-    { title: 'Welcome to RANKIVO! 🎉', desc: 'You have 3 free posts this month. Let\'s generate your first piece of content.', action: 'Next' },
-    { title: 'Choose a Platform', desc: 'Select from Instagram, TikTok, LinkedIn, Blog, YouTube and more. Each platform is optimized differently.', action: 'Next' },
-    { title: 'Add Your Topic & Keywords', desc: 'Enter your topic and up to 3 SEO keywords. The AI will weave them naturally into your content.', action: 'Next' },
-    { title: 'Generate & Copy', desc: 'Hit Generate and your SEO-optimized content is ready in seconds. Copy it and publish!', action: "Let's Go!" },
-  ]
-  const current = steps[step]
-  return (
-    <div className="bg-gradient-to-br from-[#1B5FA8]/5 to-[#0D9488]/5 border border-[#1B5FA8]/20 rounded-xl p-5 mb-6">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="flex gap-1">
-              {steps.map((_, i) => (
-                <div key={i} className={`w-1.5 h-1.5 rounded-full transition-colors ${i === step ? 'bg-[#1B5FA8]' : i < step ? 'bg-[#0D9488]' : 'bg-gray-300'}`} />
-              ))}
-            </div>
-            <span className="text-xs text-gray-400">{step + 1}/{steps.length}</span>
-          </div>
-          <p className="font-semibold text-gray-900 text-sm">{current.title}</p>
-          <p className="text-xs text-gray-500 mt-1">{current.desc}</p>
-        </div>
-        <button onClick={onDismiss} className="text-gray-300 hover:text-gray-500 text-lg shrink-0">×</button>
-      </div>
-      <div className="flex gap-2 mt-3">
-        <button
-          onClick={() => step < steps.length - 1 ? setStep(step + 1) : onDismiss()}
-          className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors"
-        >
-          {current.action}
-        </button>
-        <button onClick={onDismiss} className="text-gray-400 text-xs hover:text-gray-600 px-2">Skip</button>
-      </div>
-    </div>
-  )
-}
-
 function DashboardInner() {
-  const [user, setUser] = useState(null)
-  const [profile, setProfile] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [generating, setGenerating] = useState(false)
-  const [result, setResult] = useState(null)
-  const [isPreview, setIsPreview] = useState(false)
-  const [generateError, setGenerateError] = useState('')
-  const [cookieAccepted, setCookieAccepted] = useState(false)
-  const [showCookieBanner, setShowCookieBanner] = useState(false)
+  const [user, setUser]           = useState(null)
+  const [profile, setProfile]     = useState(null)
+  const [loading, setLoading]     = useState(true)
   const [activeTab, setActiveTab] = useState('dashboard')
-  const [history, setHistory] = useState([])
+  const [history, setHistory]     = useState([])
   const [historyLoading, setHistoryLoading] = useState(true)
-  const [expandedId, setExpandedId] = useState(null)
+  const [expandedId, setExpandedId]         = useState(null)
   const [showLimitModal, setShowLimitModal] = useState(false)
-  const [isGuestLimit, setIsGuestLimit] = useState(false)
-  const [showOnboarding, setShowOnboarding] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen]       = useState(false)
+  const [showActivated, setShowActivated]   = useState(false)
+  const [showCookieBanner, setShowCookieBanner] = useState(false)
 
   // Settings
-  const [settingsTab, setSettingsTab] = useState('profile')
-  const [profileForm, setProfileForm] = useState({ full_name: '', country: '', city: '', state: '', zip: '', phone: '' })
+  const [settingsTab, setSettingsTab]   = useState('profile')
+  const [profileForm, setProfileForm]   = useState({ full_name: '', country: '', city: '', state: '', zip: '', phone: '' })
   const [profileSaving, setProfileSaving] = useState(false)
-  const [profileMsg, setProfileMsg] = useState({ text: '', ok: true })
-  const [passwordForm, setPasswordForm] = useState({ newPass: '', confirm: '' })
+  const [profileMsg, setProfileMsg]       = useState({ text: '', ok: true })
+  const [passwordForm, setPasswordForm]   = useState({ newPass: '', confirm: '' })
   const [passwordSaving, setPasswordSaving] = useState(false)
-  const [passwordMsg, setPasswordMsg] = useState({ text: '', ok: true })
+  const [passwordMsg, setPasswordMsg]       = useState({ text: '', ok: true })
   const [deleteConfirm, setDeleteConfirm] = useState('')
-  const [deleting, setDeleting] = useState(false)
+  const [deleting, setDeleting]           = useState(false)
 
   // SEO Tool
   const [seoKeyword, setSeoKeyword] = useState('')
   const [seoResults, setSeoResults] = useState(null)
   const [seoLoading, setSeoLoading] = useState(false)
 
-  const [form, setForm] = useState({
-    platform: 'Instagram', topic: '', keywords: ['', '', ''],
-    tone: 'Professional', audience: '', cta: 'None', length: 'Short', language: 'English',
-  })
-
-  const supabase = createClient()
-  const router = useRouter()
+  const supabase   = createClient()
+  const router     = useRouter()
   const searchParams = useSearchParams()
-  const [showActivated, setShowActivated] = useState(false)
 
   useEffect(() => {
     if (searchParams.get('activated') === 'free') {
@@ -193,9 +107,6 @@ function DashboardInner() {
     if (typeof window !== 'undefined') {
       const cookie = localStorage.getItem('rankivo_cookie_accepted')
       if (!cookie) setShowCookieBanner(true)
-      else setCookieAccepted(true)
-      const onboarded = localStorage.getItem('rankivo_onboarded')
-      if (!onboarded) setShowOnboarding(true)
     }
   }, [])
 
@@ -205,9 +116,17 @@ function DashboardInner() {
       const { data: profileData } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single()
       setProfile(profileData)
       if (profileData) {
-        setProfileForm({ full_name: profileData.full_name || '', country: profileData.country || '', city: profileData.city || '', state: profileData.state || '', zip: profileData.zip || '', phone: profileData.phone || '' })
+        setProfileForm({
+          full_name: profileData.full_name || '',
+          country:   profileData.country   || '',
+          city:      profileData.city      || '',
+          state:     profileData.state     || '',
+          zip:       profileData.zip       || '',
+          phone:     profileData.phone     || '',
+        })
       }
-      const { data: hist } = await supabase.from('content_history').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false })
+      const { data: hist } = await supabase
+        .from('content_history').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false })
       setHistory(hist || [])
       setHistoryLoading(false)
       setLoading(false)
@@ -228,151 +147,18 @@ function DashboardInner() {
   async function fetchHistory() {
     if (!user) return
     setHistoryLoading(true)
-    const { data } = await supabase.from('content_history').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
+    const { data } = await supabase
+      .from('content_history').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
     setHistory(data || [])
     setHistoryLoading(false)
   }
 
   function acceptCookies() {
     localStorage.setItem('rankivo_cookie_accepted', 'true')
-    setCookieAccepted(true)
     setShowCookieBanner(false)
   }
 
-  function dismissOnboarding() {
-    localStorage.setItem('rankivo_onboarded', 'true')
-    setShowOnboarding(false)
-  }
-
-  function selectPlatform(p) {
-    const config = PLATFORM_CONFIG[p]
-    setForm({ ...form, platform: p, length: config.lengths[0] })
-    setResult(null)
-    setGenerateError('')
-  }
-
-  function applyTemplate(t) {
-    setForm(prev => ({ ...prev, platform: t.platform, topic: t.topic, tone: t.tone, cta: t.cta, length: PLATFORM_CONFIG[t.platform].lengths[0] }))
-    setActiveTab('generate')
-    setResult(null)
-  }
-
-  function getKeywordLimit() {
-    return form.length === 'Short' ? 1 : form.length === 'Medium' ? 2 : 3
-  }
-
-  async function checkPostLimit() {
-    // Guests always allowed — API returns preview content, no DB tracking needed
-    if (!user) return true
-    const { data: fp } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-    if (fp) setProfile(fp)
-    const limit = PLAN_LIMITS[fp?.plan || 'free'] || 3
-    if (limit === Infinity) return true
-    const now = new Date()
-    if (fp?.reset_date && new Date(fp.reset_date) < now) {
-      await supabase.from('profiles').update({ posts_count: 0, reset_date: new Date(now.setMonth(now.getMonth() + 1)) }).eq('id', user.id)
-      return true
-    }
-    return (fp?.posts_count || 0) < limit
-  }
-
-  async function incrementPostCount() {
-    if (user && profile) {
-      const newCount = (profile.posts_count || 0) + 1
-      await supabase.from('profiles').update({ posts_count: newCount }).eq('id', user.id)
-      setProfile(prev => ({ ...prev, posts_count: newCount }))
-    }
-    // Guests: no tracking — API already handles preview truncation
-  }
-
-  async function saveToHistory(contentObj) {
-    if (!user) return
-    const contentText = typeof contentObj === 'string' ? contentObj : contentObj?.content || ''
-    await supabase.from('content_history').insert({
-      user_id: user.id, platform: form.platform, content: contentText,
-      keywords: form.keywords.filter(k => k.trim()),
-      hashtags: contentText?.match(/#\w+/g) || [],
-      meta_title: contentObj?.metaTitle || null,
-      meta_description: contentObj?.metaDescription || null,
-      h1: contentObj?.titles?.[0] || null,
-      word_count: contentText.trim().split(/\s+/).length,
-      content_length: form.length, language: form.language,
-      tone: form.tone, audience: form.audience, cta: form.cta,
-    })
-  }
-
-  async function generateContent() {
-    if (!cookieAccepted) { setShowCookieBanner(true); return }
-    if (!form.topic.trim()) { document.getElementById('topic-input')?.focus(); setGenerateError('Please enter a topic.'); return }
-    setGenerateError('')
-    const allowed = await checkPostLimit()
-    if (!allowed) {
-      setIsGuestLimit(!user)
-      setShowLimitModal(true)
-      return
-    }
-    setGenerating(true); setResult(null); setIsPreview(false)
-    try {
-      const res = await fetch('/api/generate', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, platform: form.platform === 'Twitter/X' ? 'Twitter' : form.platform, keywords: form.keywords.slice(0, getKeywordLimit()).filter(k => k.trim()), wordCount: LENGTH_INFO[form.length].actual }),
-      })
-      const data = await res.json()
-      if (data.content) {
-        setResult(data.content)
-        setIsPreview(data.isPreview || false)
-        // Only track usage and save history for logged-in users
-        if (!data.isGuest) {
-          await incrementPostCount()
-          await saveToHistory(data.content)
-          await fetchHistory()
-        }
-      } else {
-        setGenerateError('Generation failed. Please try again.')
-      }
-    } catch (err) {
-      console.log('CATCH ERROR:', err)
-      setGenerateError('Generation failed. Please try again.')
-    }
-    setGenerating(false)
-  }
-
-  // SEO Tool
-  function generateSeoResults() {
-    if (!seoKeyword.trim()) return
-    setSeoLoading(true)
-    setSeoResults(null)
-    setTimeout(() => {
-      const base = seoKeyword.toLowerCase().trim()
-      const words = base.split(' ')
-      const variations = [
-        `best ${base}`,
-        `${base} tips`,
-        `how to ${base}`,
-        `${base} for beginners`,
-        `${base} guide`,
-        `${base} 2025`,
-        `top ${base} strategies`,
-        `${base} examples`,
-        `why ${base} matters`,
-        `${base} vs alternatives`,
-        ...words.flatMap(w => [`${w} tools`, `${w} software`, `${w} services`]),
-      ].filter((v, i, arr) => arr.indexOf(v) === i).slice(0, 12)
-
-      const questions = [
-        `What is ${base}?`,
-        `How does ${base} work?`,
-        `Why is ${base} important?`,
-        `When should you use ${base}?`,
-        `What are the best ${base} strategies?`,
-      ]
-
-      setSeoResults({ keyword: base, variations, questions, volume: Math.floor(Math.random() * 9000 + 1000), difficulty: ['Low', 'Medium', 'High'][Math.floor(Math.random() * 3)] })
-      setSeoLoading(false)
-    }, 800)
-  }
-
-  // Settings
+  // Settings handlers
   async function saveProfile() {
     setProfileSaving(true); setProfileMsg({ text: '', ok: true })
     const { error } = await supabase.from('profiles').update(profileForm).eq('id', user.id)
@@ -402,26 +188,45 @@ function DashboardInner() {
     window.location.href = '/'
   }
 
+  function generateSeoResults() {
+    if (!seoKeyword.trim()) return
+    setSeoLoading(true); setSeoResults(null)
+    setTimeout(() => {
+      const base = seoKeyword.toLowerCase().trim()
+      const words = base.split(' ')
+      const variations = [
+        `best ${base}`, `${base} tips`, `how to ${base}`, `${base} for beginners`,
+        `${base} guide`, `${base} 2025`, `top ${base} strategies`, `${base} examples`,
+        `why ${base} matters`, `${base} vs alternatives`,
+        ...words.flatMap(w => [`${w} tools`, `${w} software`, `${w} services`]),
+      ].filter((v, i, arr) => arr.indexOf(v) === i).slice(0, 12)
+      const questions = [
+        `What is ${base}?`, `How does ${base} work?`, `Why is ${base} important?`,
+        `When should you use ${base}?`, `What are the best ${base} strategies?`,
+      ]
+      setSeoResults({ keyword: base, variations, questions, volume: Math.floor(Math.random() * 9000 + 1000), difficulty: ['Low', 'Medium', 'High'][Math.floor(Math.random() * 3)] })
+      setSeoLoading(false)
+    }, 800)
+  }
+
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50">
       <div className="text-[#1B5FA8] text-xl font-semibold">Loading RANKIVO...</div>
     </div>
   )
 
-  const config = PLATFORM_CONFIG[form.platform]
-  const isAdmin = user?.email === ADMIN_EMAIL
-  const platforms = Object.keys(PLATFORM_CONFIG)
-  const tones = ['Professional', 'Casual', 'Persuasive', 'Informative']
-  const ctas = ['None', 'Buy Now', 'Contact Us', 'Sign Up', 'Learn More', 'Visit Us', 'Book Now']
-  const languages = ['English', 'Spanish', 'French', 'German', 'Arabic', 'Urdu']
-  const countries = ['Pakistan','United States','United Kingdom','United Arab Emirates','Saudi Arabia','India','Canada','Australia','Germany','France','Other']
-  const planLimit = PLAN_LIMITS[profile?.plan || 'free'] || 3
+  const isAdmin    = user?.email === ADMIN_EMAIL
+  const planLimit  = PLAN_LIMITS[profile?.plan || 'free'] || 3
+  const countries  = ['Pakistan','United States','United Kingdom','United Arab Emirates','Saudi Arabia','India','Canada','Australia','Germany','France','Other']
 
   return (
     <div className="flex min-h-screen bg-gray-50 text-gray-800">
 
       {showLimitModal && (
-        <LimitModal isGuest={isGuestLimit} onUpgrade={() => { setShowLimitModal(false); if (isGuestLimit) router.push('/auth'); else router.push('/upgrade') }} onClose={() => setShowLimitModal(false)} />
+        <LimitModal
+          onUpgrade={() => { setShowLimitModal(false); router.push('/upgrade') }}
+          onClose={() => setShowLimitModal(false)}
+        />
       )}
 
       {showCookieBanner && (
@@ -443,7 +248,6 @@ function DashboardInner() {
         </div>
       </button>
 
-      {/* Sidebar overlay on mobile */}
       {sidebarOpen && <div className="md:hidden fixed inset-0 bg-black/30 z-30" onClick={() => setSidebarOpen(false)} />}
 
       <div className={`fixed md:static z-40 transition-transform md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
@@ -452,7 +256,7 @@ function DashboardInner() {
 
       <div className="flex-1 md:ml-64 p-4 md:p-8 pt-16 md:pt-8 overflow-x-hidden">
 
-        {/* DASHBOARD */}
+        {/* ── DASHBOARD ────────────────────────────────────────────────── */}
         {activeTab === 'dashboard' && (
           <div className="max-w-3xl">
             <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">
@@ -466,22 +270,28 @@ function DashboardInner() {
                   <span className="text-2xl">🎉</span>
                   <div>
                     <p className="text-sm font-semibold text-[#0D9488]">Your free plan is activated!</p>
-                    <p className="text-xs text-gray-500 mt-0.5">You have 3 posts/month and 3 keyword searches/day. Start generating now.</p>
+                    <p className="text-xs text-gray-500 mt-0.5">You have 3 posts/month. Start generating now.</p>
                   </div>
                 </div>
                 <button onClick={() => setShowActivated(false)} className="text-gray-300 hover:text-gray-500 text-xl shrink-0">×</button>
               </div>
             )}
-            {!user && <GuestBanner onSignup={() => router.push('/auth?mode=signup')} />}
-            {user && showOnboarding && <OnboardingBanner onDismiss={dismissOnboarding} />}
+
             {user && <UpgradeBanner profile={profile} onUpgrade={() => router.push('/upgrade')} />}
 
+            {/* Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
               <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
                 <p className="text-xs text-gray-400 mb-1">Posts Used</p>
-                <p className="text-2xl font-bold text-gray-900">{profile?.posts_count || 0}<span className="text-gray-400 text-lg font-normal"> / {planLimit === Infinity ? '∞' : planLimit}</span></p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {profile?.posts_count || 0}
+                  <span className="text-gray-400 text-lg font-normal"> / {planLimit === Infinity ? '∞' : planLimit}</span>
+                </p>
                 <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full" style={{ width: `${planLimit === Infinity ? 10 : Math.min(((profile?.posts_count || 0) / planLimit) * 100, 100)}%`, backgroundColor: '#0D9488' }} />
+                  <div className="h-full rounded-full" style={{
+                    width: `${planLimit === Infinity ? 10 : Math.min(((profile?.posts_count || 0) / planLimit) * 100, 100)}%`,
+                    backgroundColor: '#0D9488'
+                  }} />
                 </div>
               </div>
               <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
@@ -491,22 +301,31 @@ function DashboardInner() {
               </div>
               <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
                 <p className="text-xs text-gray-400 mb-1">Status</p>
-                <p className="text-2xl font-bold text-[#C9943A]">{planLimit === Infinity ? 'Unlimited' : 'Limited'}</p>
+                <p className="text-2xl font-bold text-[#C9943A]">{planLimit === Infinity ? 'Unlimited' : 'Active'}</p>
               </div>
             </div>
 
+            {/* ── Create New Content ───────────────────────────────────── */}
             <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm mb-6">
-              <h3 className="font-semibold text-gray-800 mb-3">Quick Generate</h3>
-              <div className="flex flex-wrap gap-2 mb-3">
-                {TEMPLATES.slice(0, 3).map(t => (
-                  <button key={t.label} onClick={() => applyTemplate(t)} className="text-xs bg-gray-50 hover:bg-[#1B5FA8]/10 hover:text-[#1B5FA8] border border-gray-200 hover:border-[#1B5FA8]/30 text-gray-600 px-3 py-1.5 rounded-lg transition-colors">
-                    {t.label}
-                  </button>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-gray-800">Create New Content</h3>
+                <span className="text-xs text-gray-400">Pick a tool to get started</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {CREATE_TOOLS.map(tool => (
+                  <a
+                    key={tool.href}
+                    href={tool.href}
+                    className={`flex flex-col items-center gap-2 p-3 rounded-xl border text-center transition-all hover:scale-[1.03] hover:shadow-md ${tool.color}`}
+                  >
+                    <span className="text-2xl">{tool.icon}</span>
+                    <span className="text-xs font-semibold leading-tight">{tool.label}</span>
+                  </a>
                 ))}
               </div>
-              <button onClick={() => setActiveTab('generate')} className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors">Generate New Content</button>
             </div>
 
+            {/* Recent History */}
             <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-gray-800">Recent Posts</h3>
@@ -515,7 +334,7 @@ function DashboardInner() {
               {history.length === 0 ? (
                 <div className="text-center py-6">
                   <p className="text-gray-400 text-sm">No content yet.</p>
-                  <button onClick={() => setActiveTab('generate')} className="mt-2 text-[#0D9488] text-sm hover:underline">Generate your first post →</button>
+                  <a href="/tools/blog-generator" className="mt-2 text-[#0D9488] text-sm hover:underline inline-block">Generate your first post →</a>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -525,7 +344,9 @@ function DashboardInner() {
                         <span className="text-xs bg-[#1B5FA8]/10 text-[#1B5FA8] px-2 py-0.5 rounded font-medium shrink-0">{item.platform}</span>
                         <p className="text-sm text-gray-600 truncate">{item.content?.slice(0, 50)}...</p>
                       </div>
-                      <span className="text-xs text-gray-400 ml-2 shrink-0">{new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                      <span className="text-xs text-gray-400 ml-2 shrink-0">
+                        {new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -534,193 +355,57 @@ function DashboardInner() {
           </div>
         )}
 
-        {/* GENERATE */}
-        {activeTab === 'generate' && (
-          <div className="max-w-3xl">
-            <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">Generate Content</h2>
-            <p className="text-gray-500 mb-5 text-sm">Fill in the details and let AI create your content.</p>
-
-            {!user && <GuestBanner onSignup={() => router.push('/auth?mode=signup')} />}
-            {user && <UpgradeBanner profile={profile} onUpgrade={() => router.push('/upgrade')} />}
-
-            {/* Templates */}
-            <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm mb-6">
-              <p className="text-sm font-medium text-gray-700 mb-3">Quick Templates</p>
-              <div className="flex flex-wrap gap-2">
-                {TEMPLATES.map(t => (
-                  <button key={t.label} onClick={() => applyTemplate(t)} className="text-xs bg-gray-50 hover:bg-[#1B5FA8]/10 hover:text-[#1B5FA8] border border-gray-200 hover:border-[#1B5FA8]/30 text-gray-600 px-3 py-1.5 rounded-lg transition-colors">
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-5">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Platform</label>
-                <div className="flex flex-wrap gap-2">
-                  {platforms.map(p => (
-                    <button key={p} onClick={() => selectPlatform(p)} className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${form.platform === p ? 'bg-[#1B5FA8] text-white border-[#1B5FA8]' : 'bg-white border-gray-200 text-gray-600 hover:border-[#1B5FA8]'}`}>{p}</button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Topic</label>
-                <input id="topic-input" type="text" value={form.topic} onChange={e => setForm({ ...form, topic: e.target.value })} placeholder="e.g. Best coffee shop in New York" className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#0D9488]" />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Content Length</label>
-                <div className="flex gap-2">
-                  {['Short', 'Medium', 'Long'].map(l => {
-                    const available = config.lengths.includes(l)
-                    return (
-                      <button key={l} onClick={() => available && setForm({ ...form, length: l })} disabled={!available} className={`flex-1 py-2.5 rounded-lg text-sm font-medium border transition-colors ${form.length === l ? 'bg-[#0D9488] text-white border-[#0D9488]' : available ? 'bg-white border-gray-200 text-gray-600 hover:border-[#0D9488]' : 'bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed'}`}>
-                        {l}
-                        <span className="block text-xs mt-0.5 opacity-70">{LENGTH_INFO[l].words}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">SEO Keywords <span className="text-gray-400 text-xs">({getKeywordLimit()} max)</span></label>
-                <div className="flex gap-2">
-                  {[0, 1, 2].map(i => (
-                    <input key={i} type="text" value={form.keywords[i]} onChange={e => { const k = [...form.keywords]; k[i] = e.target.value; setForm({ ...form, keywords: k }) }} disabled={i >= getKeywordLimit()} placeholder={i >= getKeywordLimit() ? 'N/A' : `Keyword ${i + 1}`} className={`flex-1 bg-white border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#0D9488] ${i >= getKeywordLimit() ? 'border-gray-100 opacity-40 cursor-not-allowed bg-gray-50' : 'border-gray-200'}`} />
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Tone</label>
-                <div className="flex flex-wrap gap-2">
-                  {tones.map(t => <button key={t} onClick={() => setForm({ ...form, tone: t })} className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${form.tone === t ? 'bg-[#C9943A] text-white border-[#C9943A]' : 'bg-white border-gray-200 text-gray-600 hover:border-[#C9943A]'}`}>{t}</button>)}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Target Audience</label>
-                <input type="text" value={form.audience} onChange={e => setForm({ ...form, audience: e.target.value })} placeholder="e.g. small business owners" className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#0D9488]" />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">CTA</label>
-                <div className="flex flex-wrap gap-2">
-                  {ctas.map(c => <button key={c} onClick={() => setForm({ ...form, cta: c })} className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${form.cta === c ? 'bg-[#C9943A] text-white border-[#C9943A]' : 'bg-white border-gray-200 text-gray-600 hover:border-[#C9943A]'}`}>{c}</button>)}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Language</label>
-                <div className="flex flex-wrap gap-2">
-                  {languages.map(l => <button key={l} onClick={() => setForm({ ...form, language: l })} className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${form.language === l ? 'bg-[#1B5FA8] text-white border-[#1B5FA8]' : 'bg-white border-gray-200 text-gray-600 hover:border-[#1B5FA8]'}`}>{l}</button>)}
-                </div>
-              </div>
-            </div>
-
-            {generateError && <p className="mt-3 text-red-500 text-sm">{generateError}</p>}
-
-            <button onClick={generateContent} disabled={generating} className="w-full mt-5 bg-[#0D9488] hover:bg-[#0D9488]/90 text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50 transition-colors">
-              {generating ? 'Generating...' : 'Generate Content'}
-            </button>
-
-            {result && !result.error && (
-              <div className="mt-8 space-y-4">
-                <h3 className="text-lg font-semibold text-[#0D9488]">Generated Content</h3>
-                {config.meta && result.metaTitle && <div className="bg-white border border-gray-200 rounded-xl p-4"><p className="text-xs text-[#C9943A] mb-1 font-medium uppercase">Meta Title</p><p className="text-gray-800">{result.metaTitle}</p></div>}
-                {config.meta && result.metaDescription && <div className="bg-white border border-gray-200 rounded-xl p-4"><p className="text-xs text-[#C9943A] mb-1 font-medium uppercase">Meta Description</p><p className="text-gray-800">{result.metaDescription}</p></div>}
-                {config.meta && result.titles?.length > 0 && (
-                  <div className="bg-white border border-gray-200 rounded-xl p-4">
-                    <p className="text-xs text-[#C9943A] mb-2 font-medium uppercase">H1 Options</p>
-                    {result.titles.map((t, i) => <p key={i} className="text-gray-800 mb-1"><span className="text-[#0D9488] font-bold text-xs mr-2">#{i+1}</span>{t}</p>)}
-                  </div>
-                )}
-                <div className="bg-white border border-gray-200 rounded-xl p-4 relative overflow-hidden">
-                  <p className="text-xs text-[#C9943A] mb-2 font-medium uppercase">Content</p>
-                  <div className={`space-y-3 ${isPreview ? 'max-h-64 overflow-hidden' : ''}`}>
-  {form.platform === 'Blog'
-    ? result.content.split(/\n+/).map((line, i) => {
-        if (line.startsWith('## ')) return <h2 key={i} className="text-xl font-bold text-[#1B5FA8] mt-6 mb-1">{line.slice(3)}</h2>
-        if (line.startsWith('### ')) return <h3 key={i} className="text-base font-semibold text-[#0D9488] mt-4 mb-1">{line.slice(4)}</h3>
-        if (line.startsWith('- ')) return <li key={i} className="ml-5 list-disc text-gray-700">{line.slice(2)}</li>
-        if (line.trim() === '') return <div key={i} className="h-1" />
-        return <p key={i} className="text-gray-800 leading-relaxed">{line}</p>
-      })
-    : <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">{result.content}</p>
-  }
-</div>
-                  {isPreview && (
-                    <>
-                      {/* Blur layer over last portion */}
-                      <div className="absolute bottom-16 left-0 right-0 h-24"
-                        style={{ backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', background: 'linear-gradient(to bottom, transparent, rgba(255,255,255,0.6))' }}
-                      />
-                      {/* CTA wall */}
-                      <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center justify-end pb-5 px-4"
-                        style={{ background: 'linear-gradient(to bottom, transparent 0%, white 30%)' }}
-                      >
-                        <p className="text-sm font-bold text-gray-800 mb-0.5">Preview Generated – Unlock Full Article</p>
-                        <p className="text-xs text-gray-500 mb-3">Create a free account to access the complete content.</p>
-                        <button
-                          onClick={() => router.push('/auth?mode=signup')}
-                          className="bg-[#1B5FA8] hover:bg-[#0D9488] text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-md mb-3"
-                        >
-                          Unlock Full Article (Free) →
-                        </button>
-                        <div className="flex items-center gap-4 text-xs text-gray-500">
-                          <span>✅ Full article access</span>
-                          <span>✅ Save &amp; edit later</span>
-                          <span>✅ 3 free generations/month</span>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-                {!isPreview && (
-                  <button onClick={() => navigator.clipboard.writeText(result.content)} className="w-full bg-gray-50 hover:bg-gray-100 text-[#0D9488] py-3 rounded-lg font-medium border border-gray-200">Copy Content</button>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* HISTORY */}
+        {/* ── HISTORY ──────────────────────────────────────────────────── */}
         {activeTab === 'history' && (
           <div className="max-w-3xl">
             <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">Content History</h2>
-            <p className="text-gray-500 mb-5 text-sm">All your previously generated content.</p>
-            {!user && <GuestBanner onSignup={() => router.push('/auth?mode=signup')} />}
-            {historyLoading ? <div className="text-center py-16 text-[#1B5FA8]">Loading...</div> : history.length === 0 ? (
-              <div className="bg-white rounded-xl p-8 text-center border border-gray-200">
-                <p className="text-gray-400 mb-3">{user ? 'No content yet.' : 'Sign up to save your content history.'}</p>
-                <button onClick={() => user ? setActiveTab('generate') : router.push('/auth?mode=signup')} className="bg-[#0D9488] text-white px-6 py-2 rounded-lg text-sm font-semibold">{user ? 'Generate First Post' : 'Sign Up Free'}</button>
+            <p className="text-gray-500 mb-5 text-sm">All your generated content in one place.</p>
+            {historyLoading ? (
+              <div className="space-y-3">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm animate-pulse">
+                    <div className="h-4 bg-gray-200 rounded w-1/4 mb-2" />
+                    <div className="h-3 bg-gray-100 rounded w-full" />
+                  </div>
+                ))}
+              </div>
+            ) : history.length === 0 ? (
+              <div className="bg-white border border-gray-200 rounded-xl p-10 text-center shadow-sm">
+                <p className="text-gray-400 mb-3">No history yet.</p>
+                <a href="/tools/blog-generator" className="text-[#0D9488] text-sm hover:underline">Create your first post →</a>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {history.map(item => (
                   <div key={item.id} className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                    <div className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-gray-50" onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}>
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="bg-[#1B5FA8]/10 text-[#1B5FA8] text-xs font-semibold px-2 py-0.5 rounded shrink-0">{item.platform}</span>
-                        <span className="bg-[#0D9488]/10 text-[#0D9488] text-xs px-2 py-0.5 rounded shrink-0">{item.content_length}</span>
-                        <span className="text-xs text-gray-400 truncate hidden sm:block">{item.tone}</span>
+                    <button
+                      className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50 transition-colors"
+                      onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="text-xs bg-[#1B5FA8]/10 text-[#1B5FA8] px-2 py-0.5 rounded font-medium shrink-0">{item.platform}</span>
+                        <p className="text-sm text-gray-700 truncate">{item.content?.slice(0, 70)}...</p>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0 ml-2">
+                      <div className="flex items-center gap-3 ml-3 shrink-0">
                         <span className="text-xs text-gray-400">{new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                        <span className="text-gray-400">{expandedId === item.id ? '▲' : '▼'}</span>
+                        <span className="text-gray-400 text-xs">{expandedId === item.id ? '▲' : '▼'}</span>
                       </div>
-                    </div>
+                    </button>
                     {expandedId === item.id && (
-                      <div className="px-4 pb-4 border-t border-gray-100 pt-3 space-y-3">
-                        {item.meta_title && <div><p className="text-xs text-[#C9943A] font-medium uppercase mb-1">Meta Title</p><p className="text-sm text-gray-700">{item.meta_title}</p></div>}
-                        {item.meta_description && <div><p className="text-xs text-[#C9943A] font-medium uppercase mb-1">Meta Description</p><p className="text-sm text-gray-700">{item.meta_description}</p></div>}
-                        <div><p className="text-xs text-[#C9943A] font-medium uppercase mb-1">Content</p><p className="text-sm text-gray-700 whitespace-pre-wrap">{item.content}</p></div>
-                        {item.keywords?.length > 0 && <div><p className="text-xs text-gray-400 uppercase mb-1">Keywords</p><div className="flex flex-wrap gap-1">{item.keywords.map((k, i) => <span key={i} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">{k}</span>)}</div></div>}
-                        {item.hashtags?.length > 0 && <div><p className="text-xs text-gray-400 uppercase mb-1">Hashtags</p><p className="text-xs text-[#0D9488]">{item.hashtags.join(' ')}</p></div>}
-                        <button onClick={() => navigator.clipboard.writeText(item.content)} className="w-full bg-gray-50 hover:bg-gray-100 text-[#0D9488] py-2 rounded-lg text-sm font-medium border border-gray-200">Copy</button>
+                      <div className="px-5 pb-5 border-t border-gray-100">
+                        <div className="flex flex-wrap gap-2 mt-3 mb-3">
+                          {item.tone && <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">{item.tone}</span>}
+                          {item.content_length && <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">{item.content_length}</span>}
+                          {item.language && <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">{item.language}</span>}
+                          {item.word_count > 0 && <span className="text-xs bg-[#0D9488]/10 text-[#0D9488] px-2 py-0.5 rounded">{item.word_count} words</span>}
+                        </div>
+                        <pre className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed bg-gray-50 rounded-lg p-4 mb-3 font-sans">{item.content}</pre>
+                        <button
+                          onClick={() => navigator.clipboard.writeText(item.content || '')}
+                          className="text-xs border border-gray-200 px-4 py-1.5 rounded-lg hover:bg-gray-50 text-gray-500 transition-colors"
+                        >
+                          📋 Copy
+                        </button>
                       </div>
                     )}
                   </div>
@@ -730,78 +415,71 @@ function DashboardInner() {
           </div>
         )}
 
-        {/* SEO TOOLS */}
-        {activeTab === 'seo' && (
-          <div className="max-w-3xl">
-            <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">SEO Keyword Tool</h2>
-            <p className="text-gray-500 mb-6 text-sm">Generate keyword variations and content ideas for any topic.</p>
-
-            <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Enter your main keyword</label>
+        {/* ── KEYWORDS ─────────────────────────────────────────────────── */}
+        {activeTab === 'keywords' && (
+          <div className="max-w-2xl">
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">Keyword Research</h2>
+            <p className="text-gray-500 mb-5 text-sm">Find keyword ideas and related questions.</p>
+            <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm mb-5">
               <div className="flex gap-3">
                 <input
                   type="text"
                   value={seoKeyword}
                   onChange={e => setSeoKeyword(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && generateSeoResults()}
-                  placeholder="e.g. content marketing, SEO tools, AI writing"
-                  className="flex-1 border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm"
+                  placeholder="Enter a keyword or topic..."
+                  className="flex-1 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-800 focus:outline-none focus:border-[#0D9488]"
                 />
-                <button onClick={generateSeoResults} disabled={seoLoading || !seoKeyword.trim()} className="bg-[#0D9488] hover:bg-[#0D9488]/90 text-white px-5 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-50 transition-colors whitespace-nowrap">
-                  {seoLoading ? 'Analyzing...' : 'Analyze'}
+                <button
+                  onClick={generateSeoResults}
+                  disabled={seoLoading}
+                  className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
+                >
+                  {seoLoading ? 'Searching…' : 'Research'}
                 </button>
               </div>
             </div>
 
             {seoResults && (
               <div className="space-y-5">
-                {/* Overview */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm text-center">
-                    <p className="text-xs text-gray-400 mb-1">Est. Monthly Volume</p>
+                <div className="flex gap-4">
+                  <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex-1 text-center">
+                    <p className="text-xs text-gray-400 mb-1">Est. Volume</p>
                     <p className="text-2xl font-bold text-[#1B5FA8]">{seoResults.volume.toLocaleString()}</p>
                   </div>
-                  <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm text-center">
-                    <p className="text-xs text-gray-400 mb-1">Competition</p>
+                  <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex-1 text-center">
+                    <p className="text-xs text-gray-400 mb-1">Difficulty</p>
                     <p className={`text-2xl font-bold ${seoResults.difficulty === 'Low' ? 'text-[#0D9488]' : seoResults.difficulty === 'Medium' ? 'text-[#C9943A]' : 'text-red-500'}`}>{seoResults.difficulty}</p>
                   </div>
                 </div>
-
-                {/* Variations */}
                 <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
                   <p className="font-semibold text-gray-800 mb-3">Keyword Variations</p>
                   <div className="flex flex-wrap gap-2">
                     {seoResults.variations.map((v, i) => (
-                      <div key={i} className="flex items-center gap-2 bg-[#1B5FA8]/5 border border-[#1B5FA8]/20 rounded-lg px-3 py-1.5">
+                      <div key={i} className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5">
                         <span className="text-sm text-gray-700">{v}</span>
                         <button onClick={() => navigator.clipboard.writeText(v)} className="text-[#1B5FA8] text-xs hover:text-[#0D9488] transition-colors" title="Copy">⧉</button>
                       </div>
                     ))}
                   </div>
                 </div>
-
-                {/* Questions */}
                 <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
                   <p className="font-semibold text-gray-800 mb-3">People Also Ask</p>
                   <div className="space-y-2">
                     {seoResults.questions.map((q, i) => (
                       <div key={i} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
                         <p className="text-sm text-gray-700">{q}</p>
-                        <button onClick={() => { setForm(prev => ({ ...prev, topic: q })); setActiveTab('generate') }} className="text-xs text-[#0D9488] hover:underline shrink-0 ml-3">Generate →</button>
+                        <a href={`/tools/blog-generator`} className="text-xs text-[#0D9488] hover:underline shrink-0 ml-3">Generate →</a>
                       </div>
                     ))}
                   </div>
                 </div>
-
-                <button onClick={() => { setForm(prev => ({ ...prev, topic: seoResults.keyword })); setActiveTab('generate') }} className="w-full bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white py-3 rounded-xl font-semibold transition-colors">
-                  Generate Content for "{seoResults.keyword}"
-                </button>
               </div>
             )}
           </div>
         )}
 
-        {/* HIRE */}
+        {/* ── HIRE ─────────────────────────────────────────────────────── */}
         {activeTab === 'hire' && (
           <div className="max-w-2xl">
             <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">Hire a Writer</h2>
@@ -815,7 +493,7 @@ function DashboardInner() {
           </div>
         )}
 
-        {/* SETTINGS */}
+        {/* ── SETTINGS ─────────────────────────────────────────────────── */}
         {activeTab === 'settings' && (
           <div className="max-w-2xl">
             <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">Account Settings</h2>

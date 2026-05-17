@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Navbar from '../../components/Navbar'
 import Footer from '../../components/Footer'
+import { createClient } from '../../lib/supabase'
 
 const TONES = ['Professional', 'Casual', 'Friendly', 'Authoritative', 'Conversational', 'Humorous']
 const LANGUAGES = ['English', 'Spanish', 'French', 'German', 'Portuguese', 'Arabic', 'Urdu']
@@ -110,6 +111,7 @@ function VariationCard({ index, text, isBlurred, isGuest, onCopy, copied, onUnlo
 
 export default function PlatformGeneratorPage({ config }) {
   const router = useRouter()
+  const supabase = createClient()
   const {
     platform, slug, title, subtitle, badge, icon, placeholder,
     showLength = false, faqs = [], tips = []
@@ -131,8 +133,42 @@ export default function PlatformGeneratorPage({ config }) {
   const [error,        setError]        = useState('')
   const [copied,       setCopied]       = useState(null)
   const [copiedSingle, setCopiedSingle] = useState(false)
+  const [user,         setUser]         = useState(null)
+
+  // Load current user once on mount
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUser(data?.user || null))
+  }, [])
 
   function updateForm(f, v) { setForm(prev => ({ ...prev, [f]: v })) }
+
+  // Save generated content to content_history for logged-in users
+  async function saveToHistory(data) {
+    if (!user) return
+    try {
+      const contentText = data.variations?.length
+        ? data.variations.join('\n\n---\n\n')
+        : (data.content?.content || '')
+      await supabase.from('content_history').insert({
+        user_id:        user.id,
+        platform:       platform,
+        content:        contentText,
+        keywords:       form.keywords.filter(k => k.trim()),
+        hashtags:       contentText?.match(/#\w+/g) || [],
+        meta_title:     data.content?.metaTitle     || null,
+        meta_description: data.content?.metaDescription || null,
+        h1:             data.content?.titles?.[0]   || null,
+        word_count:     contentText.trim().split(/\s+/).filter(Boolean).length,
+        content_length: form.length,
+        language:       form.language,
+        tone:           form.tone,
+        audience:       form.audience,
+        cta:            form.cta,
+      })
+    } catch (e) {
+      console.error('History save failed:', e)
+    }
+  }
 
   async function handleGenerate() {
     if (!form.topic.trim()) return
@@ -152,6 +188,11 @@ export default function PlatformGeneratorPage({ config }) {
         setVariations(data.variations)
       } else {
         setSingleResult(data.content?.content || '')
+      }
+
+      // Save history for logged-in users only (API already tracks usage count)
+      if (!data.isGuest) {
+        await saveToHistory(data)
       }
     } catch { setError('Something went wrong. Please try again.') }
     finally { setLoading(false) }
@@ -173,20 +214,45 @@ export default function PlatformGeneratorPage({ config }) {
     router.push('/auth?mode=signup&redirect=tools/' + (slug || platform.toLowerCase()))
   }
 
+  // Restore content after guest → signup redirect
   useEffect(() => {
     const key = 'rankivo_restore_' + (slug || platform)
     const saved = sessionStorage.getItem(key)
-    if (saved) {
-      try {
-        const data = JSON.parse(saved)
+    if (!saved) return
+    try {
+      const data = JSON.parse(saved)
+      // Only restore if we can confirm user session — wait for supabase.auth.getUser()
+      supabase.auth.getUser().then(({ data: authData }) => {
+        const loggedIn = !!authData?.user
         if (data.variations?.length) setVariations(data.variations)
         if (data.singleResult) setSingleResult(data.singleResult)
         if (data.form) setForm(data.form)
-        setIsGuest(false)
+        // If they just signed up, they're logged in — clear guest state
+        setIsGuest(!loggedIn)
         setIsPreview(false)
         sessionStorage.removeItem(key)
-      } catch (e) { /* ignore */ }
-    }
+        // Save restored content to history if logged in
+        if (loggedIn && authData.user) {
+          const restoredUser = authData.user
+          const contentText = data.variations?.length
+            ? data.variations.join('\n\n---\n\n')
+            : (data.singleResult || '')
+          supabase.from('content_history').insert({
+            user_id:        restoredUser.id,
+            platform:       platform,
+            content:        contentText,
+            keywords:       data.form?.keywords?.filter(k => k.trim()) || [],
+            hashtags:       contentText?.match(/#\w+/g) || [],
+            word_count:     contentText.trim().split(/\s+/).filter(Boolean).length,
+            content_length: data.form?.length || 'Medium',
+            language:       data.form?.language || 'English',
+            tone:           data.form?.tone || 'Professional',
+            audience:       data.form?.audience || '',
+            cta:            data.form?.cta || 'None',
+          }).then(() => {}).catch(console.error)
+        }
+      })
+    } catch (e) { /* ignore parse errors */ }
   }, [])
 
   const hasResult = variations.length > 0 || singleResult
