@@ -9,6 +9,7 @@ export default function InstagramCaptionGenerator() {
   return (
     <PlatformGeneratorPage config={{
       platform:    'Instagram',
+      slug:        'instagram-caption-generator',
       title:       'Instagram Caption Generator',
       subtitle:    'Generate 4 unique, scroll-stopping Instagram captions with hashtags and CTAs — powered by AI.',
       badge:       'AI Instagram Generator',

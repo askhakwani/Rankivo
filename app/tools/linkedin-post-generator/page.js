@@ -9,6 +9,7 @@ export default function LinkedInPostGenerator() {
   return (
     <PlatformGeneratorPage config={{
       platform:    'LinkedIn',
+      slug:        'linkedin-post-generator',
       title:       'LinkedIn Post Generator',
       subtitle:    'Generate 4 professional LinkedIn posts with strong hooks and CTAs — powered by AI.',
       badge:       'AI LinkedIn Generator',

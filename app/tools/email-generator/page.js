@@ -9,6 +9,7 @@ export default function EmailGenerator() {
   return (
     <PlatformGeneratorPage config={{
       platform:    'Email',
+      slug:        'email-generator',
       title:       'Email Generator',
       subtitle:    'Generate professional marketing emails with subject lines, body copy and CTAs — powered by AI.',
       badge:       'AI Email Generator',

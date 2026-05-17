@@ -9,6 +9,7 @@ export default function TikTokCaptionGenerator() {
   return (
     <PlatformGeneratorPage config={{
       platform:    'TikTok',
+      slug:        'tiktok-caption-generator',
       title:       'TikTok Caption Generator',
       subtitle:    'Generate 4 viral TikTok captions with hooks, hashtags and CTAs — powered by AI.',
       badge:       'AI TikTok Generator',

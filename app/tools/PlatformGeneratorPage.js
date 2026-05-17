@@ -1,8 +1,8 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Navbar from '../../components/Navbar'
-import Footer from '../../components/Footer'
+import Navbar from '../../../components/Navbar'
+import Footer from '../../../components/Footer'
 
 const TONES = ['Professional', 'Casual', 'Friendly', 'Authoritative', 'Conversational', 'Humorous']
 const LANGUAGES = ['English', 'Spanish', 'French', 'German', 'Portuguese', 'Arabic', 'Urdu']
@@ -76,7 +76,7 @@ function VariationCard({ index, text, isBlurred, isGuest, onCopy, copied, onUnlo
 export default function PlatformGeneratorPage({ config }) {
   const router = useRouter()
   const {
-    platform, title, subtitle, badge, icon, placeholder,
+    platform, slug, title, subtitle, badge, icon, placeholder,
     showLength = false, faqs = [], tips = []
   } = config
 
@@ -130,7 +130,34 @@ export default function PlatformGeneratorPage({ config }) {
     setCopiedSingle(true); setTimeout(() => setCopiedSingle(false), 2000)
   }
 
-  function handleUnlock() { router.push('/auth?mode=signup') }
+  // Save result to sessionStorage before redirecting to auth
+  function handleUnlock() {
+    const restoreData = {
+      variations,
+      singleResult,
+      form,
+      platform,
+    }
+    sessionStorage.setItem('rankivo_restore_' + (slug || platform), JSON.stringify(restoreData))
+    router.push('/auth?mode=signup&redirect=tools/' + (slug || platform.toLowerCase()))
+  }
+
+  // Restore result after login redirect
+  useEffect(() => {
+    const key = 'rankivo_restore_' + (slug || platform)
+    const saved = sessionStorage.getItem(key)
+    if (saved) {
+      try {
+        const data = JSON.parse(saved)
+        if (data.variations?.length) setVariations(data.variations)
+        if (data.singleResult) setSingleResult(data.singleResult)
+        if (data.form) setForm(data.form)
+        setIsGuest(false)
+        setIsPreview(false)
+        sessionStorage.removeItem(key)
+      } catch (e) { /* ignore */ }
+    }
+  }, [])
 
   const hasResult = variations.length > 0 || singleResult
 

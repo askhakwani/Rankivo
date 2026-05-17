@@ -9,6 +9,7 @@ export default function XPostGenerator() {
   return (
     <PlatformGeneratorPage config={{
       platform:    'X',
+      slug:        'x-post-generator',
       title:       'X Post Generator',
       subtitle:    'Generate 4 punchy X (formerly Twitter) posts with strong hooks and CTAs — powered by AI.',
       badge:       'AI X Post Generator',

@@ -9,6 +9,7 @@ export default function AdCopyGenerator() {
   return (
     <PlatformGeneratorPage config={{
       platform:    'Ads',
+      slug:        'ad-copy-generator',
       title:       'Ad Copy Generator',
       subtitle:    'Generate 4 high-converting ad copy variations for Google, Facebook and Instagram — powered by AI.',
       badge:       'AI Ad Copy Generator',

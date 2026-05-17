@@ -9,6 +9,7 @@ export default function YouTubeScriptGenerator() {
   return (
     <PlatformGeneratorPage config={{
       platform:    'YouTube',
+      slug:        'youtube-script-generator',
       title:       'YouTube Script Generator',
       subtitle:    'Generate engaging YouTube video scripts with strong hooks, structured content and CTAs — powered by AI.',
       badge:       'AI YouTube Generator',

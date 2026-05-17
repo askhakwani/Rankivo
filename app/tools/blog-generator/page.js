@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Navbar from '../../../components/Navbar'
@@ -72,6 +72,19 @@ export default function BlogGeneratorPage() {
   const [error,     setError]     = useState('')
   const [copied,    setCopied]    = useState(false)
   const [activeTab, setActiveTab] = useState('content')
+
+  // Restore result after login redirect
+  useEffect(() => {
+    const saved = sessionStorage.getItem('rankivo_restore_blog')
+    if (saved) {
+      try {
+        const data = JSON.parse(saved)
+        if (data.result) { setResult(data.result); setIsPreview(false) }
+        if (data.form) setForm(data.form)
+        sessionStorage.removeItem('rankivo_restore_blog')
+      } catch (e) { /* ignore */ }
+    }
+  }, [])
 
   function updateForm(field, value) { setForm(prev => ({ ...prev, [field]: value })) }
 
@@ -265,7 +278,10 @@ export default function BlogGeneratorPage() {
                               style={{ background: 'linear-gradient(to bottom, transparent 0%, white 25%)' }}>
                               <p className="text-sm font-bold text-gray-800 mb-0.5">Preview Generated – Unlock Full Article</p>
                               <p className="text-xs text-gray-500 mb-4">Create a free account to read the complete blog post.</p>
-                              <button onClick={() => router.push('/auth?mode=signup')}
+                              <button onClick={() => {
+                                sessionStorage.setItem('rankivo_restore_blog', JSON.stringify({ result, form }))
+                                router.push('/auth?mode=signup&redirect=tools/blog-generator')
+                              }}
                                 className="bg-[#1B5FA8] hover:bg-[#0D9488] text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-md mb-3">
                                 Unlock Full Article (Free) →
                               </button>
@@ -287,7 +303,10 @@ export default function BlogGeneratorPage() {
                             <div className="text-3xl mb-3">🔒</div>
                             <p className="text-sm font-bold text-gray-800 mb-1">Preview Generated – Unlock Full Article</p>
                             <p className="text-xs text-gray-500 mb-4">Your SEO title, meta description and H1 are ready — sign up free to access them.</p>
-                            <button onClick={() => router.push('/auth?mode=signup')}
+                            <button onClick={() => {
+                                sessionStorage.setItem('rankivo_restore_blog', JSON.stringify({ result, form }))
+                                router.push('/auth?mode=signup&redirect=tools/blog-generator')
+                              }}
                               className="bg-[#1B5FA8] hover:bg-[#0D9488] text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-md mb-3">
                               Unlock Full Article (Free) →
                             </button>
