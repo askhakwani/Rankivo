@@ -53,15 +53,14 @@ export default function Sidebar({ activeTab, setActiveTab, user, profile, isAdmi
         <div>
           <p className="text-xs text-gray-400 font-medium mb-2 px-1 uppercase tracking-wider">Dashboard Tools</p>
           <ul className="space-y-1">
-            {navItem('generate', 'Content Generator', '✨')}
             {navItem('history', 'Content History', '📋')}
-            {navItem('seo', 'Keywords', '🔍')}
           </ul>
         </div>
 
         <div>
           <p className="text-xs text-gray-400 font-medium mb-2 px-1 uppercase tracking-wider">SEO Tools</p>
           <ul className="space-y-1">
+            {navItem('keywords', 'Keyword Research', '🔍')}
             {toolPageItem('/tools/meta-tags-generator',         'Meta Tags Generator', '🏷️')}
             {toolPageItem('/tools/seo-score-checker',           'SEO Score Checker',   '📊')}
           </ul>

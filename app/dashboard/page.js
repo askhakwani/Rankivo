@@ -113,7 +113,9 @@ function DashboardInner() {
   useEffect(() => {
     async function loadUser(currentUser) {
       setUser(currentUser)
-      const { data: profileData } = await supabase.from('profiles').select('*').eq('id', currentUser.id).single()
+      // Always fetch fresh profile so posts_count is current
+      const { data: profileData } = await supabase
+        .from('profiles').select('*').eq('id', currentUser.id).single()
       setProfile(profileData)
       if (profileData) {
         setProfileForm({
@@ -131,6 +133,12 @@ function DashboardInner() {
       setHistoryLoading(false)
       setLoading(false)
     }
+
+    // Immediate session check — don't wait for an auth event
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) loadUser(session.user)
+      else { setUser(null); setProfile(null); setLoading(false); setHistoryLoading(false) }
+    })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) loadUser(session.user)
