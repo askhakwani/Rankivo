@@ -18,25 +18,27 @@ function isValid(content, wordCount) {
   return wordMatch && hasHeadings && hasBullets && hasLineBreaks
 }
 
-// ── Guest preview: return first ~55% of content ───────────────────────────────
-// For blogs: splits on ## sections and returns the first half.
-// For short-form: splits on lines and returns the first half.
 function getPreviewContent(content) {
   const sections = content.split(/(?=\n## )/)
   if (sections.length >= 3) {
     const cutoff = Math.ceil(sections.length * 0.55)
     return sections.slice(0, cutoff).join('').trim()
   }
-  // Fallback: line-based for short-form content
   const lines = content.split('\n').filter(l => l.trim() !== '')
   const cutoff = Math.ceil(lines.length * 0.55)
   return lines.slice(0, cutoff).join('\n').trim()
 }
 
-function buildBlogPrompt(topic, tone, language, keywords, audience, cta, wordCount) {
+function parseVariations(raw) {
+  const blocks = raw.split(/\n---\n/).map(b => b.trim()).filter(Boolean)
+  return blocks.map(block => block.replace(/^\d+\.\s*/, '').trim()).filter(Boolean)
+}
+
+function buildBlogPrompt(topic, tone, language, keywords, audience, cta, wordCount, link) {
   const kwText = keywords?.length ? `Use these SEO keywords naturally: ${keywords.join(', ')}.` : ''
   const audText = audience ? `Target audience: ${audience}.` : ''
   const ctaText = cta && cta !== 'None' ? `End with a "${cta}" call to action.` : ''
+  const linkText = link ? `Include this link naturally near the end of the article: ${link}` : ''
 
   let structure = ''
   if (wordCount <= 200) {
@@ -116,117 +118,109 @@ Language: ${language}
 ${kwText}
 ${audText}
 ${ctaText}
-Target word count: EXACTLY ${wordCount} words for the blog body (between the --- and end of content).
+${linkText}
+Target word count: EXACTLY ${wordCount} words for the blog body.
 
-RULES YOU MUST FOLLOW:
+RULES:
 - Keep every ## and ### heading exactly as shown
-- Replace ALL placeholder text with real, detailed, substantive content
-- Each bullet point must be a FULL SENTENCE or TWO — not a short phrase
-- Each paragraph must be MULTIPLE SENTENCES — never one sentence per paragraph
-- Add a blank line before and after every ## heading
-- Add a blank line between every paragraph
-- Add a blank line between bullet lists and paragraphs
-- Each bullet point on its own line
-- NEVER write thin or vague content — every section must be fully developed
-- Write until you reach EXACTLY ${wordCount} words — count carefully
+- Replace ALL placeholder text with real, detailed content
+- Each bullet = FULL SENTENCE or TWO, not a short phrase
+- Each paragraph = MULTIPLE SENTENCES
+- Add blank lines before/after headings and between sections
+- Write until EXACTLY ${wordCount} words
 
 OUTPUT THIS EXACT FORMAT:
-META_TITLE: (write SEO title here under 60 chars)
-META_DESC: (write SEO description here under 160 chars)
-H1: (write H1 heading here)
+META_TITLE: (SEO title under 60 chars)
+META_DESC: (SEO description under 160 chars)
+H1: (H1 heading)
 ---
 ${structure}`
 }
 
-function buildHashtagPrompt(platform, topic, tone, language, keywords, audience, cta, wordCount) {
+function buildHashtagPrompt(platform, topic, tone, language, keywords, audience, cta, wordCount, link) {
   const kwText = keywords?.length ? `Use these keywords naturally: ${keywords.join(', ')}.` : ''
   const audText = audience ? `Target audience: ${audience}.` : ''
-  const ctaText = cta && cta !== 'None' ? `End with a "${cta}" call to action.` : ''
+  const ctaText = cta && cta !== 'None' ? `Use a "${cta}" call to action.` : ''
+  const linkText = link ? `Include this link naturally in the caption: ${link}` : ''
 
   if (platform === 'Instagram') {
     return `You are a strict Instagram content generator.
 
-Write an Instagram post about: ${topic}
+Generate 4 different Instagram caption variations about: ${topic}
 Tone: ${tone} | Language: ${language}
-${kwText} ${audText} ${ctaText}
+${kwText} ${audText} ${ctaText} ${linkText}
 
-MANDATORY RULES — VIOLATIONS WILL BE REJECTED:
-- Line 1: A powerful hook (max 8 words)
-- Every sentence MUST be on its own new line
-- Max 8 words per line — hard limit
-- Use 2–5 emojis placed naturally within lines
-- End with a CTA line
-- Then add 5–10 hashtags, each on its own line starting with #
-- NO paragraphs — every line is standalone
-- NO formal tone
-- NO blog-style writing
+RULES:
+- Write exactly 4 variations numbered 1. 2. 3. 4.
+- Each starts with a powerful hook (max 8 words) on its own line
+- Every sentence on its own line, max 8 words per line
+- Use 2-5 emojis per variation
+- End each with a CTA line${link ? ' and the link' : ''}
+- Add 5-8 hashtags after each variation, each starting with #
+- Separate variations with a blank line, "---", blank line
+- NO paragraphs
 
-OUTPUT ONLY the post. No explanations.`
+OUTPUT ONLY the 4 variations. No explanations.`
   }
 
   if (platform === 'TikTok') {
-    return `You are a strict TikTok/Reels content generator.
+    return `You are a strict TikTok content generator.
 
-Write a TikTok caption post about: ${topic}
+Generate 4 different TikTok caption variations about: ${topic}
 Tone: ${tone} | Language: ${language}
-${kwText} ${audText} ${ctaText}
+${kwText} ${audText} ${ctaText} ${linkText}
 
-MANDATORY RULES — VIOLATIONS WILL BE REJECTED:
-- Line 1: Viral hook (under 10 words)
-- Lines 2–5: Short punchy engaging lines (each under 10 words)
-- Each line must feel like on-screen text
-- Final lines: Caption + CTA
-- Add 3–5 hashtags, each on its own line starting with #
-- Fast, catchy, viral energy throughout
-- NO script paragraphs
-- NO blog-style writing
+RULES:
+- Write exactly 4 variations numbered 1. 2. 3. 4.
+- Each starts with a viral hook (under 10 words)
+- Lines 2-5: short punchy lines (each under 10 words)
+- Final line: CTA${link ? ' + link' : ''}
+- Add 3-5 hashtags after each variation
+- Separate variations with a blank line, "---", blank line
 
-OUTPUT ONLY the post. No explanations.`
+OUTPUT ONLY the 4 variations. No explanations.`
   }
 }
 
-function buildOtherPrompt(platform, topic, tone, language, keywords, audience, cta, wordCount) {
+function buildOtherPrompt(platform, topic, tone, language, keywords, audience, cta, wordCount, link) {
   const kwText = keywords?.length ? `Use these keywords naturally: ${keywords.join(', ')}.` : ''
   const audText = audience ? `Target audience: ${audience}.` : ''
-  const ctaText = cta && cta !== 'None' ? `End with a "${cta}" call to action.` : ''
+  const ctaText = cta && cta !== 'None' ? `Use a "${cta}" call to action.` : ''
+  const linkText = link ? `Include this link naturally: ${link}` : ''
 
   if (platform === 'LinkedIn') {
     return `You are a strict LinkedIn content generator.
 
-Write a LinkedIn post about: ${topic}
+Generate 4 different LinkedIn post variations about: ${topic}
 Tone: ${tone} | Language: ${language}
-${kwText} ${audText} ${ctaText}
+${kwText} ${audText} ${ctaText} ${linkText}
 
-MANDATORY RULES — VIOLATIONS WILL BE REJECTED:
-- Line 1–2: Strong professional hook
-- Body: Short paragraphs, max 2 lines each
-- Separate every paragraph with a blank line
-- End with an insight or open question
-- Max 2 emojis total in the entire post
-- Professional tone throughout
-- NO casual slang
-- NO Instagram-style formatting
+RULES:
+- Write exactly 4 variations numbered 1. 2. 3. 4.
+- Each: strong professional hook on line 1-2
+- Body: short paragraphs, max 2 lines each, blank lines between
+- End each with insight, question, or CTA${link ? ' + link' : ''}
+- Max 2 emojis per variation
+- Separate variations with a blank line, "---", blank line
 
-OUTPUT ONLY the post. No explanations.`
+OUTPUT ONLY the 4 variations. No explanations.`
   }
 
-  if (platform === 'Twitter' || platform === 'Twitter/X') {
-    return `You are a strict Twitter/X content generator.
+  if (platform === 'X' || platform === 'Twitter' || platform === 'Twitter/X') {
+    return `You are a strict X (formerly Twitter) content generator.
 
-Write a Twitter thread about: ${topic}
+Generate 4 different X post variations about: ${topic}
 Tone: ${tone} | Language: ${language}
-${kwText} ${audText} ${ctaText}
+${kwText} ${audText} ${ctaText} ${linkText}
 
-MANDATORY RULES — VIOLATIONS WILL BE REJECTED:
-- Write 5–10 tweets
-- Each tweet on its own line
-- Max 20 words per tweet — hard limit
-- First tweet = hook
-- Last tweet = CTA or summary
-- NO paragraphs
-- NO multi-line tweets
+RULES:
+- Write exactly 4 variations numbered 1. 2. 3. 4.
+- Each is a single post, max 280 characters
+- First line = hook, last line = CTA${link ? ' + link' : ''}
+- Punchy, direct, engaging
+- Separate variations with a blank line, "---", blank line
 
-OUTPUT ONLY the tweets, one per line. No explanations.`
+OUTPUT ONLY the 4 variations. No explanations.`
   }
 
   if (platform === 'Email') {
@@ -234,36 +228,34 @@ OUTPUT ONLY the tweets, one per line. No explanations.`
 
 Write a marketing email about: ${topic}
 Tone: ${tone} | Language: ${language}
-${kwText} ${audText} ${ctaText}
+${kwText} ${audText} ${ctaText} ${linkText}
 
-MANDATORY RULES — VIOLATIONS WILL BE REJECTED:
-- Start with a greeting
-- Body: conversational tone, short paragraphs (2–3 lines each)
-- Include a clear CTA
-- End with a professional closing
+RULES:
+- Line 1: Subject line (format: "Subject: ...")
+- Then blank line, then email body
+- Body: conversational, short paragraphs (2-3 lines each)
+- Clear CTA${link ? ' with the link' : ''}
+- Professional closing
 - NO hashtags
-- NO social media tone or emojis
 
 OUTPUT ONLY the email. No explanations.`
   }
 
   if (platform === 'Ads') {
-    return `You are a strict ad copywriter focused on conversion.
+    return `You are a strict ad copywriter.
 
-Write ad copy about: ${topic}
+Generate 4 different ad copy variations about: ${topic}
 Tone: ${tone} | Language: ${language}
-${kwText} ${audText} ${ctaText}
+${kwText} ${audText} ${ctaText} ${linkText}
 
-MANDATORY RULES — VIOLATIONS WILL BE REJECTED:
-- Line 1: Pain point or key benefit (under 10 words)
-- Lines 2–4: Supporting lines (each under 10 words)
-- Final line: Urgent CTA (under 10 words)
-- Every line under 10 words — hard limit
-- Add urgency throughout
-- NO storytelling
-- NO long explanations
+RULES:
+- Write exactly 4 variations numbered 1. 2. 3. 4.
+- Line 1: pain point or key benefit (under 10 words)
+- Lines 2-3: supporting lines (each under 10 words)
+- Final line: urgent CTA (under 10 words)${link ? ' + link' : ''}
+- Separate variations with a blank line, "---", blank line
 
-OUTPUT ONLY the ad copy. No explanations.`
+OUTPUT ONLY the 4 variations. No explanations.`
   }
 
   if (platform === 'YouTube') {
@@ -271,17 +263,13 @@ OUTPUT ONLY the ad copy. No explanations.`
 
 Write a YouTube video script about: ${topic}
 Tone: ${tone} | Language: ${language}
-${kwText} ${audText} ${ctaText}
+${kwText} ${audText} ${ctaText} ${linkText}
 
-MANDATORY RULES — VIOLATIONS WILL BE REJECTED:
-- Start with a strong hook (spoken style)
-- Then intro section
-- Then main content section
-- End with outro + CTA
-- Use frequent line breaks — spoken delivery style
-- Keep it engaging throughout
+RULES:
+- Strong hook (spoken style)
+- Intro, main content, outro + CTA${link ? ' + link' : ''}
+- Frequent line breaks, spoken delivery style
 - NO blog paragraphs
-- NO formal essay structure
 
 OUTPUT ONLY the script. No explanations.`
   }
@@ -289,37 +277,25 @@ OUTPUT ONLY the script. No explanations.`
   if (platform === 'Pinterest') {
     return `You are a strict Pinterest content generator.
 
-Write a Pinterest pin description about: ${topic}
+Generate 4 Pinterest pin description variations about: ${topic}
 Tone: ${tone} | Language: ${language}
-${kwText} ${audText} ${ctaText}
+${kwText} ${audText} ${ctaText} ${linkText}
 
-MANDATORY RULES — VIOLATIONS WILL BE REJECTED:
-- Write 1–2 short keyword-focused lines only
-- Then add 3–6 hashtags, each on its own line starting with #
-- NO long text
-- NO paragraphs
+RULES:
+- Write exactly 4 variations numbered 1. 2. 3. 4.
+- Each: 1-2 short keyword-focused lines${link ? ' + link' : ''}
+- Add 3-6 hashtags after each variation
+- Separate variations with a blank line, "---", blank line
 
-OUTPUT ONLY the pin description. No explanations.`
+OUTPUT ONLY the 4 variations. No explanations.`
   }
-
-  // Fallback
-  const structure = wordCount <= 200
-    ? `Write a short opening paragraph.\n\n## Key Points\n- Point 1\n- Point 2\n- Point 3\n\nWrite a closing sentence.`
-    : `Write an opening paragraph.\n\n## Main Section\nWrite a paragraph here.\n\n## Key Benefits\n- Benefit 1\n- Benefit 2\n- Benefit 3\n\n## Conclusion\nWrite a closing paragraph.`
 
   return `Write a ${platform} post about: ${topic}
 Tone: ${tone} | Language: ${language}
-${kwText} ${audText} ${ctaText}
-Target word count: EXACTLY ${wordCount} words.
+${kwText} ${audText} ${ctaText} ${linkText}
+Keep it concise and engaging.
 
-RULES:
-- Keep every ## heading exactly as shown
-- Keep every - bullet on its own line
-- Add blank lines between sections
-- NEVER write as one paragraph
-
-OUTPUT:
-${structure}`
+OUTPUT ONLY the post. No explanations.`
 }
 
 function parseBlogMeta(raw) {
@@ -327,11 +303,13 @@ function parseBlogMeta(raw) {
   let metaTitle = '', metaDescription = '', h1 = '', contentStart = 0
   for (let i = 0; i < lines.length; i++) {
     if (lines[i].startsWith('META_TITLE:')) metaTitle = lines[i].replace('META_TITLE:', '').trim()
-    else if (lines[i].startsWith('META_DESC:')) metaDescription = lines[i].replace('META_DESC:', '').trim()
+    else if (lines[i].startsWith('META_DESC:') || lines[i].startsWith('META_DESCRIPTION:')) {
+      metaDescription = lines[i].replace(/^META_DESC(?:RIPTION)?:/, '').trim()
+    }
     else if (lines[i].startsWith('H1:')) h1 = lines[i].replace('H1:', '').trim()
     else if (lines[i].trim() === '---') { contentStart = i + 1; break }
   }
-  // If no --- was found, extract meta from all lines
+
   if (contentStart === 0) {
     for (const line of lines) {
       if (!metaTitle && line.startsWith('META_TITLE:')) metaTitle = line.replace('META_TITLE:', '').trim()
@@ -342,7 +320,6 @@ function parseBlogMeta(raw) {
     }
   }
 
-  // Strip leaked META/H1/--- lines from content body
   const content = lines
     .slice(contentStart)
     .filter(line => {
@@ -366,13 +343,11 @@ async function callGroq(prompt, isBlog) {
     ? [
         {
           role: 'system',
-          content: 'You are an expert blog writer. You ALWAYS write complete, fully developed blog posts. You NEVER truncate or summarize. You write every section in full. You count words carefully and hit the exact target word count specified.'
+          content: 'You are an expert blog writer. You ALWAYS write complete, fully developed blog posts. You NEVER truncate. You hit the exact target word count.'
         },
         { role: 'user', content: prompt }
       ]
-    : [
-        { role: 'user', content: prompt }
-      ]
+    : [{ role: 'user', content: prompt }]
 
   const completion = await groq.chat.completions.create({
     messages,
@@ -383,31 +358,34 @@ async function callGroq(prompt, isBlog) {
   return completion.choices[0]?.message?.content || ''
 }
 
+const MULTI_VARIATION_PLATFORMS = ['Instagram', 'TikTok', 'LinkedIn', 'X', 'Twitter', 'Twitter/X', 'Ads', 'Pinterest']
+const LONG_FORM_PLATFORMS = ['Email', 'YouTube']
+
 export async function POST(request) {
   try {
-
-    const { platform, topic, keywords, tone, audience, cta, length, language, wordCount: wc } = await request.json()
+    const { platform, topic, keywords, tone, audience, cta, length, language, wordCount: wc, link } = await request.json()
 
     console.log('Platform:', platform)
 
     const isBlog = platform === 'Blog'
+    const isMultiVariation = MULTI_VARIATION_PLATFORMS.includes(platform)
     const needsHashtags = platform === 'Instagram' || platform === 'TikTok'
     const wordCount = wc || (length === 'Long' ? 800 : length === 'Medium' ? 400 : 150)
 
     let prompt = ''
     if (isBlog) {
-      prompt = buildBlogPrompt(topic, tone, language, keywords, audience, cta, wordCount)
+      prompt = buildBlogPrompt(topic, tone, language, keywords, audience, cta, wordCount, link)
     } else if (needsHashtags) {
-      prompt = buildHashtagPrompt(platform, topic, tone, language, keywords, audience, cta, wordCount)
+      prompt = buildHashtagPrompt(platform, topic, tone, language, keywords, audience, cta, wordCount, link)
     } else {
-      prompt = buildOtherPrompt(platform, topic, tone, language, keywords, audience, cta, wordCount)
+      prompt = buildOtherPrompt(platform, topic, tone, language, keywords, audience, cta, wordCount, link)
     }
 
     if (!prompt) {
       return Response.json({ error: 'Unsupported platform: ' + platform }, { status: 400 })
     }
 
-    // ── STEP 1: Auth check — limits only apply to logged-in users ─────────────
+    // ── Auth check ────────────────────────────────────────────────────────────
     const policy = await checkGenerationPolicy()
     const isGuest = policy.isGuest
 
@@ -422,25 +400,23 @@ export async function POST(request) {
       }, { status: 403 })
     }
 
-    // ── STEP 2: Generate full content (always) ────────────────────────────────
+    // ── Generate ──────────────────────────────────────────────────────────────
     let rawText = ''
     let metaTitle = '', metaDescription = '', h1 = ''
     let content = ''
+    let variations = []
 
     for (let attempt = 0; attempt < 3; attempt++) {
       if (attempt === 0) {
         rawText = await callGroq(prompt, isBlog)
       } else {
         if (!isBlog) break
-
         const v = countWords(content)
         const issues = []
-        if (!content.includes('## ')) issues.push('MISSING ## headings — every section MUST start with ## on its own line')
-        if (!content.includes('\n- ')) issues.push('MISSING bullet points — use "- " at the start of each bullet on its own line')
-        if (!content.includes('\n')) issues.push('MISSING line breaks — add blank lines between every section')
-        if (Math.abs(v - wordCount) > 40) issues.push(`WRONG word count — got ${v} words, need EXACTLY ${wordCount} words. Expand every section with more detail.`)
-
-        const retryPrompt = `Your previous response had these problems:\n${issues.join('\n')}\n\nFix ALL problems. Expand every section with more detail. Return the COMPLETE corrected content only — do not truncate.\n\nPrevious content:\n${content}`
+        if (!content.includes('## ')) issues.push('MISSING ## headings')
+        if (!content.includes('\n- ')) issues.push('MISSING bullet points')
+        if (Math.abs(v - wordCount) > 40) issues.push(`WRONG word count: got ${v}, need ${wordCount}`)
+        const retryPrompt = `Fix:\n${issues.join('\n')}\n\nReturn complete corrected content.\n\nPrevious:\n${content}`
         rawText = await callGroq(retryPrompt, isBlog)
       }
 
@@ -452,29 +428,42 @@ export async function POST(request) {
         content = parsed.content
       } else {
         content = rawText.trim()
+        if (isMultiVariation) variations = parseVariations(rawText)
       }
 
       if (isBlog && isValid(content, wordCount)) break
       if (!isBlog) break
     }
 
-    // ── STEP 3: Track usage — logged-in users only ────────────────────────────
+    // ── Track usage ───────────────────────────────────────────────────────────
     if (!isGuest) {
       await incrementPostCount(policy.user?.id)
     }
 
-    // ── STEP 4: Return preview for guests, full content for logged-in ─────────
-    const returnContent = isGuest ? getPreviewContent(content) : content
+    // ── Response ──────────────────────────────────────────────────────────────
+    if (isBlog) {
+      const returnContent = isGuest ? getPreviewContent(content) : content
+      return Response.json({
+        isGuest,
+        isPreview: isGuest,
+        content: { metaTitle, metaDescription, titles: h1 ? [h1] : [], content: returnContent }
+      })
+    }
 
+    if (isMultiVariation) {
+      return Response.json({
+        isGuest,
+        isPreview: isGuest,
+        variations,
+        content: { metaTitle: '', metaDescription: '', titles: [], content }
+      })
+    }
+
+    // Email / YouTube — single output, guest sees full (copy locked)
     return Response.json({
       isGuest,
-      isPreview: isGuest,
-      content: {
-        metaTitle,
-        metaDescription,
-        titles: h1 ? [h1] : [],
-        content: returnContent,
-      }
+      isPreview: false,
+      content: { metaTitle: '', metaDescription: '', titles: [], content }
     })
 
   } catch (error) {
