@@ -7,6 +7,18 @@ import Footer from '../../components/Footer'
 const TONES = ['Professional', 'Casual', 'Friendly', 'Authoritative', 'Conversational', 'Humorous']
 const LANGUAGES = ['English', 'Spanish', 'French', 'German', 'Portuguese', 'Arabic', 'Urdu']
 const CTA_STYLES = ['None', 'Learn More', 'Buy Now', 'Visit Site', 'Sign Up Free', 'Book a Call', 'Contact Us']
+const LENGTHS = [
+  { label: 'Short',  desc: '~150 words', value: 'Short'  },
+  { label: 'Medium', desc: '~400 words', value: 'Medium' },
+  { label: 'Long',   desc: '~800 words', value: 'Long'   },
+]
+
+// Teaser labels shown on blurred variation cards
+const VARIATION_TEASERS = [
+  '🔥 Stronger hook + higher engagement angle',
+  '💡 Different tone — built to convert',
+  '⚡ Urgency-driven copy + punchy CTA',
+]
 
 function TagInput({ value, onChange, placeholder }) {
   const [input, setInput] = useState('')
@@ -35,14 +47,13 @@ function TagInput({ value, onChange, placeholder }) {
   )
 }
 
-// Renders a single variation card
-function VariationCard({ index, text, isBlurred, isGuest, onCopy, copied, onUnlock }) {
+function VariationCard({ index, text, isBlurred, isGuest, onCopy, copied, onUnlock, total }) {
   return (
-    <div className={`relative border rounded-2xl overflow-hidden transition-all ${isBlurred ? 'border-gray-100' : 'border-gray-200'}`}>
-      {/* Variation number badge */}
+    <div className={`relative border rounded-2xl overflow-hidden transition-all ${isBlurred ? 'border-gray-100 bg-gray-50/50' : 'border-gray-200 bg-white'}`}>
       <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-gray-100">
         <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
           Variation {index + 1}
+          {isBlurred && <span className="ml-2 text-[#C9943A]">🔒 Locked</span>}
         </span>
         {!isBlurred && !isGuest && (
           <button onClick={() => onCopy(text, index)}
@@ -52,21 +63,26 @@ function VariationCard({ index, text, isBlurred, isGuest, onCopy, copied, onUnlo
         )}
       </div>
 
-      {/* Content */}
+      {/* Content — blurred for locked variations */}
       <div className={`px-4 py-4 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed ${isBlurred ? 'select-none' : ''}`}
         style={isBlurred ? { filter: 'blur(5px)', userSelect: 'none', pointerEvents: 'none' } : {}}>
         {text}
       </div>
 
-      {/* Blur overlay with CTA */}
+      {/* Blur overlay */}
       {isBlurred && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/60 backdrop-blur-sm px-6">
-          <p className="text-sm font-bold text-gray-800 mb-1 text-center">Unlock All Variations</p>
-          <p className="text-xs text-gray-500 mb-3 text-center">Sign up free to copy & use all {4} variations</p>
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 backdrop-blur-sm px-6 text-center">
+          <p className="text-sm font-bold text-gray-800 mb-0.5">
+            {VARIATION_TEASERS[(index - 1) % VARIATION_TEASERS.length]}
+          </p>
+          <p className="text-xs text-gray-500 mb-3">
+            🔒 Unlock {total - 1} more high-performing variations
+          </p>
           <button onClick={onUnlock}
-            className="bg-[#1B5FA8] hover:bg-[#0D9488] text-white px-5 py-2 rounded-xl text-sm font-bold transition-colors shadow-md">
+            className="bg-[#1B5FA8] hover:bg-[#0D9488] text-white px-5 py-2 rounded-xl text-sm font-bold transition-colors shadow-md mb-2">
             Unlock All (Free) →
           </button>
+          <p className="text-xs text-gray-400">✅ Used by 1,000+ creators · ⚡ Takes 10 seconds</p>
         </div>
       )}
     </div>
@@ -80,19 +96,21 @@ export default function PlatformGeneratorPage({ config }) {
     showLength = false, faqs = [], tips = []
   } = config
 
+  // Platforms that support length selection
+  const hasLengthSelector = showLength || ['LinkedIn', 'Email', 'YouTube'].includes(platform)
   const isLongForm = platform === 'Email' || platform === 'YouTube'
 
   const [form, setForm] = useState({
     topic: '', keywords: [], tone: 'Professional',
-    audience: '', cta: 'None', language: 'English', link: '',
+    audience: '', cta: 'None', language: 'English', link: '', length: 'Medium',
   })
-  const [variations,  setVariations]  = useState([])
+  const [variations,   setVariations]   = useState([])
   const [singleResult, setSingleResult] = useState('')
-  const [isPreview,   setIsPreview]   = useState(false)
-  const [isGuest,     setIsGuest]     = useState(false)
-  const [loading,     setLoading]     = useState(false)
-  const [error,       setError]       = useState('')
-  const [copied,      setCopied]      = useState(null)
+  const [isPreview,    setIsPreview]    = useState(false)
+  const [isGuest,      setIsGuest]      = useState(false)
+  const [loading,      setLoading]      = useState(false)
+  const [error,        setError]        = useState('')
+  const [copied,       setCopied]       = useState(null)
   const [copiedSingle, setCopiedSingle] = useState(false)
 
   function updateForm(f, v) { setForm(prev => ({ ...prev, [f]: v })) }
@@ -130,19 +148,12 @@ export default function PlatformGeneratorPage({ config }) {
     setCopiedSingle(true); setTimeout(() => setCopiedSingle(false), 2000)
   }
 
-  // Save result to sessionStorage before redirecting to auth
   function handleUnlock() {
-    const restoreData = {
-      variations,
-      singleResult,
-      form,
-      platform,
-    }
+    const restoreData = { variations, singleResult, form, platform }
     sessionStorage.setItem('rankivo_restore_' + (slug || platform), JSON.stringify(restoreData))
     router.push('/auth?mode=signup&redirect=tools/' + (slug || platform.toLowerCase()))
   }
 
-  // Restore result after login redirect
   useEffect(() => {
     const key = 'rankivo_restore_' + (slug || platform)
     const saved = sessionStorage.getItem(key)
@@ -178,7 +189,7 @@ export default function PlatformGeneratorPage({ config }) {
 
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
-            {/* Form */}
+            {/* ── Form ── */}
             <div className="lg:col-span-2">
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-5 sticky top-24">
 
@@ -193,6 +204,26 @@ export default function PlatformGeneratorPage({ config }) {
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Keywords <span className="text-gray-400 font-normal">(up to 3, optional)</span></label>
                   <TagInput value={form.keywords} onChange={v => updateForm('keywords', v)} placeholder="Type keyword, press Enter…" />
                 </div>
+
+                {/* Length selector — shown for LinkedIn, Email, YouTube */}
+                {hasLengthSelector && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Length</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {LENGTHS.map(l => (
+                        <button key={l.value} onClick={() => updateForm('length', l.value)}
+                          className={`py-2 rounded-xl border text-xs font-medium transition-colors ${
+                            form.length === l.value
+                              ? 'bg-[#1B5FA8] text-white border-[#1B5FA8]'
+                              : 'border-gray-200 text-gray-500 hover:border-[#0D9488]'
+                          }`}>
+                          <span className="block font-semibold">{l.label}</span>
+                          <span className="opacity-70">{l.desc}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Tone</label>
@@ -217,7 +248,6 @@ export default function PlatformGeneratorPage({ config }) {
                   </select>
                 </div>
 
-                {/* Link field */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     🔗 Your Link <span className="text-gray-400 font-normal">(optional)</span>
@@ -252,7 +282,7 @@ export default function PlatformGeneratorPage({ config }) {
               </div>
             </div>
 
-            {/* Output */}
+            {/* ── Output ── */}
             <div className="lg:col-span-3 space-y-4">
               {error && <div className="bg-red-50 text-red-600 rounded-xl p-4 text-sm">{error}</div>}
 
@@ -265,22 +295,30 @@ export default function PlatformGeneratorPage({ config }) {
                       <div className="h-4 bg-gray-200 rounded w-5/6" />
                     </div>
                   ))}
-                  <p className="text-xs text-center text-gray-400">Generating 4 variations…</p>
+                  <p className="text-xs text-center text-gray-400">Generating variations…</p>
                 </div>
               )}
 
-              {/* Multi-variation output */}
+              {/* ── Multi-variation output ── */}
               {!loading && variations.length > 0 && (
                 <>
-                  {isGuest && (
-                    <div className="bg-[#1B5FA8]/5 border border-[#1B5FA8]/20 rounded-xl px-4 py-3 flex items-center gap-3">
-                      <span className="text-lg">👁️</span>
-                      <div>
-                        <p className="text-sm font-semibold text-[#1B5FA8]">Showing Variation 1 of {variations.length}</p>
-                        <p className="text-xs text-gray-500">Sign up free to unlock all variations and copy them</p>
-                      </div>
+                  {/* Header banner */}
+                  <div className={`rounded-xl px-4 py-3 flex items-center gap-3 ${
+                    isGuest
+                      ? 'bg-[#1B5FA8]/5 border border-[#1B5FA8]/20'
+                      : 'bg-[#0D9488]/5 border border-[#0D9488]/20'
+                  }`}>
+                    <span className="text-xl">✨</span>
+                    <div>
+                      <p className="text-sm font-bold text-gray-800">
+                        {variations.length} High-Performing Variations Generated
+                      </p>
+                      {isGuest
+                        ? <p className="text-xs text-gray-500">You're viewing 1 of {variations.length} — sign up free to unlock all</p>
+                        : <p className="text-xs text-gray-500">All {variations.length} variations ready — copy and use any of them</p>
+                      }
                     </div>
-                  )}
+                  </div>
 
                   {variations.map((v, i) => (
                     <VariationCard
@@ -292,39 +330,74 @@ export default function PlatformGeneratorPage({ config }) {
                       onCopy={copyVariation}
                       copied={copied}
                       onUnlock={handleUnlock}
+                      total={variations.length}
                     />
                   ))}
 
+                  {/* Bottom CTA for guests */}
                   {isGuest && (
                     <div className="bg-white border border-[#1B5FA8]/20 rounded-2xl p-6 text-center">
-                      <p className="text-base font-bold text-gray-800 mb-1">Unlock All {variations.length} Variations</p>
-                      <p className="text-sm text-gray-500 mb-4">Create a free account to copy, save and use all variations.</p>
+                      <p className="text-base font-bold text-gray-800 mb-1">
+                        🔒 Unlock {variations.length - 1} More High-Performing Variations
+                      </p>
+                      <p className="text-sm text-gray-500 mb-1">✨ Designed to boost engagement & clicks</p>
+                      <p className="text-xs text-gray-400 mb-4">Sign up free — takes 10 seconds</p>
                       <button onClick={handleUnlock}
                         className="bg-[#1B5FA8] hover:bg-[#0D9488] text-white px-8 py-3 rounded-xl text-sm font-bold transition-colors shadow-md mb-3">
                         Unlock All (Free) →
                       </button>
-                      <div className="flex items-center justify-center gap-4 text-xs text-gray-500">
+                      <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-gray-500">
                         <span>✅ Full access to all variations</span>
-                        <span>✅ Save &amp; edit later</span>
+                        <span>✅ Copy, edit &amp; post instantly</span>
                         <span>✅ 3 free generations/month</span>
+                      </div>
+                      <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-center gap-4 text-xs text-gray-400">
+                        <span>✅ Used by 1,000+ creators</span>
+                        <span>⚡ Generate in seconds</span>
                       </div>
                     </div>
                   )}
                 </>
               )}
 
-              {/* Single output (Email, YouTube) */}
+              {/* ── Single output (Email, YouTube) ── */}
               {!loading && singleResult && (
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                   <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                     <span className="text-sm font-semibold text-gray-700">Generated {platform} Content</span>
-                    <button onClick={isGuest ? handleUnlock : copySingle}
-                      className="text-xs border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 text-gray-500 transition-colors">
-                      {isGuest ? '🔒 Sign up to Copy' : copiedSingle ? '✅ Copied' : '📋 Copy'}
-                    </button>
+                    {!isGuest && (
+                      <button onClick={copySingle}
+                        className="text-xs border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 text-gray-500 transition-colors">
+                        {copiedSingle ? '✅ Copied' : '📋 Copy'}
+                      </button>
+                    )}
                   </div>
-                  <div className="p-6 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
-                    {singleResult}
+
+                  {/* Preview for guests */}
+                  <div className="relative">
+                    <div className={`p-6 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed ${isPreview ? 'max-h-48 overflow-hidden' : ''}`}>
+                      {singleResult}
+                    </div>
+
+                    {isPreview && (
+                      <>
+                        <div className="absolute bottom-16 left-0 right-0 h-20"
+                          style={{ backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', background: 'linear-gradient(to bottom, transparent, rgba(255,255,255,0.7))' }} />
+                        <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center justify-end pb-5 px-4"
+                          style={{ background: 'linear-gradient(to bottom, transparent 0%, white 30%)' }}>
+                          <p className="text-sm font-bold text-gray-800 mb-0.5">Preview Generated – Unlock Full Content</p>
+                          <p className="text-xs text-gray-500 mb-3">Sign up free to read, copy and use the complete {platform} content</p>
+                          <button onClick={handleUnlock}
+                            className="bg-[#1B5FA8] hover:bg-[#0D9488] text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-md mb-2">
+                            Unlock Full Content (Free) →
+                          </button>
+                          <div className="flex items-center gap-3 text-xs text-gray-400">
+                            <span>✅ Used by 1,000+ creators</span>
+                            <span>⚡ Takes 10 seconds</span>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               )}
@@ -337,7 +410,7 @@ export default function PlatformGeneratorPage({ config }) {
                 </div>
               )}
 
-              {/* Tips section for SEO content depth */}
+              {/* Tips */}
               {tips.length > 0 && (
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mt-6">
                   <h2 className="text-base font-bold text-[#1B5FA8] mb-4">💡 Tips for Better {platform} Content</h2>
@@ -352,7 +425,7 @@ export default function PlatformGeneratorPage({ config }) {
                 </div>
               )}
 
-              {/* FAQ section for SEO */}
+              {/* FAQs */}
               {faqs.length > 0 && (
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mt-4">
                   <h2 className="text-base font-bold text-[#1B5FA8] mb-4">❓ Frequently Asked Questions</h2>

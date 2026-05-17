@@ -459,11 +459,12 @@ export async function POST(request) {
       })
     }
 
-    // Email / YouTube — single output, guest sees full (copy locked)
+    // Email / YouTube — single output, guest gets preview, logged-in gets full
+    const returnContent = isGuest ? getPreviewContent(content) : content
     return Response.json({
       isGuest,
-      isPreview: false,
-      content: { metaTitle: '', metaDescription: '', titles: [], content }
+      isPreview: isGuest,
+      content: { metaTitle: '', metaDescription: '', titles: [], content: returnContent }
     })
 
   } catch (error) {
