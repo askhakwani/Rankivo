@@ -1,5 +1,7 @@
 import Groq from 'groq-sdk'
 import { checkGenerationPolicy, incrementPostCount } from '../../../lib/usagePolicy'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 
@@ -385,19 +387,34 @@ export async function POST(request) {
       return Response.json({ error: 'Unsupported platform: ' + platform }, { status: 400 })
     }
 
-    // ── Auth check ────────────────────────────────────────────────────────────
-    const policy = await checkGenerationPolicy()
-    const isGuest = policy.isGuest
+    // ── Auth check (server-side, reads session from request cookies) ────────
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
+    )
 
-    if (!isGuest && !policy.allowed) {
-      return Response.json({
-        error:      'LIMIT_REACHED',
-        message:    policy.message,
-        upgrade:    true,
-        postsUsed:  policy.postsUsed,
-        postsLimit: policy.postsLimit,
-        plan:       policy.plan,
-      }, { status: 403 })
+    const { data: { user: serverUser } } = await supabase.auth.getUser()
+    const isGuest = !serverUser
+
+    if (!isGuest) {
+      const LIMITS = { free: 3, starter: 50, pro: 200, agency: Infinity }
+      const { data: profile } = await supabase
+        .from('profiles').select('plan, posts_count, reset_date').eq('id', serverUser.id).single()
+      const plan  = profile?.plan || 'free'
+      const limit = LIMITS[plan] ?? 3
+      const used  = profile?.posts_count || 0
+      const currentMonth = new Date().toISOString().slice(0, 7)
+      if (profile?.reset_date !== currentMonth) {
+        await supabase.from('profiles').update({ posts_count: 0, reset_date: currentMonth }).eq('id', serverUser.id)
+      } else if (limit !== Infinity && used >= limit) {
+        return Response.json({
+          error: 'LIMIT_REACHED',
+          message: `You've used all ${limit} posts this month on the ${plan} plan.`,
+          upgrade: true, postsUsed: used, postsLimit: limit, plan,
+        }, { status: 403 })
+      }
     }
 
     // ── Generate ──────────────────────────────────────────────────────────────
@@ -436,8 +453,8 @@ export async function POST(request) {
     }
 
     // ── Track usage ───────────────────────────────────────────────────────────
-    if (!isGuest) {
-      await incrementPostCount(policy.user?.id)
+    if (!isGuest && serverUser) {
+      await incrementPostCount(serverUser.id)
     }
 
     // ── Response ──────────────────────────────────────────────────────────────
