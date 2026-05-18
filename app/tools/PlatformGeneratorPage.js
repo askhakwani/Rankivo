@@ -260,6 +260,16 @@ export default function PlatformGeneratorPage({ config }) {
             audience:       data.form?.audience || '',
             cta:            data.form?.cta || 'None',
           }).then(() => {}).catch(console.error)
+
+          // Increment posts_count for the restored post
+          supabase.from('profiles').select('posts_count, reset_date').eq('id', restoredUser.id).single()
+            .then(({ data: prof }) => {
+              if (!prof) return
+              const now = new Date()
+              const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+              const newCount = prof.reset_date === currentMonth ? (prof.posts_count || 0) + 1 : 1
+              supabase.from('profiles').update({ posts_count: newCount, reset_date: currentMonth }).eq('id', restoredUser.id).then(() => {}).catch(console.error)
+            }).catch(console.error)
         }
       })
     } catch (e) { /* ignore parse errors */ }
