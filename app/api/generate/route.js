@@ -388,26 +388,38 @@ export async function POST(request) {
     }
 
     // ── Auth check (server-side, reads session from request cookies) ────────
+    // Auth: use cookie-aware client for session, admin client for DB ops
     const cookieStore = await cookies()
-    const supabase = createServerClient(
+    const anonClient = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
       { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
     )
 
-    const { data: { user: serverUser } } = await supabase.auth.getUser()
+    // Admin client bypasses RLS for all profile reads/writes
+    const { createClient: makeClient } = await import('@supabase/supabase-js')
+    const adminDb = makeClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    )
+
+    const { data: { user: serverUser } } = await anonClient.auth.getUser()
     const isGuest = !serverUser
 
     if (!isGuest) {
       const LIMITS = { free: 3, starter: 50, pro: 200, agency: Infinity }
-      const { data: profile } = await supabase
+      const { data: profile } = await adminDb
         .from('profiles').select('plan, posts_count, reset_date').eq('id', serverUser.id).single()
       const plan  = profile?.plan || 'free'
       const limit = LIMITS[plan] ?? 3
       const used  = profile?.posts_count || 0
-      const currentMonth = new Date().toISOString().slice(0, 7)
-      if (!profile?.reset_date || profile.reset_date.slice(0, 7) !== currentMonth) {
-        await supabase.from('profiles').update({ posts_count: 0, reset_date: currentMonth }).eq('id', serverUser.id)
+      const currentMonth = new Date().toISOString().slice(0, 7) // YYYY-MM
+      const resetMonth   = profile?.reset_date ? String(profile.reset_date).slice(0, 7) : null
+      if (!resetMonth || resetMonth !== currentMonth) {
+        // Store as first day of month so date column accepts it
+        await adminDb.from('profiles')
+          .update({ posts_count: 0, reset_date: currentMonth + '-01' })
+          .eq('id', serverUser.id)
       } else if (limit !== Infinity && used >= limit) {
         return Response.json({
           error: 'LIMIT_REACHED',
@@ -452,9 +464,14 @@ export async function POST(request) {
       if (!isBlog) break
     }
 
-    // ── Track usage ───────────────────────────────────────────────────────────
+    // ── Track usage (inline with adminDb — guaranteed to bypass RLS) ─────────
     if (!isGuest && serverUser) {
-      await incrementPostCount(serverUser.id)
+      const { data: cur } = await adminDb
+        .from('profiles').select('posts_count').eq('id', serverUser.id).single()
+      await adminDb
+        .from('profiles')
+        .update({ posts_count: (cur?.posts_count || 0) + 1 })
+        .eq('id', serverUser.id)
     }
 
     // ── Response ──────────────────────────────────────────────────────────────
