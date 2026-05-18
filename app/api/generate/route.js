@@ -387,39 +387,39 @@ export async function POST(request) {
       return Response.json({ error: 'Unsupported platform: ' + platform }, { status: 400 })
     }
 
-    // ── Auth check (server-side, reads session from request cookies) ────────
-    // Auth: use cookie-aware client for session, admin client for DB ops
+    // ── Auth: cookie client for session, admin client for all DB ops ────────
     const cookieStore = await cookies()
     const anonClient = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
       { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
     )
-
-    // Admin client bypasses RLS for all profile reads/writes
-    const { createClient: makeClient } = await import('@supabase/supabase-js')
-    const adminDb = makeClient(
+    const { createClient: makeAdminClient } = await import('@supabase/supabase-js')
+    const adminDb = makeAdminClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
     )
 
     const { data: { user: serverUser } } = await anonClient.auth.getUser()
     const isGuest = !serverUser
+    console.log('=== AUTH isGuest:', isGuest, 'userId:', serverUser?.id)
 
     if (!isGuest) {
       const LIMITS = { free: 3, starter: 50, pro: 200, agency: Infinity }
-      const { data: profile } = await adminDb
+      const { data: profile, error: profErr } = await adminDb
         .from('profiles').select('plan, posts_count, reset_date').eq('id', serverUser.id).single()
+      console.log('=== PROFILE:', profile, 'profErr:', profErr)
       const plan  = profile?.plan || 'free'
       const limit = LIMITS[plan] ?? 3
       const used  = profile?.posts_count || 0
-      const currentMonth = new Date().toISOString().slice(0, 7) // YYYY-MM
+      const currentMonth = new Date().toISOString().slice(0, 7)
       const resetMonth   = profile?.reset_date ? String(profile.reset_date).slice(0, 7) : null
+      console.log('=== currentMonth:', currentMonth, 'resetMonth:', resetMonth, 'used:', used, 'limit:', limit)
       if (!resetMonth || resetMonth !== currentMonth) {
-        // Store as first day of month so date column accepts it
         await adminDb.from('profiles')
           .update({ posts_count: 0, reset_date: currentMonth + '-01' })
           .eq('id', serverUser.id)
+        console.log('=== RESET posts_count to 0')
       } else if (limit !== Infinity && used >= limit) {
         return Response.json({
           error: 'LIMIT_REACHED',
@@ -464,14 +464,20 @@ export async function POST(request) {
       if (!isBlog) break
     }
 
-    // ── Track usage (inline with adminDb — guaranteed to bypass RLS) ─────────
+    // ── Track usage ───────────────────────────────────────────────────────────
     if (!isGuest && serverUser) {
-      const { data: cur } = await adminDb
+      console.log('=== INCREMENT for userId:', serverUser.id)
+      const { data: cur, error: selErr } = await adminDb
         .from('profiles').select('posts_count').eq('id', serverUser.id).single()
-      await adminDb
+      console.log('=== pre-increment posts_count:', cur?.posts_count, 'selErr:', selErr)
+      const { data: upd, error: updErr } = await adminDb
         .from('profiles')
         .update({ posts_count: (cur?.posts_count || 0) + 1 })
         .eq('id', serverUser.id)
+        .select()
+      console.log('=== post-increment result:', upd, 'updErr:', updErr)
+    } else {
+      console.log('=== SKIPPED — isGuest:', isGuest, 'hasUser:', !!serverUser)
     }
 
     // ── Response ──────────────────────────────────────────────────────────────
