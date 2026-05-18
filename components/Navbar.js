@@ -198,14 +198,14 @@ export default function Navbar() {
 
               {toolsOpen && (
                 <div
-                  className="mega-dropdown absolute top-full left-1/2 mt-3 z-50"
-                  style={{ transform: 'translateX(-40%)', width: '720px' }}
+                  className="mega-dropdown absolute top-full left-0 mt-3 z-50"
+                  style={{ width: '680px', maxWidth: 'calc(100vw - 3rem)' }}
                   onMouseEnter={handleMouseEnter}
                   onMouseLeave={handleMouseLeave}
                 >
                   {/* Arrow pointer */}
                   <div
-                    className="absolute -top-1.5 left-[42%] w-3 h-3 bg-white border-l border-t border-gray-200 rotate-45"
+                    className="absolute -top-1.5 left-[8%] w-3 h-3 bg-white border-l border-t border-gray-200 rotate-45"
                     style={{ zIndex: 1 }}
                   />
 
