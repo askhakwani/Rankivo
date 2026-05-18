@@ -191,23 +191,30 @@ function buildOtherPrompt(platform, topic, tone, language, keywords, audience, c
   const linkText = link ? `Include this link naturally: ${link}` : ''
 
   if (platform === 'LinkedIn') {
+    const linkedInStructure = wordCount <= 100
+      ? `- Hook line (1 punchy sentence)\n- 2 short body paragraphs (2 sentences each)\n- 1 closing CTA or question`
+      : wordCount <= 180
+      ? `- Hook line (1-2 sentences)\n- 3 body paragraphs (2-3 sentences each)\n- 1 closing insight or question\n- 1 CTA line`
+      : `- Hook line (2 sentences that create curiosity)\n- 4 body paragraphs (3 sentences each, blank line between each)\n- 1 key takeaway paragraph (2 sentences)\n- 1 closing question or CTA${link ? " + link" : ""}`
     return `You are a strict LinkedIn content generator.
 
 Generate 4 different LinkedIn post variations about: ${topic}
 Tone: ${tone} | Language: ${language}
 ${kwText} ${audText} ${ctaText} ${linkText}
 
+REQUIRED STRUCTURE — use this exact structure for every variation:
+${linkedInStructure}
+
 RULES:
 - Write exactly 4 variations numbered 1. 2. 3. 4.
-- Each variation: EXACTLY ${wordCount} words (count carefully)
-- Each: strong professional hook on line 1-2
-- Body: short paragraphs, max 2 lines each, blank lines between
-- End each with insight, question, or CTA${link ? ' + link' : ''}
+- Every variation must include ALL sections listed in the structure above
+- Do not skip any section
 - Max 2 emojis per variation
 - Separate variations with a blank line, "---", blank line
 
 OUTPUT ONLY the 4 variations. No explanations.`
   }
+
 
   if (platform === 'X' || platform === 'Twitter' || platform === 'Twitter/X') {
     return `You are a strict X (formerly Twitter) content generator.
