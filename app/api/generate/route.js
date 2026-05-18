@@ -381,6 +381,7 @@ export async function POST(request) {
       YouTube:  { Short: 200, Medium: 400, Long: 700 },
     }
     const wordCount = wc || platformWordCounts[platform]?.[length] || (length === 'Long' ? 800 : length === 'Medium' ? 400 : 150)
+    console.log('=== wordCount:', wordCount, '| length:', length, '| platform:', platform)
 
     let prompt = ''
     if (isBlog) {
