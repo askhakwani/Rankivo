@@ -171,14 +171,21 @@ export default function PlatformGeneratorPage({ config }) {
   }
 
   async function handleGenerate() {
-    if (!form.topic.trim()) return
+    console.log('1. handleGenerate fired | topic:', form.topic, '| platform:', platform)
+    if (!form.topic.trim()) {
+      console.log('❌ BLOCKED — topic is empty, returning early')
+      return
+    }
     setLoading(true); setError(''); setVariations([]); setSingleResult(''); setIsPreview(false)
     try {
+      console.log('2. Calling fetch /api/generate with:', { platform, ...form })
       const res = await fetch('/api/generate', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ platform, ...form }),
       })
+      console.log('3. Response received | status:', res.status, '| ok:', res.ok)
       const data = await res.json()
+      console.log('4. Response data:', data)
       if (data.error) { setError(data.error); return }
 
       setIsGuest(data.isGuest || false)
@@ -194,7 +201,10 @@ export default function PlatformGeneratorPage({ config }) {
       if (!data.isGuest) {
         await saveToHistory(data)
       }
-    } catch { setError('Something went wrong. Please try again.') }
+    } catch (err) {
+      console.error('❌ CATCH error:', err)
+      setError('Something went wrong. Please try again.')
+    }
     finally { setLoading(false) }
   }
 
