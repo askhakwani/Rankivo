@@ -199,6 +199,7 @@ ${kwText} ${audText} ${ctaText} ${linkText}
 
 RULES:
 - Write exactly 4 variations numbered 1. 2. 3. 4.
+- Each variation: EXACTLY ${wordCount} words (count carefully)
 - Each: strong professional hook on line 1-2
 - Body: short paragraphs, max 2 lines each, blank lines between
 - End each with insight, question, or CTA${link ? ' + link' : ''}
@@ -235,6 +236,7 @@ ${kwText} ${audText} ${ctaText} ${linkText}
 RULES:
 - Line 1: Subject line (format: "Subject: ...")
 - Then blank line, then email body
+- Body: EXACTLY ${wordCount} words (excluding subject line, count carefully)
 - Body: conversational, short paragraphs (2-3 lines each)
 - Clear CTA${link ? ' with the link' : ''}
 - Professional closing
@@ -270,6 +272,7 @@ ${kwText} ${audText} ${ctaText} ${linkText}
 RULES:
 - Strong hook (spoken style)
 - Intro, main content, outro + CTA${link ? ' + link' : ''}
+- EXACTLY ${wordCount} words total (count carefully)
 - Frequent line breaks, spoken delivery style
 - NO blog paragraphs
 
@@ -372,7 +375,12 @@ export async function POST(request) {
     const isBlog = platform === 'Blog'
     const isMultiVariation = MULTI_VARIATION_PLATFORMS.includes(platform)
     const needsHashtags = platform === 'Instagram' || platform === 'TikTok'
-    const wordCount = wc || (length === 'Long' ? 800 : length === 'Medium' ? 400 : 150)
+    const platformWordCounts = {
+      LinkedIn: { Short: 80,  Medium: 150, Long: 250 },
+      Email:    { Short: 100, Medium: 250, Long: 400 },
+      YouTube:  { Short: 200, Medium: 400, Long: 700 },
+    }
+    const wordCount = wc || platformWordCounts[platform]?.[length] || (length === 'Long' ? 800 : length === 'Medium' ? 400 : 150)
 
     let prompt = ''
     if (isBlog) {

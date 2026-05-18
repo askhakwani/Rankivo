@@ -9,9 +9,9 @@ const TONES = ['Professional', 'Casual', 'Friendly', 'Authoritative', 'Conversat
 const LANGUAGES = ['English', 'Spanish', 'French', 'German', 'Portuguese', 'Arabic', 'Urdu']
 const CTA_STYLES = ['None', 'Learn More', 'Buy Now', 'Visit Site', 'Sign Up Free', 'Book a Call', 'Contact Us']
 const LENGTHS = [
-  { label: 'Short',  desc: '~150 words', value: 'Short'  },
-  { label: 'Medium', desc: '~400 words', value: 'Medium' },
-  { label: 'Long',   desc: '~800 words', value: 'Long'   },
+  { label: 'Short',  desc: 'Concise',  value: 'Short'  },
+  { label: 'Medium', desc: 'Standard', value: 'Medium' },
+  { label: 'Long',   desc: 'Detailed', value: 'Long'   },
 ]
 
 // Teaser labels shown on blurred variation cards
