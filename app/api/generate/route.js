@@ -408,9 +408,20 @@ export async function POST(request) {
         const parsed = JSON.parse(json)
         const accessToken = parsed.access_token
         if (accessToken) {
-          const { data: { user }, error } = await adminDb.auth.getUser(accessToken)
-          console.log('=== getUser result:', user?.id, '| error:', error?.message)
-          if (!error && user) serverUser = user
+          // Decode JWT payload directly — avoids refresh token errors for expired sessions
+          const payloadBase64 = accessToken.split('.')[1]
+          const payload = JSON.parse(Buffer.from(payloadBase64, 'base64').toString('utf-8'))
+          console.log('=== JWT sub:', payload.sub, '| exp:', new Date(payload.exp * 1000).toISOString())
+          const isExpired = payload.exp * 1000 < Date.now()
+          if (!isExpired && payload.sub) {
+            // Token still valid — fetch user from DB directly
+            const { data: userData, error: userErr } = await adminDb
+              .from('profiles').select('id').eq('id', payload.sub).single()
+            console.log('=== profile lookup:', userData?.id, '| err:', userErr?.message)
+            if (!userErr && userData) serverUser = { id: payload.sub, email: payload.email }
+          } else if (isExpired) {
+            console.log('=== JWT expired — treating as guest')
+          }
         }
       }
     } catch (e) {
