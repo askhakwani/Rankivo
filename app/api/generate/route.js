@@ -398,9 +398,21 @@ export async function POST(request) {
     let serverUser = null
     try {
       const projectId = process.env.NEXT_PUBLIC_SUPABASE_URL.split('//')[1].split('.')[0]
-      const cookieName = `sb-${projectId}-auth-token`
-      const raw = cookieStore.get(cookieName)?.value
-      console.log('=== cookie name:', cookieName, '| raw found:', !!raw)
+      const baseName = `sb-${projectId}-auth-token`
+
+      // Reassemble chunked cookie (.0, .1, ...) written by @supabase/ssr createBrowserClient
+      let raw = cookieStore.get(baseName)?.value
+      if (!raw) {
+        let chunks = []
+        for (let i = 0; i < 10; i++) {
+          const chunk = cookieStore.get(`${baseName}.${i}`)?.value
+          if (!chunk) break
+          chunks.push(chunk)
+        }
+        if (chunks.length) raw = chunks.join('')
+      }
+
+      console.log('=== cookie raw found:', !!raw)
       if (raw) {
         const json = raw.startsWith('base64-')
           ? Buffer.from(raw.slice(7), 'base64').toString('utf-8')
@@ -408,13 +420,11 @@ export async function POST(request) {
         const parsed = JSON.parse(json)
         const accessToken = parsed.access_token
         if (accessToken) {
-          // Decode JWT payload directly — avoids refresh token errors for expired sessions
           const payloadBase64 = accessToken.split('.')[1]
           const payload = JSON.parse(Buffer.from(payloadBase64, 'base64').toString('utf-8'))
           console.log('=== JWT sub:', payload.sub, '| exp:', new Date(payload.exp * 1000).toISOString())
           const isExpired = payload.exp * 1000 < Date.now()
           if (!isExpired && payload.sub) {
-            // Token still valid — fetch user from DB directly
             const { data: userData, error: userErr } = await adminDb
               .from('profiles').select('id').eq('id', payload.sub).single()
             console.log('=== profile lookup:', userData?.id, '| err:', userErr?.message)
