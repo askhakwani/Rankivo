@@ -232,8 +232,9 @@ export default function PlatformGeneratorPage({ config }) {
     try {
       const data = JSON.parse(saved)
       // Only restore if we can confirm user session — wait for supabase.auth.getUser()
-      supabase.auth.getUser().then(({ data: authData }) => {
-        const loggedIn = !!authData?.user
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        const authData = { user: session?.user || null }
+        const loggedIn = !!session?.user
         if (data.variations?.length) setVariations(data.variations)
         if (data.singleResult) setSingleResult(data.singleResult)
         if (data.form) setForm(data.form)
