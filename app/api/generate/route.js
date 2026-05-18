@@ -387,20 +387,36 @@ export async function POST(request) {
       return Response.json({ error: 'Unsupported platform: ' + platform }, { status: 400 })
     }
 
-    // ── Auth: cookie client for session, admin client for all DB ops ────────
+    // ── Auth: manually parse Supabase cookie (handles base64- prefix format) ──
     const cookieStore = await cookies()
-    const anonClient = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
-    )
     const { createClient: makeAdminClient } = await import('@supabase/supabase-js')
     const adminDb = makeAdminClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
     )
 
-    const { data: { user: serverUser } } = await anonClient.auth.getUser()
+    let serverUser = null
+    try {
+      const projectId = process.env.NEXT_PUBLIC_SUPABASE_URL.split('//')[1].split('.')[0]
+      const cookieName = `sb-${projectId}-auth-token`
+      const raw = cookieStore.get(cookieName)?.value
+      console.log('=== cookie name:', cookieName, '| raw found:', !!raw)
+      if (raw) {
+        const json = raw.startsWith('base64-')
+          ? Buffer.from(raw.slice(7), 'base64').toString('utf-8')
+          : decodeURIComponent(raw)
+        const parsed = JSON.parse(json)
+        const accessToken = parsed.access_token
+        if (accessToken) {
+          const { data: { user }, error } = await adminDb.auth.getUser(accessToken)
+          console.log('=== getUser result:', user?.id, '| error:', error?.message)
+          if (!error && user) serverUser = user
+        }
+      }
+    } catch (e) {
+      console.error('=== Cookie parse error:', e.message)
+    }
+
     const isGuest = !serverUser
     console.log('=== AUTH isGuest:', isGuest, 'userId:', serverUser?.id)
 
