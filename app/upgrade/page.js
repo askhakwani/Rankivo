@@ -35,7 +35,7 @@ const PLANS = [
     id: 'agency', name: 'Agency', price: '$79', period: 'per month',
     postsLabel: 'Unlimited posts',
     searches: 300, searchesLabel: '300 keyword searches/day',
-    features: ['Unlimited posts', '300 keyword searches/day', '1000 keywords per search', 'Everything in Pro', 'Future API access', 'Team access (coming soon)'],
+    features: ['Unlimited posts', '300 keyword searches/day', '1000 keywords per search', 'Everything in Pro', 'API access for automation & integrations (coming soon)', 'Team access (coming soon)'],
     missing: [],
     color: 'gold', anchor: null,
   },
