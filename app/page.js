@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
+import InteractiveDemo from '../components/InteractiveDemo'
 
 export const metadata = {
   title: 'RANKIVO — AI Content & SEO Platform',
@@ -61,6 +62,9 @@ export default function Home() {
           <p className="text-gray-400 text-sm mt-4">3 free posts per month. No credit card required.</p>
         </div>
       </section>
+
+      {/* Interactive Demo */}
+      <InteractiveDemo />
 
       {/* Stats */}
       <section className="py-12 border-y border-gray-200 bg-gray-50">
