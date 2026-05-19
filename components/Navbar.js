@@ -214,7 +214,7 @@ function ContentDropdown({ onClose, onMouseEnter, onMouseLeave }) {
       <div className="relative bg-white border border-gray-200 rounded-2xl shadow-2xl overflow-hidden" style={{ zIndex: 2 }}>
 
         {/* Search bar */}
-        <div className="px-5 pt-4 pb-3 border-b border-gray-100">
+        <div className="px-5 pt-4 pb-3 border-b border-gray-100 sticky top-0 bg-white z-10">
           <div className="flex items-center gap-2.5 bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 focus-within:border-[#1B5FA8] focus-within:ring-2 focus-within:ring-[#1B5FA8]/10 transition-all">
             <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
@@ -237,7 +237,7 @@ function ContentDropdown({ onClose, onMouseEnter, onMouseLeave }) {
         </div>
 
         {/* Tool list */}
-        <div className="p-5">
+        <div className="p-5 overflow-y-auto" style={{ maxHeight: 'calc(80vh - 120px)' }}>
           {isFiltering ? (
             filteredTools.length > 0 ? (
               <div className="space-y-1">
