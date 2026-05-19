@@ -6,15 +6,15 @@ import Link from 'next/link'
 
 const FAQS = [
   { q: 'What is RANKIVO?', a: 'RANKIVO is an AI-powered content and SEO platform that helps you generate high-quality, SEO-optimized content for Instagram, TikTok, LinkedIn, blogs, YouTube, emails, ads and more — in seconds.' },
-  { q: 'How many free posts do I get?', a: 'Free users get 3 posts per month at no cost. No credit card required to sign up. Your usage resets on the 1st of every month.' },
+  { q: 'How many free posts do I get?', a: 'Free users get 3 posts per month at no cost. No credit card required to sign up. Free usage resets monthly, based on your subscription start date.' },
   { q: 'What platforms does RANKIVO support?', a: 'RANKIVO supports Instagram, TikTok, LinkedIn, Blog, YouTube Scripts, Twitter/X, Pinterest, Email and Ads — with more platforms being added regularly.' },
   { q: 'What languages are supported?', a: 'Currently we support English, Spanish, French, German, Arabic and Urdu. More languages are coming soon.' },
   { q: 'What is included in the SEO optimization?', a: 'Every piece of content includes SEO keyword integration, meta titles, meta descriptions, H1 headline options and hashtags (for social platforms).' },
   { q: 'Can I upgrade or downgrade my plan?', a: 'Yes. You can upgrade or downgrade your plan at any time from your account settings or the upgrade page.' },
   { q: 'How does the content history work?', a: 'Every piece of content you generate is automatically saved to your content history. You can access, copy and reuse it anytime from your dashboard.' },
-  { q: 'Is my data secure?', a: 'Yes. We use Supabase for secure data storage with row-level security (RLS) enabled. Your content is only accessible by you.' },
+  { q: 'Is my data secure?', a: 'Yes. We use Supabase for secure data storage with row-level security (RLS) enabled. Your content is protected with secure authentication and database-level security (RLS).' },
   { q: 'Can I cancel anytime?', a: 'Yes. There are no long-term contracts. You can cancel your subscription at any time.' },
-  { q: 'Do you offer refunds?', a: 'We offer a 7-day money-back guarantee on all paid plans. Contact us at support@rankivo.co if you need a refund.' },
+  { q: 'Do you offer refunds?', a: 'We offer a 7-day money-back guarantee on eligible plans. Refunds are available within 7 days of purchase for eligible plans. Requests are reviewed based on account activity and usage to prevent abuse. Contact us at support@rankivo.co if you need a refund.' },
   { q: 'What is the difference between Pro and Premium?', a: 'Pro gives you 50 posts per month with full SEO tools and email support. Premium gives you 300 posts per month with priority generation and priority support.' },
   { q: 'How do I contact support?', a: 'You can reach us through the Contact page or email us at support@rankivo.co. We typically respond within 24 hours.' },
 ]
