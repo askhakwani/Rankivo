@@ -51,7 +51,7 @@ export default function TermsPage() {
             <ul className="list-disc pl-5 space-y-1">
               <li>Generate content that is illegal, harmful, deceptive, or violates the rights of others</li>
               <li>Produce spam, misinformation, or content intended to deceive users</li>
-              <li>Reverse-engineer, scrape, or abuse our API or infrastructure</li>
+              <li>Reverse-engineer, scrape, or abuse our infrastructure</li>
               <li>Circumvent usage limits or share account access with unauthorized users</li>
               <li>Generate content that infringes on intellectual property rights</li>
             </ul>
@@ -59,37 +59,51 @@ export default function TermsPage() {
 
           <section>
             <h2 className="text-lg font-semibold text-gray-900 mb-3">5. Content Ownership</h2>
-            <p>You retain ownership of the content you input into Rankivo. For AI-generated content, once generated and delivered to you, you may use it for personal or commercial purposes. Rankivo does not claim ownership over content you generate using our tools. However, we are not responsible for how you use generated content.</p>
+            <p>You retain ownership of the content you input into Rankivo. Generated content may be used for personal or commercial purposes after creation. We do not claim ownership of your generated outputs, however you are responsible for how you use them.</p>
           </section>
 
           <section>
             <h2 className="text-lg font-semibold text-gray-900 mb-3">6. Usage Limits and Plans</h2>
-            <p>Rankivo operates on a tiered subscription model. Free accounts receive 3 posts per month. Paid plans provide higher limits. Usage resets monthly. We reserve the right to enforce limits, modify plan features, or suspend accounts that abuse the Service.</p>
+            <p>Free accounts may include limited usage per month. Paid plans provide higher usage limits. Usage resets monthly. We reserve the right to modify plan features or enforce fair usage limits.</p>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">7. Disclaimer of Warranties</h2>
-            <p>The Service is provided "as is" without warranties of any kind. Rankivo does not guarantee that AI-generated content is accurate, complete, or suitable for any specific purpose. You are responsible for reviewing and editing all generated content before publication.</p>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">7. Payments, Billing & Subscription</h2>
+            <p className="mb-2">Rankivo offers both free and paid subscription plans. Paid subscriptions are billed on a recurring basis (monthly or annually depending on the selected plan).</p>
+            <p className="mb-2">Users authorize recurring charges at the time of subscription purchase. Billing continues until the subscription is canceled.</p>
+            <p className="mb-2">Users may cancel their subscription at any time from their account settings. After cancellation, access will remain active until the end of the current billing period.</p>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">8. Limitation of Liability</h2>
-            <p>To the maximum extent permitted by law, Rankivo shall not be liable for any indirect, incidental, special, or consequential damages arising from your use of the Service. Our total liability shall not exceed the amount you paid to us in the 12 months preceding the claim.</p>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">8. Refund Policy</h2>
+            <p className="mb-2">Due to the nature of digital services, we generally do not offer refunds for partial subscription periods or unused time.</p>
+            <p className="mb-2">Refund requests may be considered on a case-by-case basis in cases such as technical issues, duplicate charges, or billing errors.</p>
+            <p>Approved refunds will be processed through the original payment method and may take several business days to complete.</p>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">9. Termination</h2>
-            <p>We reserve the right to suspend or terminate your account at our discretion for violations of these terms, abuse of the Service, or any other reason with or without notice. You may delete your account at any time from Account Settings.</p>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">9. Disclaimer of Warranties</h2>
+            <p>The Service is provided "as is" without warranties of any kind. We do not guarantee accuracy or reliability of AI-generated content. Users are responsible for reviewing outputs before use.</p>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">10. Changes to Terms</h2>
-            <p>We may update these Terms of Service from time to time. Continued use of Rankivo after changes constitutes acceptance of the revised terms. We will note the "Last updated" date at the top of this page when changes are made.</p>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">10. Limitation of Liability</h2>
+            <p>To the maximum extent permitted by law, Rankivo shall not be liable for any indirect or consequential damages. Total liability is limited to the amount paid by the user in the last 12 months.</p>
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">11. Contact</h2>
-            <p>For questions about these Terms, contact us at <a href="mailto:support@rankivo.co" className="text-[#0D9488] hover:underline">support@rankivo.co</a>.</p>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">11. Termination</h2>
+            <p>We may suspend or terminate accounts for violations of these terms. Users may delete their account at any time.</p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">12. Changes to Terms</h2>
+            <p>We may update these Terms from time to time. Continued use of Rankivo constitutes acceptance of updated terms.</p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">13. Contact</h2>
+            <p>For questions, contact us at <a href="mailto:support@rankivo.co" className="text-[#0D9488] hover:underline">support@rankivo.co</a>.</p>
           </section>
 
         </div>
