@@ -29,7 +29,7 @@ export default function Footer() {
           <div>
             <p className="text-sm font-semibold text-gray-700 mb-3">Legal</p>
             <div className="space-y-2">
-              {[['/privacy','Privacy Policy'],['/terms','Terms of Service']].map(([h,l])=>(
+              {[['/privacy','Privacy Policy'],['/terms','Terms of Service'],['/refund','Refund Policy']].map(([h,l])=>(
                 <Link key={h} href={h} className="block text-sm text-gray-400 hover:text-[#1B5FA8] transition-colors">{l}</Link>
               ))}
             </div>
