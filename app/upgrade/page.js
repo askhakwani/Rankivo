@@ -6,7 +6,7 @@ import Navbar from '../../components/Navbar'
 import Footer from '../../components/Footer'
 
 // ── Paddle Price IDs ──────────────────────────────────────────────────────────
-const PADDLE_TOKEN = 'live_331bc96fb57b8b7c0515b1f06eb'
+const PADDLE_TOKEN = process.env.NEXT_PUBLIC_PADDLE_TOKEN
 
 const PRICE_IDS = {
   starter:        'pri_01ks8qhk18m3mgm9vtd0tm1185',
