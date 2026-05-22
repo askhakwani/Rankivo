@@ -5,20 +5,16 @@ import { useRouter } from 'next/navigation'
 import Navbar from '../../components/Navbar'
 import Footer from '../../components/Footer'
 
-// ── Paddle Price IDs ──────────────────────────────────────────────────────────
-const PADDLE_TOKEN = process.env.NEXT_PUBLIC_PADDLE_TOKEN
-
 const PRICE_IDS = {
-  starter:        'pri_01ks8qhk18m3mgm9vtd0tm1185',
-  pro:            'pri_01ks8qn13dp9ryh2zgeenyt9dw',
-  agency:         'pri_01ks8rmgkpjqxeh4m0y6zq0g31',
-  posts10:        'pri_01ks8skffm6dhrbcybv50g16d5',
-  posts50:        'pri_01ks8sh6529ypn8qxyqgp165qj',
-  searches100:    'pri_01ks8sr66ypmegqvec2j4ry2gj',
-  searches500:    'pri_01ks8spsgfnrd7bktgr6193jve',
+  starter:     'pri_01ks8qhk18m3mgm9vtd0tm1185',
+  pro:         'pri_01ks8qn13dp9ryh2zgeenyt9dw',
+  agency:      'pri_01ks8rmgkpjqxeh4m0y6zq0g31',
+  posts10:     'pri_01ks8skffm6dhrbcybv50g16d5',
+  posts50:     'pri_01ks8sh6529ypn8qxyqgp165qj',
+  searches100: 'pri_01ks8sr66ypmegqvec2j4ry2gj',
+  searches500: 'pri_01ks8spsgfnrd7bktgr6193jve',
 }
 
-// ── Plan definitions ──────────────────────────────────────────────────────────
 const PLANS = [
   {
     id: 'free', name: 'Free', price: '$0', period: 'forever',
@@ -65,28 +61,37 @@ const colorMap = {
   gold: { border: 'border-[#C9943A]', btn: 'bg-[#C9943A] hover:bg-[#C9943A]/90 text-white', badge: 'bg-[#C9943A]/10 text-[#C9943A]', ring: 'ring-2 ring-[#C9943A]/20' },
 }
 
-// ── Load Paddle.js ────────────────────────────────────────────────────────────
-function loadPaddle() {
-  return new Promise((resolve) => {
-    if (window.Paddle) return resolve(window.Paddle)
-    const script = document.createElement('script')
-    script.src = 'https://cdn.paddle.com/paddle/v2/paddle.js'
-    script.onload = () => {
-      window.Paddle.Initialize({ token: PADDLE_TOKEN })
-      resolve(window.Paddle)
-    }
-    document.head.appendChild(script)
-  })
-}
-
 export default function UpgradePage() {
-  const [user, setUser]       = useState(null)
-  const [profile, setProfile] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [user, setUser]               = useState(null)
+  const [profile, setProfile]         = useState(null)
+  const [loading, setLoading]         = useState(true)
   const [checkoutLoading, setCheckoutLoading] = useState(null)
+  const [showSuccess, setShowSuccess] = useState(false)
+  const [paddleReady, setPaddleReady] = useState(false)
 
   const supabase = createClient()
   const router   = useRouter()
+
+  // Load Paddle.js once on mount
+  useEffect(() => {
+    if (document.querySelector('script[src*="paddle.js"]')) {
+      if (window.Paddle) setPaddleReady(true)
+      return
+    }
+    const script = document.createElement('script')
+    script.src = 'https://cdn.paddle.com/paddle/v2/paddle.js'
+    script.async = true
+    script.onload = () => {
+      window.Paddle.Initialize({ token: 'live_331bc96fb57b8b7c0515b1f06eb' })
+      setPaddleReady(true)
+    }
+    document.head.appendChild(script)
+  }, [])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('success') === 'true') setShowSuccess(true)
+  }, [])
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
@@ -101,25 +106,23 @@ export default function UpgradePage() {
   }, [])
 
   async function loadProfile(id) {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', id)
-      .single()
+    const { data } = await supabase.from('profiles').select('*').eq('id', id).single()
     setProfile(data)
     setLoading(false)
   }
 
-  // ── Open Paddle Checkout ────────────────────────────────────────────────────
   async function openCheckout(priceId, label) {
     if (!user) {
       router.push('/auth?mode=signup&redirect=upgrade')
       return
     }
+    if (!paddleReady || !window.Paddle) {
+      alert('Checkout is loading, please try again in a moment.')
+      return
+    }
     setCheckoutLoading(label)
     try {
-      const Paddle = await loadPaddle()
-      Paddle.Checkout.open({
+      window.Paddle.Checkout.open({
         items: [{ priceId, quantity: 1 }],
         customer: { email: user.email },
         customData: { userId: user.id },
@@ -127,25 +130,16 @@ export default function UpgradePage() {
           displayMode: 'overlay',
           theme: 'light',
           locale: 'en',
-          successUrl: `https://www.rankivo.co/upgrade?success=true`,
+          successUrl: 'https://www.rankivo.co/upgrade?success=true',
         },
       })
     } catch (err) {
       console.error('Paddle error:', err)
-      alert('Something went wrong opening checkout. Please try again.')
+      alert('Something went wrong. Please try again.')
     } finally {
       setCheckoutLoading(null)
     }
   }
-
-  // ── Success message ─────────────────────────────────────────────────────────
-  const [showSuccess, setShowSuccess] = useState(false)
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search)
-      if (params.get('success') === 'true') setShowSuccess(true)
-    }
-  }, [])
 
   const currentPlan  = user ? (profile?.plan || 'free') : null
   const postsUsed    = profile?.posts_count || 0
@@ -167,7 +161,6 @@ export default function UpgradePage() {
 
       <div className="max-w-6xl mx-auto px-6 pt-28 pb-20">
 
-        {/* Success Banner */}
         {showSuccess && (
           <div className="bg-[#0D9488]/10 border border-[#0D9488]/30 rounded-xl px-6 py-4 mb-8 flex items-center gap-3 max-w-2xl mx-auto">
             <span className="text-2xl">🎉</span>
@@ -178,14 +171,12 @@ export default function UpgradePage() {
           </div>
         )}
 
-        {/* Hero */}
         <div className="text-center mb-10">
           <span className="inline-block bg-[#C9943A]/10 text-[#C9943A] text-sm px-4 py-2 rounded-full font-medium mb-4 border border-[#C9943A]/20">Upgrade Your Plan</span>
           <h1 className="text-4xl font-bold text-gray-900 mb-3">Scale Your Content Output</h1>
           <p className="text-gray-500 text-lg">Generate more content, unlock more features.</p>
         </div>
 
-        {/* Current usage */}
         {user && (
           <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm mb-10 max-w-xl mx-auto">
             <div className="flex items-center justify-between mb-3">
@@ -217,12 +208,11 @@ export default function UpgradePage() {
           </div>
         )}
 
-        {/* Subscription Plans */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-14">
           {PLANS.map(plan => {
-            const c        = colorMap[plan.color]
+            const c         = colorMap[plan.color]
             const isCurrent = currentPlan !== null && currentPlan === plan.id
-            const priceId  = PRICE_IDS[plan.id]
+            const priceId   = PRICE_IDS[plan.id]
             const isLoading = checkoutLoading === plan.id
 
             return (
@@ -271,10 +261,10 @@ export default function UpgradePage() {
                 ) : (
                   <button
                     onClick={() => openCheckout(priceId, plan.id)}
-                    disabled={isLoading}
+                    disabled={isLoading || !paddleReady}
                     className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-colors ${c.btn} disabled:opacity-60 disabled:cursor-not-allowed`}
                   >
-                    {isLoading ? 'Opening...' : `Upgrade to ${plan.name}`}
+                    {isLoading ? 'Opening...' : !paddleReady ? 'Loading...' : `Upgrade to ${plan.name}`}
                   </button>
                 )}
               </div>
@@ -282,25 +272,20 @@ export default function UpgradePage() {
           })}
         </div>
 
-        {/* Pay As You Go */}
         <div className="max-w-3xl mx-auto mb-14">
           <div className="text-center mb-6">
             <h2 className="text-xl font-bold text-gray-900">💳 Pay As You Go</h2>
             <p className="text-gray-500 text-sm mt-1">Need more without upgrading? Buy extra credits anytime. Credits never expire.</p>
           </div>
 
-          {/* Post Credits */}
           <p className="text-sm font-semibold text-gray-700 mb-3">✍️ Post Credits</p>
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div className="bg-white border-2 border-[#0D9488] rounded-2xl p-6 text-center shadow-sm">
               <div className="text-3xl font-bold text-gray-900 mb-1">$5</div>
               <div className="text-[#0D9488] font-semibold text-sm mb-1">+10 Posts</div>
               <div className="text-gray-400 text-xs mb-4">$0.50 per post</div>
-              <button
-                onClick={() => openCheckout(PRICE_IDS.posts10, 'posts10')}
-                disabled={checkoutLoading === 'posts10'}
-                className="w-full bg-[#0D9488] hover:bg-[#0D9488]/90 text-white py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60"
-              >
+              <button onClick={() => openCheckout(PRICE_IDS.posts10, 'posts10')} disabled={checkoutLoading === 'posts10' || !paddleReady}
+                className="w-full bg-[#0D9488] hover:bg-[#0D9488]/90 text-white py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60">
                 {checkoutLoading === 'posts10' ? 'Opening...' : 'Buy Now'}
               </button>
             </div>
@@ -311,28 +296,21 @@ export default function UpgradePage() {
               <div className="text-3xl font-bold text-gray-900 mb-1">$19</div>
               <div className="text-[#1B5FA8] font-semibold text-sm mb-1">+50 Posts</div>
               <div className="text-gray-400 text-xs mb-4">$0.38 per post</div>
-              <button
-                onClick={() => openCheckout(PRICE_IDS.posts50, 'posts50')}
-                disabled={checkoutLoading === 'posts50'}
-                className="w-full bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60"
-              >
+              <button onClick={() => openCheckout(PRICE_IDS.posts50, 'posts50')} disabled={checkoutLoading === 'posts50' || !paddleReady}
+                className="w-full bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60">
                 {checkoutLoading === 'posts50' ? 'Opening...' : 'Buy Now'}
               </button>
             </div>
           </div>
 
-          {/* Search Credits */}
           <p className="text-sm font-semibold text-gray-700 mb-3">🔎 Search Credits</p>
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-white border-2 border-[#0D9488] rounded-2xl p-6 text-center shadow-sm">
               <div className="text-3xl font-bold text-gray-900 mb-1">$5</div>
               <div className="text-[#0D9488] font-semibold text-sm mb-1">+100 Searches</div>
               <div className="text-gray-400 text-xs mb-4">$0.05 per search</div>
-              <button
-                onClick={() => openCheckout(PRICE_IDS.searches100, 'searches100')}
-                disabled={checkoutLoading === 'searches100'}
-                className="w-full bg-[#0D9488] hover:bg-[#0D9488]/90 text-white py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60"
-              >
+              <button onClick={() => openCheckout(PRICE_IDS.searches100, 'searches100')} disabled={checkoutLoading === 'searches100' || !paddleReady}
+                className="w-full bg-[#0D9488] hover:bg-[#0D9488]/90 text-white py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60">
                 {checkoutLoading === 'searches100' ? 'Opening...' : 'Buy Now'}
               </button>
             </div>
@@ -343,11 +321,8 @@ export default function UpgradePage() {
               <div className="text-3xl font-bold text-gray-900 mb-1">$19</div>
               <div className="text-[#1B5FA8] font-semibold text-sm mb-1">+500 Searches</div>
               <div className="text-gray-400 text-xs mb-4">Save $6 vs 5 packs</div>
-              <button
-                onClick={() => openCheckout(PRICE_IDS.searches500, 'searches500')}
-                disabled={checkoutLoading === 'searches500'}
-                className="w-full bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60"
-              >
+              <button onClick={() => openCheckout(PRICE_IDS.searches500, 'searches500')} disabled={checkoutLoading === 'searches500' || !paddleReady}
+                className="w-full bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60">
                 {checkoutLoading === 'searches500' ? 'Opening...' : 'Buy Now'}
               </button>
             </div>
@@ -355,7 +330,6 @@ export default function UpgradePage() {
           <p className="text-center text-xs text-gray-400 mt-4">Credits never expire. Use them anytime across all tools.</p>
         </div>
 
-        {/* FAQ */}
         <div className="max-w-2xl mx-auto">
           <h2 className="text-xl font-bold text-gray-900 mb-6 text-center">Common Questions</h2>
           <div className="space-y-4">
