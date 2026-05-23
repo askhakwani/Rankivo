@@ -25,6 +25,11 @@ function wordCount(html) {
 function RichTextEditor({ value, onChange, placeholder = 'Write your content here...' }) {
   const editorRef = useRef(null)
   const isInternalChange = useRef(false)
+  const [showHtml, setShowHtml] = useState(false)
+  const [htmlSource, setHtmlSource] = useState('')
+  const [bulletDropdown, setBulletDropdown] = useState(false)
+  const [numberedDropdown, setNumberedDropdown] = useState(false)
+  const savedSelection = useRef(null)
 
   useEffect(() => {
     if (editorRef.current && !isInternalChange.current) {
@@ -34,6 +39,19 @@ function RichTextEditor({ value, onChange, placeholder = 'Write your content her
     }
     isInternalChange.current = false
   }, [value])
+
+  const saveSelection = useCallback(() => {
+    const sel = window.getSelection()
+    if (sel && sel.rangeCount > 0) savedSelection.current = sel.getRangeAt(0).cloneRange()
+  }, [])
+
+  const restoreSelection = useCallback(() => {
+    if (savedSelection.current) {
+      const sel = window.getSelection()
+      sel.removeAllRanges()
+      sel.addRange(savedSelection.current)
+    }
+  }, [])
 
   const exec = useCallback((cmd, val = null) => {
     editorRef.current?.focus()
@@ -49,6 +67,8 @@ function RichTextEditor({ value, onChange, placeholder = 'Write your content her
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Tab') { e.preventDefault(); exec('insertHTML', '&nbsp;&nbsp;&nbsp;&nbsp;') }
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === '8') { e.preventDefault(); exec('insertUnorderedList') }
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === '7') { e.preventDefault(); exec('insertOrderedList') }
   }, [exec])
 
   const handleLink = useCallback(() => {
@@ -58,50 +78,158 @@ function RichTextEditor({ value, onChange, placeholder = 'Write your content her
     if (url) exec('createLink', url)
   }, [exec])
 
-  const ToolBtn = ({ cmd, val, title, children, onClick }) => (
-    <button
-      type="button"
-      title={title}
-      onMouseDown={e => { e.preventDefault(); onClick ? onClick() : exec(cmd, val) }}
-      className="px-2 py-1 rounded text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors font-medium border-0 bg-transparent"
-    >
+  const insertCustomList = useCallback((marker) => {
+    restoreSelection()
+    editorRef.current?.focus()
+    const sel = window.getSelection()
+    if (!sel || sel.rangeCount === 0) return
+    const range = sel.getRangeAt(0)
+    const lines = (range.toString() || 'Item').split('\n')
+    const html = '<ul style="list-style:none;padding-left:1.2em">' +
+      lines.map(l => `<li>${marker} ${l.trim() || 'Item'}</li>`).join('') + '</ul>'
+    range.deleteContents()
+    const frag = range.createContextualFragment(html)
+    range.insertNode(frag)
+    isInternalChange.current = true
+    onChange(editorRef.current?.innerHTML || '')
+    setBulletDropdown(false)
+  }, [onChange, restoreSelection])
+
+  const insertCustomNumbered = useCallback((style) => {
+    restoreSelection()
+    editorRef.current?.focus()
+    exec('insertOrderedList')
+    if (style !== 'decimal') {
+      const lists = editorRef.current?.querySelectorAll('ol')
+      if (lists?.length) lists[lists.length - 1].style.listStyleType = style
+      isInternalChange.current = true
+      onChange(editorRef.current?.innerHTML || '')
+    }
+    setNumberedDropdown(false)
+  }, [exec, onChange, restoreSelection])
+
+  const toggleHtml = useCallback(() => {
+    if (!showHtml) {
+      setHtmlSource(editorRef.current?.innerHTML || '')
+      setShowHtml(true)
+    } else {
+      isInternalChange.current = true
+      editorRef.current.innerHTML = htmlSource
+      onChange(htmlSource)
+      setShowHtml(false)
+    }
+  }, [showHtml, htmlSource, onChange])
+
+  const ToolBtn = ({ title, children, onMouseDown }) => (
+    <button type="button" title={title} onMouseDown={onMouseDown}
+      className="px-2 py-1 rounded text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors font-medium border-0 bg-transparent whitespace-nowrap">
       {children}
     </button>
   )
 
+  const Sep = () => <span className="w-px h-5 bg-gray-200 mx-1 shrink-0" />
+
   const wc = wordCount(value || '')
 
+  const bulletStyles = [
+    { label: '• Disc', marker: '•' },
+    { label: '◦ Circle', marker: '◦' },
+    { label: '▪ Square', marker: '▪' },
+    { label: '▸ Arrow', marker: '▸' },
+    { label: '👉 Pointer', marker: '👉' },
+    { label: '✅ Check', marker: '✅' },
+    { label: '★ Star', marker: '★' },
+    { label: '➤ Triangle', marker: '➤' },
+    { label: '❌ Cross', marker: '❌' },
+    { label: '– Dash', marker: '–' },
+  ]
+
+  const numberedStyles = [
+    { label: '1. 2. 3.', style: 'decimal' },
+    { label: 'i. ii. iii.', style: 'lower-roman' },
+    { label: 'I. II. III.', style: 'upper-roman' },
+    { label: 'a. b. c.', style: 'lower-alpha' },
+    { label: 'A. B. C.', style: 'upper-alpha' },
+  ]
+
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden focus-within:border-[#0D9488] transition-colors">
-      <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 bg-gray-50 border-b border-gray-200">
-        <ToolBtn cmd="bold" title="Bold"><strong>B</strong></ToolBtn>
-        <ToolBtn cmd="italic" title="Italic"><em>I</em></ToolBtn>
-        <ToolBtn cmd="underline" title="Underline"><u>U</u></ToolBtn>
-        <span className="w-px h-5 bg-gray-200 mx-1" />
-        <ToolBtn cmd="formatBlock" val="h2" title="Heading 2"><span className="text-xs font-bold">H2</span></ToolBtn>
-        <ToolBtn cmd="formatBlock" val="h3" title="Heading 3"><span className="text-xs font-bold">H3</span></ToolBtn>
-        <ToolBtn cmd="formatBlock" val="p" title="Paragraph"><span className="text-xs">P</span></ToolBtn>
-        <span className="w-px h-5 bg-gray-200 mx-1" />
-        <ToolBtn cmd="insertUnorderedList" title="Bullet list"><span className="text-xs">• List</span></ToolBtn>
-        <ToolBtn cmd="insertOrderedList" title="Numbered list"><span className="text-xs">1. List</span></ToolBtn>
-        <span className="w-px h-5 bg-gray-200 mx-1" />
-        <ToolBtn cmd="formatBlock" val="blockquote" title="Blockquote"><span className="text-xs">❝ Quote</span></ToolBtn>
-        <ToolBtn cmd="link" title="Insert link" onClick={handleLink}><span className="text-xs text-[#1B5FA8]">🔗 Link</span></ToolBtn>
-        <ToolBtn cmd="unlink" title="Remove link"><span className="text-xs text-red-400">✂ Unlink</span></ToolBtn>
-        <span className="w-px h-5 bg-gray-200 mx-1" />
-        <ToolBtn cmd="removeFormat" title="Clear formatting"><span className="text-xs text-gray-400">✕ Clear</span></ToolBtn>
-        <span className="ml-auto text-xs text-gray-400 px-2 select-none">{wc} {wc === 1 ? 'word' : 'words'}</span>
+    <div className="border border-gray-200 rounded-lg overflow-visible focus-within:border-[#0D9488] transition-colors" style={{ position: 'relative' }}>
+      <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 bg-gray-50 border-b border-gray-200 sticky top-0 z-20 rounded-t-lg shadow-sm">
+        <ToolBtn title="Bold (Ctrl+B)" onMouseDown={e => { e.preventDefault(); exec('bold') }}><strong>B</strong></ToolBtn>
+        <ToolBtn title="Italic (Ctrl+I)" onMouseDown={e => { e.preventDefault(); exec('italic') }}><em>I</em></ToolBtn>
+        <ToolBtn title="Underline (Ctrl+U)" onMouseDown={e => { e.preventDefault(); exec('underline') }}><u>U</u></ToolBtn>
+        <ToolBtn title="Strikethrough" onMouseDown={e => { e.preventDefault(); exec('strikeThrough') }}><s className="text-xs">S</s></ToolBtn>
+        <Sep />
+        <ToolBtn title="Heading 2" onMouseDown={e => { e.preventDefault(); exec('formatBlock', 'h2') }}><span className="text-xs font-bold">H2</span></ToolBtn>
+        <ToolBtn title="Heading 3" onMouseDown={e => { e.preventDefault(); exec('formatBlock', 'h3') }}><span className="text-xs font-bold">H3</span></ToolBtn>
+        <ToolBtn title="Paragraph" onMouseDown={e => { e.preventDefault(); exec('formatBlock', 'p') }}><span className="text-xs">P</span></ToolBtn>
+        <Sep />
+        <ToolBtn title="Align left" onMouseDown={e => { e.preventDefault(); exec('justifyLeft') }}><span className="text-xs">≡L</span></ToolBtn>
+        <ToolBtn title="Align center" onMouseDown={e => { e.preventDefault(); exec('justifyCenter') }}><span className="text-xs">≡C</span></ToolBtn>
+        <ToolBtn title="Align right" onMouseDown={e => { e.preventDefault(); exec('justifyRight') }}><span className="text-xs">≡R</span></ToolBtn>
+        <ToolBtn title="Justify" onMouseDown={e => { e.preventDefault(); exec('justifyFull') }}><span className="text-xs">≡J</span></ToolBtn>
+        <Sep />
+        <div className="relative">
+          <ToolBtn title="Bullet list styles" onMouseDown={e => { e.preventDefault(); saveSelection(); setBulletDropdown(v => !v); setNumberedDropdown(false) }}>
+            <span className="text-xs">• List ▾</span>
+          </ToolBtn>
+          {bulletDropdown && (
+            <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1 min-w-[140px]">
+              <button type="button" onMouseDown={e => { e.preventDefault(); restoreSelection(); exec('insertUnorderedList'); setBulletDropdown(false) }}
+                className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">• Default</button>
+              {bulletStyles.map(s => (
+                <button key={s.marker} type="button" onMouseDown={e => { e.preventDefault(); insertCustomList(s.marker) }}
+                  className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">{s.label}</button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="relative">
+          <ToolBtn title="Numbered list styles" onMouseDown={e => { e.preventDefault(); saveSelection(); setNumberedDropdown(v => !v); setBulletDropdown(false) }}>
+            <span className="text-xs">1. List ▾</span>
+          </ToolBtn>
+          {numberedDropdown && (
+            <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1 min-w-[140px]">
+              {numberedStyles.map(s => (
+                <button key={s.style} type="button" onMouseDown={e => { e.preventDefault(); insertCustomNumbered(s.style) }}
+                  className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">{s.label}</button>
+              ))}
+            </div>
+          )}
+        </div>
+        <Sep />
+        <ToolBtn title="Blockquote" onMouseDown={e => { e.preventDefault(); exec('formatBlock', 'blockquote') }}><span className="text-xs">❝ Quote</span></ToolBtn>
+        <ToolBtn title="Insert link" onMouseDown={e => { e.preventDefault(); handleLink() }}><span className="text-xs text-[#1B5FA8]">🔗 Link</span></ToolBtn>
+        <ToolBtn title="Remove link" onMouseDown={e => { e.preventDefault(); exec('unlink') }}><span className="text-xs text-red-400">✂ Unlink</span></ToolBtn>
+        <Sep />
+        <ToolBtn title="Clear formatting" onMouseDown={e => { e.preventDefault(); exec('removeFormat') }}><span className="text-xs text-gray-400">✕ Clear</span></ToolBtn>
+        <ToolBtn title="Toggle HTML source" onMouseDown={e => { e.preventDefault(); toggleHtml() }}>
+          <span className={`text-xs font-mono ${showHtml ? 'text-[#0D9488] font-bold' : 'text-gray-500'}`}>&lt;/&gt;</span>
+        </ToolBtn>
+        <span className="ml-auto text-xs text-gray-400 px-2 select-none shrink-0">{wc} {wc === 1 ? 'word' : 'words'}</span>
       </div>
-      <div
-        ref={editorRef}
-        contentEditable
-        suppressContentEditableWarning
-        onInput={handleInput}
-        onKeyDown={handleKeyDown}
-        data-placeholder={placeholder}
-        className="min-h-[280px] px-4 py-3 text-sm text-gray-800 focus:outline-none overflow-y-auto"
-        style={{ lineHeight: '1.7' }}
-      />
+      {showHtml ? (
+        <textarea
+          value={htmlSource}
+          onChange={e => setHtmlSource(e.target.value)}
+          className="w-full min-h-[280px] px-4 py-3 text-xs text-gray-800 focus:outline-none font-mono resize-y bg-gray-50"
+          placeholder="Edit raw HTML here..."
+          spellCheck={false}
+        />
+      ) : (
+        <div
+          ref={editorRef}
+          contentEditable
+          suppressContentEditableWarning
+          onInput={handleInput}
+          onKeyDown={handleKeyDown}
+          onMouseUp={saveSelection}
+          onKeyUp={saveSelection}
+          data-placeholder={placeholder}
+          className="min-h-[280px] px-4 py-3 text-sm text-gray-800 focus:outline-none overflow-y-auto"
+          style={{ lineHeight: '1.7' }}
+        />
+      )}
       <style>{`
         [contenteditable]:empty:before { content: attr(data-placeholder); color: #9ca3af; pointer-events: none; }
         [contenteditable] h2 { font-size: 1.3em; font-weight: 700; margin: 1em 0 0.4em; }
@@ -235,7 +363,8 @@ function AdminPanelInner() {
       const { error: e } = await supabase.from('blog_posts').update(payload).eq('id', blogForm.id)
       error = e
     } else {
-      const { error: e } = await supabase.from('blog_posts').insert({ ...payload, created_at: new Date().toISOString() })
+      const { id: _id, ...payloadWithoutId } = payload
+      const { error: e } = await supabase.from('blog_posts').insert({ ...payloadWithoutId, created_at: new Date().toISOString() })
       error = e
     }
     if (error) { setBlogMsg('Error: ' + error.message); setBlogSaving(false); return }
