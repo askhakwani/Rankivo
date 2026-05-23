@@ -137,17 +137,42 @@ function RichTextEditor({ value, onChange, placeholder = 'Write your content her
     setImageAlt('')
   }, [onChange, restoreSelection])
 
+  const compressImage = useCallback((file, maxSizeKB = 1800, maxWidth = 1600) => {
+    return new Promise((resolve) => {
+      const img = new Image()
+      const url = URL.createObjectURL(file)
+      img.onload = () => {
+        URL.revokeObjectURL(url)
+        let { width, height } = img
+        if (width > maxWidth) { height = Math.round(height * maxWidth / width); width = maxWidth }
+        const canvas = document.createElement('canvas')
+        canvas.width = width; canvas.height = height
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height)
+        let quality = 0.85
+        const tryCompress = () => {
+          canvas.toBlob(blob => {
+            if (blob.size <= maxSizeKB * 1024 || quality <= 0.3) {
+              resolve(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }))
+            } else { quality -= 0.1; tryCompress() }
+          }, 'image/jpeg', quality)
+        }
+        tryCompress()
+      }
+      img.src = url
+    })
+  }, [])
+
   const handleImageUpload = useCallback(async (file) => {
     if (!file) return
     if (!file.type.startsWith('image/')) { alert('Please select an image file.'); return }
-    if (file.size > 5 * 1024 * 1024) { alert('Image must be under 5MB.'); return }
+    if (file.size > 20 * 1024 * 1024) { alert('Image is too large. Max 20MB before compression.'); return }
     setImageUploading(true)
     try {
+      const compressed = await compressImage(file)
       const { createClient } = await import('../../lib/supabase')
       const supabase = createClient()
-      const ext = file.name.split('.').pop()
-      const path = `blog/${Date.now()}.${ext}`
-      const { error } = await supabase.storage.from('blog-images').upload(path, file, { upsert: true })
+      const path = `blog/${Date.now()}.jpg`
+      const { error } = await supabase.storage.from('blog-images').upload(path, compressed, { upsert: true, contentType: 'image/jpeg' })
       if (error) throw error
       const { data: { publicUrl } } = supabase.storage.from('blog-images').getPublicUrl(path)
       insertImage(publicUrl, imageAlt)
@@ -155,7 +180,7 @@ function RichTextEditor({ value, onChange, placeholder = 'Write your content her
       alert('Upload failed: ' + err.message)
     }
     setImageUploading(false)
-  }, [insertImage, imageAlt])
+  }, [insertImage, imageAlt, compressImage])
 
   const ToolBtn = ({ title, children, onMouseDown }) => (
     <button type="button" title={title} onMouseDown={onMouseDown}
@@ -283,11 +308,11 @@ function RichTextEditor({ value, onChange, placeholder = 'Write your content her
             <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center mb-4 hover:border-[#0D9488]/50 transition-colors cursor-pointer"
               onClick={() => fileInputRef.current?.click()}>
               {imageUploading ? (
-                <p className="text-sm text-[#0D9488]">Uploading...</p>
+                <p className="text-sm text-[#0D9488]">Compressing & uploading...</p>
               ) : (
                 <>
                   <p className="text-sm font-medium text-gray-700">Click to upload from your computer</p>
-                  <p className="text-xs text-gray-400 mt-1">PNG, JPG, GIF, WebP — max 5MB</p>
+                  <p className="text-xs text-gray-400 mt-1">PNG, JPG, GIF, WebP — auto-compressed to under 2MB</p>
                 </>
               )}
             </div>
