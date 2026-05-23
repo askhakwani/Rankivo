@@ -29,6 +29,11 @@ function RichTextEditor({ value, onChange, placeholder = 'Write your content her
   const [htmlSource, setHtmlSource] = useState('')
   const [bulletDropdown, setBulletDropdown] = useState(false)
   const [numberedDropdown, setNumberedDropdown] = useState(false)
+  const [showImageModal, setShowImageModal] = useState(false)
+  const [imageUrl, setImageUrl] = useState('')
+  const [imageUploading, setImageUploading] = useState(false)
+  const [imageAlt, setImageAlt] = useState('')
+  const fileInputRef = useRef(null)
   const savedSelection = useRef(null)
 
   useEffect(() => {
@@ -120,6 +125,38 @@ function RichTextEditor({ value, onChange, placeholder = 'Write your content her
     }
   }, [showHtml, htmlSource, onChange])
 
+  const insertImage = useCallback((src, alt = '') => {
+    restoreSelection()
+    editorRef.current?.focus()
+    const html = `<img src="${src}" alt="${alt}" style="max-width:100%;height:auto;border-radius:6px;margin:8px 0;" />`
+    document.execCommand('insertHTML', false, html)
+    isInternalChange.current = true
+    onChange(editorRef.current?.innerHTML || '')
+    setShowImageModal(false)
+    setImageUrl('')
+    setImageAlt('')
+  }, [onChange, restoreSelection])
+
+  const handleImageUpload = useCallback(async (file) => {
+    if (!file) return
+    if (!file.type.startsWith('image/')) { alert('Please select an image file.'); return }
+    if (file.size > 5 * 1024 * 1024) { alert('Image must be under 5MB.'); return }
+    setImageUploading(true)
+    try {
+      const { createClient } = await import('../../lib/supabase')
+      const supabase = createClient()
+      const ext = file.name.split('.').pop()
+      const path = `blog/${Date.now()}.${ext}`
+      const { error } = await supabase.storage.from('blog-images').upload(path, file, { upsert: true })
+      if (error) throw error
+      const { data: { publicUrl } } = supabase.storage.from('blog-images').getPublicUrl(path)
+      insertImage(publicUrl, imageAlt)
+    } catch (err) {
+      alert('Upload failed: ' + err.message)
+    }
+    setImageUploading(false)
+  }, [insertImage, imageAlt])
+
   const ToolBtn = ({ title, children, onMouseDown }) => (
     <button type="button" title={title} onMouseDown={onMouseDown}
       className="px-2 py-1 rounded text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors font-medium border-0 bg-transparent whitespace-nowrap">
@@ -197,8 +234,10 @@ function RichTextEditor({ value, onChange, placeholder = 'Write your content her
             </div>
           )}
         </div>
+        <ToolBtn title="Insert image" onMouseDown={e => { e.preventDefault(); saveSelection(); setShowImageModal(true) }}>
+          <span className="text-xs text-[#0D9488]">🖼 Image</span>
+        </ToolBtn>
         <Sep />
-        <ToolBtn title="Blockquote" onMouseDown={e => { e.preventDefault(); exec('formatBlock', 'blockquote') }}><span className="text-xs">❝ Quote</span></ToolBtn>
         <ToolBtn title="Insert link" onMouseDown={e => { e.preventDefault(); handleLink() }}><span className="text-xs text-[#1B5FA8]">🔗 Link</span></ToolBtn>
         <ToolBtn title="Remove link" onMouseDown={e => { e.preventDefault(); exec('unlink') }}><span className="text-xs text-red-400">✂ Unlink</span></ToolBtn>
         <Sep />
@@ -229,6 +268,51 @@ function RichTextEditor({ value, onChange, placeholder = 'Write your content her
           className="min-h-[280px] px-4 py-3 text-sm text-gray-800 focus:outline-none overflow-y-auto"
           style={{ lineHeight: '1.7' }}
         />
+      )}
+      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={e => handleImageUpload(e.target.files[0])} />
+      {showImageModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={() => setShowImageModal(false)}>
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+            <h3 className="font-bold text-gray-900 mb-4">Insert Image</h3>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Alt text (optional)</label>
+              <input type="text" value={imageAlt} onChange={e => setImageAlt(e.target.value)}
+                placeholder="Describe the image..."
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-[#0D9488]" />
+            </div>
+            <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center mb-4 hover:border-[#0D9488]/50 transition-colors cursor-pointer"
+              onClick={() => fileInputRef.current?.click()}>
+              {imageUploading ? (
+                <p className="text-sm text-[#0D9488]">Uploading...</p>
+              ) : (
+                <>
+                  <p className="text-sm font-medium text-gray-700">Click to upload from your computer</p>
+                  <p className="text-xs text-gray-400 mt-1">PNG, JPG, GIF, WebP — max 5MB</p>
+                </>
+              )}
+            </div>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="flex-1 h-px bg-gray-200" />
+              <span className="text-xs text-gray-400">or paste a URL</span>
+              <div className="flex-1 h-px bg-gray-200" />
+            </div>
+            <input type="url" value={imageUrl} onChange={e => setImageUrl(e.target.value)}
+              placeholder="https://example.com/image.jpg"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-[#0D9488] mb-4"
+              onKeyDown={e => { if (e.key === 'Enter' && imageUrl) insertImage(imageUrl, imageAlt) }} />
+            <div className="flex gap-2">
+              <button type="button" onClick={() => imageUrl && insertImage(imageUrl, imageAlt)}
+                disabled={!imageUrl}
+                className="flex-1 bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-40 transition-colors">
+                Insert from URL
+              </button>
+              <button type="button" onClick={() => setShowImageModal(false)}
+                className="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       <style>{`
         [contenteditable]:empty:before { content: attr(data-placeholder); color: #9ca3af; pointer-events: none; }
