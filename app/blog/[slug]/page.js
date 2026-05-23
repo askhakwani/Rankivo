@@ -64,15 +64,18 @@ export default async function BlogPost({ params }) {
           {/* Divider */}
           <div className="h-px bg-gradient-to-r from-[#1B5FA8]/30 via-[#0D9488]/30 to-transparent mb-8" />
 
-          {/* Post content */}
+          {/* Post content — renders HTML from rich text editor */}
           <div
-            className="prose prose-gray max-w-none text-gray-600 leading-relaxed space-y-4"
+            className="prose prose-gray max-w-none text-gray-600 leading-relaxed
+              prose-headings:text-gray-900 prose-headings:font-bold
+              prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl
+              prose-a:text-[#1B5FA8] prose-a:no-underline hover:prose-a:underline
+              prose-strong:text-gray-900
+              prose-ul:list-disc prose-ol:list-decimal
+              prose-li:text-gray-600"
             style={{ lineHeight: '1.8' }}
-          >
-            {post.content?.split('\n').map((para, i) => (
-              para.trim() ? <p key={i} className="text-gray-600">{para}</p> : <br key={i} />
-            ))}
-          </div>
+            dangerouslySetInnerHTML={{ __html: post.content }}
+          />
 
           {/* Divider */}
           <div className="h-px bg-gray-200 mt-12 mb-8" />
