@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
 import { createClient } from '../../lib/supabase'
 import { useRouter, useSearchParams } from 'next/navigation'
 
@@ -15,6 +15,105 @@ const TABS = [
 
 function slugify(text) {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+}
+
+function wordCount(html) {
+  const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  return text ? text.split(' ').length : 0
+}
+
+function RichTextEditor({ value, onChange, placeholder = 'Write your content here...' }) {
+  const editorRef = useRef(null)
+  const isInternalChange = useRef(false)
+
+  useEffect(() => {
+    if (editorRef.current && !isInternalChange.current) {
+      if (editorRef.current.innerHTML !== value) {
+        editorRef.current.innerHTML = value || ''
+      }
+    }
+    isInternalChange.current = false
+  }, [value])
+
+  const exec = useCallback((cmd, val = null) => {
+    editorRef.current?.focus()
+    document.execCommand(cmd, false, val)
+    isInternalChange.current = true
+    onChange(editorRef.current?.innerHTML || '')
+  }, [onChange])
+
+  const handleInput = useCallback(() => {
+    isInternalChange.current = true
+    onChange(editorRef.current?.innerHTML || '')
+  }, [onChange])
+
+  const handleKeyDown = useCallback((e) => {
+    if (e.key === 'Tab') { e.preventDefault(); exec('insertHTML', '&nbsp;&nbsp;&nbsp;&nbsp;') }
+  }, [exec])
+
+  const handleLink = useCallback(() => {
+    const sel = window.getSelection()
+    if (!sel || sel.isCollapsed) { alert('Select some text first to add a link.'); return }
+    const url = prompt('Enter URL:', 'https://')
+    if (url) exec('createLink', url)
+  }, [exec])
+
+  const ToolBtn = ({ cmd, val, title, children, onClick }) => (
+    <button
+      type="button"
+      title={title}
+      onMouseDown={e => { e.preventDefault(); onClick ? onClick() : exec(cmd, val) }}
+      className="px-2 py-1 rounded text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors font-medium border-0 bg-transparent"
+    >
+      {children}
+    </button>
+  )
+
+  const wc = wordCount(value || '')
+
+  return (
+    <div className="border border-gray-200 rounded-lg overflow-hidden focus-within:border-[#0D9488] transition-colors">
+      <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 bg-gray-50 border-b border-gray-200">
+        <ToolBtn cmd="bold" title="Bold"><strong>B</strong></ToolBtn>
+        <ToolBtn cmd="italic" title="Italic"><em>I</em></ToolBtn>
+        <ToolBtn cmd="underline" title="Underline"><u>U</u></ToolBtn>
+        <span className="w-px h-5 bg-gray-200 mx-1" />
+        <ToolBtn cmd="formatBlock" val="h2" title="Heading 2"><span className="text-xs font-bold">H2</span></ToolBtn>
+        <ToolBtn cmd="formatBlock" val="h3" title="Heading 3"><span className="text-xs font-bold">H3</span></ToolBtn>
+        <ToolBtn cmd="formatBlock" val="p" title="Paragraph"><span className="text-xs">P</span></ToolBtn>
+        <span className="w-px h-5 bg-gray-200 mx-1" />
+        <ToolBtn cmd="insertUnorderedList" title="Bullet list"><span className="text-xs">• List</span></ToolBtn>
+        <ToolBtn cmd="insertOrderedList" title="Numbered list"><span className="text-xs">1. List</span></ToolBtn>
+        <span className="w-px h-5 bg-gray-200 mx-1" />
+        <ToolBtn cmd="formatBlock" val="blockquote" title="Blockquote"><span className="text-xs">❝ Quote</span></ToolBtn>
+        <ToolBtn cmd="link" title="Insert link" onClick={handleLink}><span className="text-xs text-[#1B5FA8]">🔗 Link</span></ToolBtn>
+        <ToolBtn cmd="unlink" title="Remove link"><span className="text-xs text-red-400">✂ Unlink</span></ToolBtn>
+        <span className="w-px h-5 bg-gray-200 mx-1" />
+        <ToolBtn cmd="removeFormat" title="Clear formatting"><span className="text-xs text-gray-400">✕ Clear</span></ToolBtn>
+        <span className="ml-auto text-xs text-gray-400 px-2 select-none">{wc} {wc === 1 ? 'word' : 'words'}</span>
+      </div>
+      <div
+        ref={editorRef}
+        contentEditable
+        suppressContentEditableWarning
+        onInput={handleInput}
+        onKeyDown={handleKeyDown}
+        data-placeholder={placeholder}
+        className="min-h-[280px] px-4 py-3 text-sm text-gray-800 focus:outline-none overflow-y-auto"
+        style={{ lineHeight: '1.7' }}
+      />
+      <style>{`
+        [contenteditable]:empty:before { content: attr(data-placeholder); color: #9ca3af; pointer-events: none; }
+        [contenteditable] h2 { font-size: 1.3em; font-weight: 700; margin: 1em 0 0.4em; }
+        [contenteditable] h3 { font-size: 1.1em; font-weight: 600; margin: 0.8em 0 0.3em; }
+        [contenteditable] ul { list-style: disc; padding-left: 1.5em; margin: 0.5em 0; }
+        [contenteditable] ol { list-style: decimal; padding-left: 1.5em; margin: 0.5em 0; }
+        [contenteditable] blockquote { border-left: 3px solid #0D9488; margin: 0.5em 0; padding: 0.3em 1em; color: #4b5563; background: #f0fdf9; border-radius: 0 4px 4px 0; }
+        [contenteditable] a { color: #1B5FA8; text-decoration: underline; }
+        [contenteditable] p { margin: 0.4em 0; }
+      `}</style>
+    </div>
+  )
 }
 
 function AdminPanelInner() {
@@ -407,22 +506,31 @@ function AdminPanelInner() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
-                  <textarea value={blogForm.content} rows={12} placeholder="Write your blog post content here..."
-                    onChange={e => setBlogForm(prev => ({ ...prev, content: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-4 py-3 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm resize-y" />
+                  <RichTextEditor
+                    value={blogForm.content}
+                    onChange={content => setBlogForm(prev => ({ ...prev, content }))}
+                    placeholder="Write your blog post content here..."
+                  />
                 </div>
-                <div className="grid md:grid-cols-2 gap-4 border-t border-gray-100 pt-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Meta Title (SEO)</label>
-                    <input type="text" value={blogForm.meta_title} placeholder="SEO title"
-                      onChange={e => setBlogForm(prev => ({ ...prev, meta_title: e.target.value }))}
-                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Meta Description (SEO)</label>
-                    <input type="text" value={blogForm.meta_description} placeholder="SEO description (150-160 chars)"
-                      onChange={e => setBlogForm(prev => ({ ...prev, meta_description: e.target.value }))}
-                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm" />
+                <div className="border-t border-gray-100 pt-4">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">SEO / Meta</h4>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                        Meta Title <span className={`ml-1 ${blogForm.meta_title.length > 60 ? 'text-red-400' : 'text-gray-400'}`}>({blogForm.meta_title.length}/60)</span>
+                      </label>
+                      <input type="text" value={blogForm.meta_title} placeholder="SEO title (50–60 chars)"
+                        onChange={e => setBlogForm(prev => ({ ...prev, meta_title: e.target.value }))}
+                        className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                        Meta Description <span className={`ml-1 ${blogForm.meta_description.length > 160 ? 'text-red-400' : 'text-gray-400'}`}>({blogForm.meta_description.length}/160)</span>
+                      </label>
+                      <textarea value={blogForm.meta_description} rows={2} placeholder="SEO description (150–160 chars)"
+                        onChange={e => setBlogForm(prev => ({ ...prev, meta_description: e.target.value }))}
+                        className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm resize-none" />
+                    </div>
                   </div>
                 </div>
                 <label className="flex items-center gap-2 cursor-pointer">
