@@ -1,9 +1,10 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Navbar from '../../../components/Navbar'
 import Footer from '../../../components/Footer'
+import { createClient } from '../../../lib/supabase'
 
 // ── Score ring SVG ────────────────────────────────────────────────────────────
 function ScoreRing({ score }) {
@@ -110,16 +111,65 @@ export default function SEOScoreCheckerPage() {
   const router = useRouter()
 
   const [form, setForm] = useState({
-    content:         '',
-    keyword:         '',
-    metaTitle:       '',
-    metaDescription: '',
+    content:          '',
+    keyword:          '',
+    secondaryKeywords: '',
+    metaTitle:        '',
+    metaDescription:  '',
+    url:              '',
   })
 
-  const [result,  setResult]  = useState(null)
-  const [isPaid,  setIsPaid]  = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error,   setError]   = useState('')
+  const [result,       setResult]       = useState(null)
+  const [isPaid,       setIsPaid]       = useState(false)
+  const [loading,      setLoading]      = useState(false)
+  const [urlFetching,  setUrlFetching]  = useState(false)
+  const [error,        setError]        = useState('')
+  const [planChecked,  setPlanChecked]  = useState(false)
+
+  // ── Detect user plan from Supabase ──────────────────────────────────────────
+  useEffect(() => {
+    async function checkPlan() {
+      try {
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) { setPlanChecked(true); return }
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('plan')
+          .eq('id', user.id)
+          .single()
+        const paidPlans = ['starter', 'pro', 'agency']
+        if (profile?.plan && paidPlans.includes(profile.plan.toLowerCase())) {
+          setIsPaid(true)
+        }
+      } catch { /* fail silently */ }
+      setPlanChecked(true)
+    }
+    checkPlan()
+  }, [])
+
+  // ── Fetch content from URL ──────────────────────────────────────────────────
+  async function handleFetchUrl() {
+    if (!form.url.trim()) return
+    setUrlFetching(true)
+    setError('')
+    try {
+      const res = await fetch('/api/tools/fetch-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: form.url.trim() }),
+      })
+      const data = await res.json()
+      if (data.error) { setError(data.error); return }
+      setForm(prev => ({
+        ...prev,
+        content: data.content || prev.content,
+        metaTitle: data.metaTitle || prev.metaTitle,
+        metaDescription: data.metaDescription || prev.metaDescription,
+      }))
+    } catch { setError('Could not fetch URL. Try pasting content manually.') }
+    setUrlFetching(false)
+  }
 
   function updateForm(field, value) {
     setForm(prev => ({ ...prev, [field]: value }))
@@ -137,12 +187,12 @@ export default function SEOScoreCheckerPage() {
       const res  = await fetch('/api/tools/seo-score', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(form),
+        body:    JSON.stringify({ ...form, isPaid }),
       })
       const data = await res.json()
       if (data.error) { setError(data.error); return }
       setResult(data)
-      setIsPaid(data.isPaid)
+      // Don't override isPaid from API — we already detected it from Supabase
     } catch {
       setError('Something went wrong. Please try again.')
     } finally {
@@ -181,17 +231,56 @@ export default function SEOScoreCheckerPage() {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
             <div className="space-y-4">
 
-              {/* Keyword */}
+              {/* URL Fetcher */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Target Keyword <span className="text-red-400">*</span>
+                  Fetch from URL <span className="text-gray-400 font-normal">(optional — auto-fills content below)</span>
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    value={form.url}
+                    onChange={e => updateForm('url', e.target.value)}
+                    placeholder="https://yoursite.com/your-blog-post"
+                    className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D9488] text-gray-800"
+                  />
+                  <button
+                    onClick={handleFetchUrl}
+                    disabled={urlFetching || !form.url.trim()}
+                    className="shrink-0 bg-[#0D9488] hover:bg-[#0D9488]/90 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
+                  >
+                    {urlFetching ? 'Fetching…' : '🔗 Fetch'}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">Fetches live page content including internal links — fixes internal link detection</p>
+              </div>
+
+              <div className="border-t border-gray-100" />
+
+              {/* Primary Keyword */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Primary Keyword <span className="text-red-400">*</span>
                 </label>
                 <input
                   value={form.keyword}
                   onChange={e => updateForm('keyword', e.target.value)}
-                  placeholder="e.g. best project management software"
+                  placeholder="e.g. keyword research for beginners"
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D9488] text-gray-800"
                 />
+              </div>
+
+              {/* Secondary Keywords */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Secondary Keywords <span className="text-gray-400 font-normal">(comma separated)</span>
+                </label>
+                <input
+                  value={form.secondaryKeywords}
+                  onChange={e => updateForm('secondaryKeywords', e.target.value)}
+                  placeholder="e.g. long-tail keywords, search intent, keyword difficulty"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D9488] text-gray-800"
+                />
+                <p className="text-xs text-gray-400 mt-1">The tool will check if each secondary keyword appears in your content</p>
               </div>
 
               {/* Content */}
@@ -201,14 +290,15 @@ export default function SEOScoreCheckerPage() {
                     Blog Content <span className="text-red-400">*</span>
                   </label>
                   <span className={`text-xs font-medium ${
-                    wordCount >= 700 && wordCount <= 900 ? 'text-[#0D9488]' :
-                    wordCount >= 500 ? 'text-[#C9943A]' :
-                    wordCount > 0 ? 'text-red-400' : 'text-gray-400'
+                    wordCount >= 1500 ? 'text-[#0D9488]' :
+                    wordCount >= 800  ? 'text-[#C9943A]' :
+                    wordCount > 0     ? 'text-red-400'   : 'text-gray-400'
                   }`}>
                     {wordCount} words
-                    {wordCount >= 700 && wordCount <= 900 && ' ✓ Ideal range'}
-                    {wordCount >= 500 && wordCount < 700 && ' · Good'}
-                    {wordCount > 0 && wordCount < 500 && ' · Too short'}
+                    {wordCount >= 1500 && ' ✓ Great length'}
+                    {wordCount >= 800 && wordCount < 1500 && ' · Good'}
+                    {wordCount >= 300 && wordCount < 800 && ' · Too short for pillar'}
+                    {wordCount > 0 && wordCount < 300 && ' · Too short'}
                   </span>
                 </div>
                 <textarea
@@ -318,6 +408,25 @@ export default function SEOScoreCheckerPage() {
                     <FactorRow key={key} factorKey={key} score={score} />
                   ))}
                 </div>
+
+                {/* Secondary keywords breakdown */}
+                {result.secondaryKeywords?.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Secondary Keywords</h3>
+                    <div className="space-y-2">
+                      {result.secondaryKeywords.map((kw, i) => (
+                        <div key={i} className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">
+                          <span className="text-sm text-gray-600">"{kw.keyword}"</span>
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                            kw.found ? 'bg-[#0D9488]/10 text-[#0D9488]' : 'bg-red-50 text-red-500'
+                          }`}>
+                            {kw.found ? `✓ Found (${kw.count}x)` : '✗ Missing'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Suggestions */}
@@ -342,7 +451,7 @@ export default function SEOScoreCheckerPage() {
                     ))}
                   </div>
 
-                  {/* Free user — unlock full suggestions */}
+                  {/* Only show upgrade gate for non-paid users */}
                   {!isPaid && (
                     <div className="mt-4 border-t border-dashed border-gray-200 pt-4">
                       <div className="bg-gray-50 rounded-xl p-4 text-center">
