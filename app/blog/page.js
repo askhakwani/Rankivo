@@ -11,7 +11,7 @@ async function getPosts() {
     )
     const { data } = await supabase
       .from('blog_posts')
-      .select('id, title, slug, excerpt, created_at, published')
+      .select('id, title, slug, excerpt, created_at, published, featured_image')
       .eq('published', true)
       .order('created_at', { ascending: false })
     return data || []
@@ -51,8 +51,14 @@ export default async function Blog() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {posts.map(post => (
                 <Link key={post.id} href={`/blog/${post.slug}`} className="group bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md hover:border-[#1B5FA8]/40 transition-all">
-                  <div className="bg-gradient-to-br from-[#1B5FA8]/10 to-[#0D9488]/10 h-40 flex items-center justify-center">
-                    <span className="text-4xl text-[#1B5FA8]/30">✦</span>
+                  <div className="h-40 overflow-hidden bg-gradient-to-br from-[#1B5FA8]/10 to-[#0D9488]/10">
+                    {post.featured_image ? (
+                      <img src={post.featured_image} alt={post.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="text-4xl text-[#1B5FA8]/30">✦</span>
+                      </div>
+                    )}
                   </div>
                   <div className="p-5">
                     <p className="text-xs text-gray-400 mb-2">{new Date(post.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>

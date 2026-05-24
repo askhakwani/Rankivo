@@ -66,6 +66,13 @@ export default async function BlogPost({ params }) {
           {/* Divider */}
           <div className="h-px bg-gradient-to-r from-[#1B5FA8]/30 via-[#0D9488]/30 to-transparent mb-8" />
 
+          {/* Featured image */}
+          {post.featured_image && (
+            <div className="rounded-xl overflow-hidden mb-8 aspect-video">
+              <img src={post.featured_image} alt={post.title} className="w-full h-full object-cover" />
+            </div>
+          )}
+
           {/* Post content — renders HTML from rich text editor */}
           <div
             className="prose prose-gray max-w-none text-gray-600 leading-relaxed

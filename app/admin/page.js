@@ -367,7 +367,7 @@ function AdminPanelInner() {
 
   const [posts, setPosts] = useState([])
   const [postsLoading, setPostsLoading] = useState(false)
-  const [blogForm, setBlogForm] = useState({ id: null, title: '', slug: '', excerpt: '', content: '', meta_title: '', meta_description: '', published: false })
+  const [blogForm, setBlogForm] = useState({ id: null, title: '', slug: '', excerpt: '', content: '', featured_image: '', meta_title: '', meta_description: '', published: false })
   const [blogView, setBlogView] = useState('list')
   const [blogMsg, setBlogMsg] = useState('')
   const [blogSaving, setBlogSaving] = useState(false)
@@ -451,7 +451,7 @@ function AdminPanelInner() {
   }
 
   function newBlogPost() {
-    setBlogForm({ id: null, title: '', slug: '', excerpt: '', content: '', meta_title: '', meta_description: '', published: false })
+    setBlogForm({ id: null, title: '', slug: '', excerpt: '', content: '', featured_image: '', meta_title: '', meta_description: '', published: false })
     setBlogMsg('')
     setBlogView('form')
   }
@@ -741,6 +741,51 @@ function AdminPanelInner() {
                   <input type="text" value={blogForm.excerpt} placeholder="Short description shown on blog listing..."
                     onChange={e => setBlogForm(prev => ({ ...prev, excerpt: e.target.value }))}
                     className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Featured Image</label>
+                  <div className="flex gap-2">
+                    <input type="url" value={blogForm.featured_image} placeholder="https://... (paste image URL or upload below)"
+                      onChange={e => setBlogForm(prev => ({ ...prev, featured_image: e.target.value }))}
+                      className="flex-1 border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm" />
+                    <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap">
+                      Upload
+                      <input type="file" accept="image/*" className="hidden" onChange={async e => {
+                        const file = e.target.files[0]
+                        if (!file) return
+                        const compressed = await (async () => {
+                          return new Promise(resolve => {
+                            const img = new Image()
+                            const url = URL.createObjectURL(file)
+                            img.onload = () => {
+                              URL.revokeObjectURL(url)
+                              let { width, height } = img
+                              if (width > 1600) { height = Math.round(height * 1600 / width); width = 1600 }
+                              const canvas = document.createElement('canvas')
+                              canvas.width = width; canvas.height = height
+                              canvas.getContext('2d').drawImage(img, 0, 0, width, height)
+                              canvas.toBlob(blob => resolve(new File([blob], 'featured.jpg', { type: 'image/jpeg' })), 'image/jpeg', 0.85)
+                            }
+                            img.src = url
+                          })
+                        })()
+                        try {
+                          const path = `blog/featured-${Date.now()}.jpg`
+                          const { error } = await supabase.storage.from('blog-images').upload(path, compressed, { upsert: true, contentType: 'image/jpeg' })
+                          if (error) throw error
+                          const { data: { publicUrl } } = supabase.storage.from('blog-images').getPublicUrl(path)
+                          setBlogForm(prev => ({ ...prev, featured_image: publicUrl }))
+                        } catch (err) { alert('Upload failed: ' + err.message) }
+                      }} />
+                    </label>
+                  </div>
+                  {blogForm.featured_image && (
+                    <div className="mt-2 relative inline-block">
+                      <img src={blogForm.featured_image} alt="Featured preview" className="h-24 rounded-lg object-cover border border-gray-200" />
+                      <button type="button" onClick={() => setBlogForm(prev => ({ ...prev, featured_image: '' }))}
+                        className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center hover:bg-red-600">✕</button>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
