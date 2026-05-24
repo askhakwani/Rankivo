@@ -22,222 +22,216 @@ function wordCount(html) {
   return text ? text.split(' ').length : 0
 }
 
+function compressImageFile(file, maxSizeKB = 1800, maxWidth = 1600) {
+  return new Promise((resolve) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      let { width, height } = img
+      if (width > maxWidth) { height = Math.round(height * maxWidth / width); width = maxWidth }
+      const canvas = document.createElement('canvas')
+      canvas.width = width; canvas.height = height
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height)
+      let quality = 0.85
+      const tryCompress = () => {
+        canvas.toBlob(blob => {
+          if (blob.size <= maxSizeKB * 1024 || quality <= 0.3) {
+            resolve(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }))
+          } else { quality -= 0.1; tryCompress() }
+        }, 'image/jpeg', quality)
+      }
+      tryCompress()
+    }
+    img.src = url
+  })
+}
+
 function RichTextEditor({ value, onChange, placeholder = 'Write your content here...' }) {
-  const editorRef = useRef(null)
-  const isInternalChange = useRef(false)
-  const [showHtml, setShowHtml] = useState(false)
-  const [htmlSource, setHtmlSource] = useState('')
-  const [bulletDropdown, setBulletDropdown] = useState(false)
-  const [numberedDropdown, setNumberedDropdown] = useState(false)
+  const [EditorComponent, setEditorComponent] = useState(null)
   const [showImageModal, setShowImageModal] = useState(false)
   const [imageUrl, setImageUrl] = useState('')
   const [imageUploading, setImageUploading] = useState(false)
   const [imageAlt, setImageAlt] = useState('')
+  const [showHtml, setShowHtml] = useState(false)
+  const [htmlSource, setHtmlSource] = useState('')
+  const [bulletDropdown, setBulletDropdown] = useState(false)
+  const [numberedDropdown, setNumberedDropdown] = useState(false)
   const fileInputRef = useRef(null)
-  const savedSelection = useRef(null)
+  const editorInstanceRef = useRef(null)
+  const supabaseRef = useRef(null)
 
   useEffect(() => {
-    if (editorRef.current && !isInternalChange.current) {
-      if (editorRef.current.innerHTML !== value) {
-        editorRef.current.innerHTML = value || ''
+    async function loadEditor() {
+      const { useEditor, EditorContent } = await import('@tiptap/react')
+      const { default: StarterKit } = await import('@tiptap/starter-kit')
+      const { default: Underline } = await import('@tiptap/extension-underline')
+      const { default: Link } = await import('@tiptap/extension-link')
+      const { default: Image } = await import('@tiptap/extension-image')
+      const { default: TextAlign } = await import('@tiptap/extension-text-align')
+
+      function TipTapEditor({ value, onChange, placeholder }) {
+        const editor = useEditor({
+          extensions: [
+            StarterKit,
+            Underline,
+            Link.configure({ openOnClick: false }),
+            Image.configure({ inline: false }),
+            TextAlign.configure({ types: ['heading', 'paragraph'] }),
+          ],
+          content: value || '',
+          onUpdate: ({ editor }) => onChange(editor.getHTML()),
+          editorProps: {
+            attributes: { class: 'min-h-[280px] px-4 py-3 text-sm text-gray-800 focus:outline-none prose prose-sm max-w-none' }
+          }
+        })
+
+        useEffect(() => {
+          editorInstanceRef.current = editor
+          return () => { editorInstanceRef.current = null }
+        }, [editor])
+
+        // Sync external value changes (e.g. loading a post for edit)
+        useEffect(() => {
+          if (editor && value !== editor.getHTML()) {
+            editor.commands.setContent(value || '', false)
+          }
+        }, [value])
+
+        if (!editor) return null
+        return <EditorContent editor={editor} />
       }
-    }
-    isInternalChange.current = false
-  }, [value])
 
-  const saveSelection = useCallback(() => {
-    const sel = window.getSelection()
-    if (sel && sel.rangeCount > 0) savedSelection.current = sel.getRangeAt(0).cloneRange()
+      setEditorComponent(() => TipTapEditor)
+    }
+    loadEditor()
   }, [])
 
-  const restoreSelection = useCallback(() => {
-    if (savedSelection.current) {
-      const sel = window.getSelection()
-      sel.removeAllRanges()
-      sel.addRange(savedSelection.current)
-    }
+  const execEditor = useCallback((fn) => {
+    if (editorInstanceRef.current) fn(editorInstanceRef.current)
   }, [])
-
-  const exec = useCallback((cmd, val = null) => {
-    editorRef.current?.focus()
-    document.execCommand(cmd, false, val)
-    isInternalChange.current = true
-    onChange(editorRef.current?.innerHTML || '')
-  }, [onChange])
-
-  const handleInput = useCallback(() => {
-    isInternalChange.current = true
-    onChange(editorRef.current?.innerHTML || '')
-  }, [onChange])
-
-  const handleKeyDown = useCallback((e) => {
-    if (e.key === 'Tab') { e.preventDefault(); exec('insertHTML', '&nbsp;&nbsp;&nbsp;&nbsp;') }
-    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === '8') { e.preventDefault(); exec('insertUnorderedList') }
-    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === '7') { e.preventDefault(); exec('insertOrderedList') }
-  }, [exec])
 
   const handleLink = useCallback(() => {
-    const sel = window.getSelection()
-    if (!sel || sel.isCollapsed) { alert('Select some text first to add a link.'); return }
-    const url = prompt('Enter URL:', 'https://')
-    if (url) exec('createLink', url)
-  }, [exec])
-
-  const insertCustomList = useCallback((marker) => {
-    restoreSelection()
-    editorRef.current?.focus()
-    const sel = window.getSelection()
-    if (!sel || sel.rangeCount === 0) return
-    const range = sel.getRangeAt(0)
-    const lines = (range.toString() || 'Item').split('\n')
-    const html = '<ul style="list-style:none;padding-left:1.2em">' +
-      lines.map(l => `<li>${marker} ${l.trim() || 'Item'}</li>`).join('') + '</ul>'
-    range.deleteContents()
-    const frag = range.createContextualFragment(html)
-    range.insertNode(frag)
-    isInternalChange.current = true
-    onChange(editorRef.current?.innerHTML || '')
-    setBulletDropdown(false)
-  }, [onChange, restoreSelection])
-
-  const insertCustomNumbered = useCallback((style) => {
-    restoreSelection()
-    editorRef.current?.focus()
-    exec('insertOrderedList')
-    if (style !== 'decimal') {
-      const lists = editorRef.current?.querySelectorAll('ol')
-      if (lists?.length) lists[lists.length - 1].style.listStyleType = style
-      isInternalChange.current = true
-      onChange(editorRef.current?.innerHTML || '')
-    }
-    setNumberedDropdown(false)
-  }, [exec, onChange, restoreSelection])
-
-  const toggleHtml = useCallback(() => {
-    if (!showHtml) {
-      setHtmlSource(editorRef.current?.innerHTML || '')
-      setShowHtml(true)
-    } else {
-      isInternalChange.current = true
-      editorRef.current.innerHTML = htmlSource
-      onChange(htmlSource)
-      setShowHtml(false)
-    }
-  }, [showHtml, htmlSource, onChange])
+    execEditor(editor => {
+      const prev = editor.getAttributes('link').href
+      const url = prompt('Enter URL:', prev || 'https://')
+      if (url === null) return
+      if (url === '') { editor.chain().focus().unsetLink().run(); return }
+      editor.chain().focus().setLink({ href: url }).run()
+    })
+  }, [execEditor])
 
   const insertImage = useCallback((src, alt = '') => {
-    restoreSelection()
-    editorRef.current?.focus()
-    const html = `<img src="${src}" alt="${alt}" style="max-width:100%;height:auto;border-radius:6px;margin:8px 0;" />`
-    document.execCommand('insertHTML', false, html)
-    isInternalChange.current = true
-    onChange(editorRef.current?.innerHTML || '')
+    execEditor(editor => editor.chain().focus().setImage({ src, alt }).run())
     setShowImageModal(false)
     setImageUrl('')
     setImageAlt('')
-  }, [onChange, restoreSelection])
-
-  const compressImage = useCallback((file, maxSizeKB = 1800, maxWidth = 1600) => {
-    return new Promise((resolve) => {
-      const img = new Image()
-      const url = URL.createObjectURL(file)
-      img.onload = () => {
-        URL.revokeObjectURL(url)
-        let { width, height } = img
-        if (width > maxWidth) { height = Math.round(height * maxWidth / width); width = maxWidth }
-        const canvas = document.createElement('canvas')
-        canvas.width = width; canvas.height = height
-        canvas.getContext('2d').drawImage(img, 0, 0, width, height)
-        let quality = 0.85
-        const tryCompress = () => {
-          canvas.toBlob(blob => {
-            if (blob.size <= maxSizeKB * 1024 || quality <= 0.3) {
-              resolve(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }))
-            } else { quality -= 0.1; tryCompress() }
-          }, 'image/jpeg', quality)
-        }
-        tryCompress()
-      }
-      img.src = url
-    })
-  }, [])
+  }, [execEditor])
 
   const handleImageUpload = useCallback(async (file) => {
     if (!file) return
     if (!file.type.startsWith('image/')) { alert('Please select an image file.'); return }
-    if (file.size > 20 * 1024 * 1024) { alert('Image is too large. Max 20MB before compression.'); return }
+    if (file.size > 20 * 1024 * 1024) { alert('Image is too large. Max 20MB.'); return }
     setImageUploading(true)
     try {
-      const compressed = await compressImage(file)
-      const { createClient } = await import('../../lib/supabase')
-      const supabase = createClient()
+      const compressed = await compressImageFile(file)
+      if (!supabaseRef.current) {
+        const { createClient } = await import('../../lib/supabase')
+        supabaseRef.current = createClient()
+      }
       const path = `blog/${Date.now()}.jpg`
-      const { error } = await supabase.storage.from('blog-images').upload(path, compressed, { upsert: true, contentType: 'image/jpeg' })
+      const { error } = await supabaseRef.current.storage.from('blog-images').upload(path, compressed, { upsert: true, contentType: 'image/jpeg' })
       if (error) throw error
-      const { data: { publicUrl } } = supabase.storage.from('blog-images').getPublicUrl(path)
+      const { data: { publicUrl } } = supabaseRef.current.storage.from('blog-images').getPublicUrl(path)
       insertImage(publicUrl, imageAlt)
-    } catch (err) {
-      alert('Upload failed: ' + err.message)
-    }
+    } catch (err) { alert('Upload failed: ' + err.message) }
     setImageUploading(false)
-  }, [insertImage, imageAlt, compressImage])
+  }, [insertImage, imageAlt])
 
-  const ToolBtn = ({ title, children, onMouseDown }) => (
+  const toggleHtml = useCallback(() => {
+    if (!showHtml) {
+      const html = editorInstanceRef.current?.getHTML() || ''
+      setHtmlSource(html)
+      setShowHtml(true)
+    } else {
+      execEditor(editor => editor.commands.setContent(htmlSource, false))
+      onChange(htmlSource)
+      setShowHtml(false)
+    }
+  }, [showHtml, htmlSource, execEditor, onChange])
+
+  const isActive = (type, attrs) => editorInstanceRef.current?.isActive(type, attrs) ?? false
+
+  const Btn = ({ title, active, children, onMouseDown }) => (
     <button type="button" title={title} onMouseDown={onMouseDown}
-      className="px-2 py-1 rounded text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors font-medium border-0 bg-transparent whitespace-nowrap">
+      className={`px-2 py-1 rounded text-sm font-medium border-0 transition-colors whitespace-nowrap
+        ${active ? 'bg-[#1B5FA8]/15 text-[#1B5FA8]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}>
       {children}
     </button>
   )
-
   const Sep = () => <span className="w-px h-5 bg-gray-200 mx-1 shrink-0" />
 
   const wc = wordCount(value || '')
 
   const bulletStyles = [
-    { label: '• Disc', marker: '•' },
-    { label: '◦ Circle', marker: '◦' },
-    { label: '▪ Square', marker: '▪' },
-    { label: '▸ Arrow', marker: '▸' },
-    { label: '👉 Pointer', marker: '👉' },
-    { label: '✅ Check', marker: '✅' },
-    { label: '★ Star', marker: '★' },
-    { label: '➤ Triangle', marker: '➤' },
-    { label: '❌ Cross', marker: '❌' },
-    { label: '– Dash', marker: '–' },
+    { label: '• Disc', marker: '•' }, { label: '◦ Circle', marker: '◦' },
+    { label: '▪ Square', marker: '▪' }, { label: '▸ Arrow', marker: '▸' },
+    { label: '👉 Pointer', marker: '👉' }, { label: '✅ Check', marker: '✅' },
+    { label: '★ Star', marker: '★' }, { label: '➤ Triangle', marker: '➤' },
+    { label: '❌ Cross', marker: '❌' }, { label: '– Dash', marker: '–' },
   ]
-
   const numberedStyles = [
-    { label: '1. 2. 3.', style: 'decimal' },
-    { label: 'i. ii. iii.', style: 'lower-roman' },
-    { label: 'I. II. III.', style: 'upper-roman' },
-    { label: 'a. b. c.', style: 'lower-alpha' },
+    { label: '1. 2. 3.', style: 'decimal' }, { label: 'i. ii. iii.', style: 'lower-roman' },
+    { label: 'I. II. III.', style: 'upper-roman' }, { label: 'a. b. c.', style: 'lower-alpha' },
     { label: 'A. B. C.', style: 'upper-alpha' },
   ]
 
+  const insertCustomList = useCallback((marker) => {
+    execEditor(editor => {
+      editor.chain().focus().insertContent(
+        `<ul style="list-style:none;padding-left:1.2em"><li>${marker} </li></ul>`
+      ).run()
+    })
+    setBulletDropdown(false)
+  }, [execEditor])
+
+  const insertCustomNumbered = useCallback((style) => {
+    execEditor(editor => {
+      editor.chain().focus().toggleOrderedList().run()
+      // apply list style via DOM
+      setTimeout(() => {
+        const lists = document.querySelectorAll('.ProseMirror ol')
+        if (lists.length) lists[lists.length - 1].style.listStyleType = style
+        onChange(editorInstanceRef.current?.getHTML() || '')
+      }, 50)
+    })
+    setNumberedDropdown(false)
+  }, [execEditor, onChange])
+
   return (
-    <div className="border border-gray-200 rounded-lg overflow-visible focus-within:border-[#0D9488] transition-colors" style={{ position: 'relative' }}>
+    <div className="border border-gray-200 rounded-lg overflow-visible focus-within:border-[#0D9488] transition-colors">
+      {/* Sticky toolbar */}
       <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 bg-gray-50 border-b border-gray-200 sticky top-0 z-20 rounded-t-lg shadow-sm">
-        <ToolBtn title="Bold (Ctrl+B)" onMouseDown={e => { e.preventDefault(); exec('bold') }}><strong>B</strong></ToolBtn>
-        <ToolBtn title="Italic (Ctrl+I)" onMouseDown={e => { e.preventDefault(); exec('italic') }}><em>I</em></ToolBtn>
-        <ToolBtn title="Underline (Ctrl+U)" onMouseDown={e => { e.preventDefault(); exec('underline') }}><u>U</u></ToolBtn>
-        <ToolBtn title="Strikethrough" onMouseDown={e => { e.preventDefault(); exec('strikeThrough') }}><s className="text-xs">S</s></ToolBtn>
+        <Btn title="Bold (Ctrl+B)" active={isActive('bold')} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().toggleBold().run()) }}><strong>B</strong></Btn>
+        <Btn title="Italic (Ctrl+I)" active={isActive('italic')} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().toggleItalic().run()) }}><em>I</em></Btn>
+        <Btn title="Underline (Ctrl+U)" active={isActive('underline')} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().toggleUnderline().run()) }}><u>U</u></Btn>
+        <Btn title="Strikethrough" active={isActive('strike')} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().toggleStrike().run()) }}><s className="text-xs">S</s></Btn>
         <Sep />
-        <ToolBtn title="Heading 2" onMouseDown={e => { e.preventDefault(); exec('formatBlock', 'h2') }}><span className="text-xs font-bold">H2</span></ToolBtn>
-        <ToolBtn title="Heading 3" onMouseDown={e => { e.preventDefault(); exec('formatBlock', 'h3') }}><span className="text-xs font-bold">H3</span></ToolBtn>
-        <ToolBtn title="Paragraph" onMouseDown={e => { e.preventDefault(); exec('formatBlock', 'p') }}><span className="text-xs">P</span></ToolBtn>
+        <Btn title="Heading 2" active={isActive('heading', { level: 2 })} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().toggleHeading({ level: 2 }).run()) }}><span className="text-xs font-bold">H2</span></Btn>
+        <Btn title="Heading 3" active={isActive('heading', { level: 3 })} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().toggleHeading({ level: 3 }).run()) }}><span className="text-xs font-bold">H3</span></Btn>
+        <Btn title="Paragraph" active={isActive('paragraph')} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().setParagraph().run()) }}><span className="text-xs">P</span></Btn>
         <Sep />
-        <ToolBtn title="Align left" onMouseDown={e => { e.preventDefault(); exec('justifyLeft') }}><span className="text-xs">≡L</span></ToolBtn>
-        <ToolBtn title="Align center" onMouseDown={e => { e.preventDefault(); exec('justifyCenter') }}><span className="text-xs">≡C</span></ToolBtn>
-        <ToolBtn title="Align right" onMouseDown={e => { e.preventDefault(); exec('justifyRight') }}><span className="text-xs">≡R</span></ToolBtn>
-        <ToolBtn title="Justify" onMouseDown={e => { e.preventDefault(); exec('justifyFull') }}><span className="text-xs">≡J</span></ToolBtn>
+        <Btn title="Align left" active={isActive({ textAlign: 'left' })} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().setTextAlign('left').run()) }}><span className="text-xs">≡L</span></Btn>
+        <Btn title="Align center" active={isActive({ textAlign: 'center' })} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().setTextAlign('center').run()) }}><span className="text-xs">≡C</span></Btn>
+        <Btn title="Align right" active={isActive({ textAlign: 'right' })} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().setTextAlign('right').run()) }}><span className="text-xs">≡R</span></Btn>
+        <Btn title="Justify" active={isActive({ textAlign: 'justify' })} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().setTextAlign('justify').run()) }}><span className="text-xs">≡J</span></Btn>
         <Sep />
+        {/* Bullet dropdown */}
         <div className="relative">
-          <ToolBtn title="Bullet list styles" onMouseDown={e => { e.preventDefault(); saveSelection(); setBulletDropdown(v => !v); setNumberedDropdown(false) }}>
-            <span className="text-xs">• List ▾</span>
-          </ToolBtn>
+          <Btn title="Bullet list" active={isActive('bulletList')} onMouseDown={e => { e.preventDefault(); setBulletDropdown(v => !v); setNumberedDropdown(false) }}><span className="text-xs">• List ▾</span></Btn>
           {bulletDropdown && (
             <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1 min-w-[140px]">
-              <button type="button" onMouseDown={e => { e.preventDefault(); restoreSelection(); exec('insertUnorderedList'); setBulletDropdown(false) }}
+              <button type="button" onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().toggleBulletList().run()); setBulletDropdown(false) }}
                 className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">• Default</button>
               {bulletStyles.map(s => (
                 <button key={s.marker} type="button" onMouseDown={e => { e.preventDefault(); insertCustomList(s.marker) }}
@@ -246,10 +240,9 @@ function RichTextEditor({ value, onChange, placeholder = 'Write your content her
             </div>
           )}
         </div>
+        {/* Numbered dropdown */}
         <div className="relative">
-          <ToolBtn title="Numbered list styles" onMouseDown={e => { e.preventDefault(); saveSelection(); setNumberedDropdown(v => !v); setBulletDropdown(false) }}>
-            <span className="text-xs">1. List ▾</span>
-          </ToolBtn>
+          <Btn title="Numbered list" active={isActive('orderedList')} onMouseDown={e => { e.preventDefault(); setNumberedDropdown(v => !v); setBulletDropdown(false) }}><span className="text-xs">1. List ▾</span></Btn>
           {numberedDropdown && (
             <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1 min-w-[140px]">
               {numberedStyles.map(s => (
@@ -259,41 +252,38 @@ function RichTextEditor({ value, onChange, placeholder = 'Write your content her
             </div>
           )}
         </div>
-        <ToolBtn title="Insert image" onMouseDown={e => { e.preventDefault(); saveSelection(); setShowImageModal(true) }}>
-          <span className="text-xs text-[#0D9488]">🖼 Image</span>
-        </ToolBtn>
         <Sep />
-        <ToolBtn title="Insert link" onMouseDown={e => { e.preventDefault(); handleLink() }}><span className="text-xs text-[#1B5FA8]">🔗 Link</span></ToolBtn>
-        <ToolBtn title="Remove link" onMouseDown={e => { e.preventDefault(); exec('unlink') }}><span className="text-xs text-red-400">✂ Unlink</span></ToolBtn>
+        <Btn title="Blockquote" active={isActive('blockquote')} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().toggleBlockquote().run()) }}><span className="text-xs">❝ Quote</span></Btn>
+        <Btn title="Insert link" active={isActive('link')} onMouseDown={e => { e.preventDefault(); handleLink() }}><span className="text-xs text-[#1B5FA8]">🔗 Link</span></Btn>
+        <Btn title="Remove link" active={false} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().unsetLink().run()) }}><span className="text-xs text-red-400">✂ Unlink</span></Btn>
+        <Btn title="Insert image" active={false} onMouseDown={e => { e.preventDefault(); setShowImageModal(true) }}><span className="text-xs text-[#0D9488]">🖼 Image</span></Btn>
         <Sep />
-        <ToolBtn title="Clear formatting" onMouseDown={e => { e.preventDefault(); exec('removeFormat') }}><span className="text-xs text-gray-400">✕ Clear</span></ToolBtn>
-        <ToolBtn title="Toggle HTML source" onMouseDown={e => { e.preventDefault(); toggleHtml() }}>
-          <span className={`text-xs font-mono ${showHtml ? 'text-[#0D9488] font-bold' : 'text-gray-500'}`}>&lt;/&gt;</span>
-        </ToolBtn>
+        <Btn title="Undo (Ctrl+Z)" active={false} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().undo().run()) }}><span className="text-xs">↩</span></Btn>
+        <Btn title="Redo (Ctrl+Y)" active={false} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().redo().run()) }}><span className="text-xs">↪</span></Btn>
+        <Sep />
+        <Btn title="Clear formatting" active={false} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().clearNodes().unsetAllMarks().run()) }}><span className="text-xs text-gray-400">✕ Clear</span></Btn>
+        <Btn title="Toggle HTML source" active={showHtml} onMouseDown={e => { e.preventDefault(); toggleHtml() }}>
+          <span className="text-xs font-mono">{showHtml ? '← Editor' : '</>'}</span>
+        </Btn>
         <span className="ml-auto text-xs text-gray-400 px-2 select-none shrink-0">{wc} {wc === 1 ? 'word' : 'words'}</span>
       </div>
+
+      {/* Editor area */}
       {showHtml ? (
-        <textarea
-          value={htmlSource}
-          onChange={e => setHtmlSource(e.target.value)}
+        <textarea value={htmlSource} onChange={e => setHtmlSource(e.target.value)}
           className="w-full min-h-[280px] px-4 py-3 text-xs text-gray-800 focus:outline-none font-mono resize-y bg-gray-50"
-          placeholder="Edit raw HTML here..."
-          spellCheck={false}
-        />
+          placeholder="Edit raw HTML here..." spellCheck={false} />
       ) : (
-        <div
-          ref={editorRef}
-          contentEditable
-          suppressContentEditableWarning
-          onInput={handleInput}
-          onKeyDown={handleKeyDown}
-          onMouseUp={saveSelection}
-          onKeyUp={saveSelection}
-          data-placeholder={placeholder}
-          className="min-h-[280px] px-4 py-3 text-sm text-gray-800 focus:outline-none overflow-y-auto"
-          style={{ lineHeight: '1.7' }}
-        />
+        <div className="tiptap-wrapper">
+          {EditorComponent ? (
+            <EditorComponent value={value} onChange={onChange} placeholder={placeholder} />
+          ) : (
+            <div className="min-h-[280px] px-4 py-3 text-sm text-gray-400">Loading editor...</div>
+          )}
+        </div>
       )}
+
+      {/* Image modal */}
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={e => handleImageUpload(e.target.files[0])} />
       {showImageModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={() => setShowImageModal(false)}>
@@ -301,53 +291,44 @@ function RichTextEditor({ value, onChange, placeholder = 'Write your content her
             <h3 className="font-bold text-gray-900 mb-4">Insert Image</h3>
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">Alt text (optional)</label>
-              <input type="text" value={imageAlt} onChange={e => setImageAlt(e.target.value)}
-                placeholder="Describe the image..."
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-[#0D9488]" />
+              <input type="text" value={imageAlt} onChange={e => setImageAlt(e.target.value)} placeholder="Describe the image..."
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#0D9488]" />
             </div>
-            <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center mb-4 hover:border-[#0D9488]/50 transition-colors cursor-pointer"
+            <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center mb-4 hover:border-[#0D9488]/50 cursor-pointer transition-colors"
               onClick={() => fileInputRef.current?.click()}>
-              {imageUploading ? (
-                <p className="text-sm text-[#0D9488]">Compressing & uploading...</p>
-              ) : (
-                <>
-                  <p className="text-sm font-medium text-gray-700">Click to upload from your computer</p>
-                  <p className="text-xs text-gray-400 mt-1">PNG, JPG, GIF, WebP — auto-compressed to under 2MB</p>
-                </>
+              {imageUploading ? <p className="text-sm text-[#0D9488]">Compressing & uploading...</p> : (
+                <><p className="text-sm font-medium text-gray-700">Click to upload from your computer</p>
+                  <p className="text-xs text-gray-400 mt-1">PNG, JPG, GIF, WebP — auto-compressed to under 2MB</p></>
               )}
             </div>
             <div className="flex items-center gap-2 mb-4">
-              <div className="flex-1 h-px bg-gray-200" />
-              <span className="text-xs text-gray-400">or paste a URL</span>
-              <div className="flex-1 h-px bg-gray-200" />
+              <div className="flex-1 h-px bg-gray-200" /><span className="text-xs text-gray-400">or paste a URL</span><div className="flex-1 h-px bg-gray-200" />
             </div>
-            <input type="url" value={imageUrl} onChange={e => setImageUrl(e.target.value)}
-              placeholder="https://example.com/image.jpg"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-[#0D9488] mb-4"
+            <input type="url" value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://example.com/image.jpg"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#0D9488] mb-4"
               onKeyDown={e => { if (e.key === 'Enter' && imageUrl) insertImage(imageUrl, imageAlt) }} />
             <div className="flex gap-2">
-              <button type="button" onClick={() => imageUrl && insertImage(imageUrl, imageAlt)}
-                disabled={!imageUrl}
+              <button type="button" onClick={() => imageUrl && insertImage(imageUrl, imageAlt)} disabled={!imageUrl}
                 className="flex-1 bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-40 transition-colors">
                 Insert from URL
               </button>
               <button type="button" onClick={() => setShowImageModal(false)}
-                className="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
-                Cancel
-              </button>
+                className="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">Cancel</button>
             </div>
           </div>
         </div>
       )}
       <style>{`
-        [contenteditable]:empty:before { content: attr(data-placeholder); color: #9ca3af; pointer-events: none; }
-        [contenteditable] h2 { font-size: 1.3em; font-weight: 700; margin: 1em 0 0.4em; }
-        [contenteditable] h3 { font-size: 1.1em; font-weight: 600; margin: 0.8em 0 0.3em; }
-        [contenteditable] ul { list-style: disc; padding-left: 1.5em; margin: 0.5em 0; }
-        [contenteditable] ol { list-style: decimal; padding-left: 1.5em; margin: 0.5em 0; }
-        [contenteditable] blockquote { border-left: 3px solid #0D9488; margin: 0.5em 0; padding: 0.3em 1em; color: #4b5563; background: #f0fdf9; border-radius: 0 4px 4px 0; }
-        [contenteditable] a { color: #1B5FA8; text-decoration: underline; }
-        [contenteditable] p { margin: 0.4em 0; }
+        .tiptap-wrapper .ProseMirror { min-height: 280px; padding: 12px 16px; font-size: 0.875rem; line-height: 1.7; outline: none; }
+        .tiptap-wrapper .ProseMirror p { margin: 0.4em 0; }
+        .tiptap-wrapper .ProseMirror h2 { font-size: 1.3em; font-weight: 700; margin: 1em 0 0.4em; }
+        .tiptap-wrapper .ProseMirror h3 { font-size: 1.1em; font-weight: 600; margin: 0.8em 0 0.3em; }
+        .tiptap-wrapper .ProseMirror ul { list-style: disc; padding-left: 1.5em; margin: 0.5em 0; }
+        .tiptap-wrapper .ProseMirror ol { list-style: decimal; padding-left: 1.5em; margin: 0.5em 0; }
+        .tiptap-wrapper .ProseMirror blockquote { border-left: 3px solid #0D9488; margin: 0.5em 0; padding: 0.3em 1em; color: #4b5563; background: #f0fdf9; border-radius: 0 4px 4px 0; }
+        .tiptap-wrapper .ProseMirror a { color: #1B5FA8; text-decoration: underline; }
+        .tiptap-wrapper .ProseMirror img { max-width: 100%; height: auto; border-radius: 6px; margin: 8px 0; }
+        .tiptap-wrapper .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); color: #9ca3af; pointer-events: none; float: left; height: 0; }
       `}</style>
     </div>
   )
