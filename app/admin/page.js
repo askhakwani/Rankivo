@@ -504,6 +504,16 @@ function AdminPanelInner() {
     if (activeTab === 'pages') loadPages()
   }, [activeTab])
 
+  // Auto-open a specific post for editing when ?edit=ID is in the URL
+  useEffect(() => {
+    const editId = searchParams.get('edit')
+    if (!editId || activeTab !== 'blog') return
+    supabase.from('blog_posts').select('*').eq('id', editId).single()
+      .then(({ data }) => {
+        if (data) editBlogPost(data)
+      })
+  }, [activeTab, searchParams])
+
   async function loadOverview() {
     const { data } = await supabase.from('profiles').select('plan')
     if (data) {
