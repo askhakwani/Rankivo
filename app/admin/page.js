@@ -50,7 +50,6 @@ function compressImageFile(file, maxSizeKB = 1800, maxWidth = 1600) {
   })
 }
 
-// ── Rich Text Editor ──────────────────────────────────────────────────────────
 function RichTextEditor({ value, onChange, placeholder = 'Write your content here...' }) {
   const [EditorComponent, setEditorComponent] = useState(null)
   const [showImageModal, setShowImageModal] = useState(false)
@@ -77,42 +76,26 @@ function RichTextEditor({ value, onChange, placeholder = 'Write your content her
       function TipTapEditor({ value, onChange, placeholder }) {
         const editor = useEditor({
           extensions: [
-            StarterKit,
-            Underline,
+            StarterKit, Underline,
             Link.configure({ openOnClick: false }),
             Image.configure({ inline: false }),
             TextAlign.configure({ types: ['heading', 'paragraph'] }),
           ],
           content: value || '',
           onUpdate: ({ editor }) => onChange(editor.getHTML()),
-          editorProps: {
-            attributes: { class: 'min-h-[280px] px-4 py-3 text-sm text-gray-800 focus:outline-none prose prose-sm max-w-none' }
-          }
+          editorProps: { attributes: { class: 'min-h-[280px] px-4 py-3 text-sm text-gray-800 focus:outline-none prose prose-sm max-w-none' } }
         })
-
-        useEffect(() => {
-          editorInstanceRef.current = editor
-          return () => { editorInstanceRef.current = null }
-        }, [editor])
-
-        useEffect(() => {
-          if (editor && value !== editor.getHTML()) {
-            editor.commands.setContent(value || '', false)
-          }
-        }, [value])
-
+        useEffect(() => { editorInstanceRef.current = editor; return () => { editorInstanceRef.current = null } }, [editor])
+        useEffect(() => { if (editor && value !== editor.getHTML()) editor.commands.setContent(value || '', false) }, [value])
         if (!editor) return null
         return <EditorContent editor={editor} />
       }
-
       setEditorComponent(() => TipTapEditor)
     }
     loadEditor()
   }, [])
 
-  const execEditor = useCallback((fn) => {
-    if (editorInstanceRef.current) fn(editorInstanceRef.current)
-  }, [])
+  const execEditor = useCallback((fn) => { if (editorInstanceRef.current) fn(editorInstanceRef.current) }, [])
 
   const handleLink = useCallback(() => {
     execEditor(editor => {
@@ -126,9 +109,7 @@ function RichTextEditor({ value, onChange, placeholder = 'Write your content her
 
   const insertImage = useCallback((src, alt = '') => {
     execEditor(editor => editor.chain().focus().setImage({ src, alt }).run())
-    setShowImageModal(false)
-    setImageUrl('')
-    setImageAlt('')
+    setShowImageModal(false); setImageUrl(''); setImageAlt('')
   }, [execEditor])
 
   const handleImageUpload = useCallback(async (file) => {
@@ -138,10 +119,7 @@ function RichTextEditor({ value, onChange, placeholder = 'Write your content her
     setImageUploading(true)
     try {
       const compressed = await compressImageFile(file)
-      if (!supabaseRef.current) {
-        const { createClient } = await import('../../lib/supabase')
-        supabaseRef.current = createClient()
-      }
+      if (!supabaseRef.current) { const { createClient } = await import('../../lib/supabase'); supabaseRef.current = createClient() }
       const path = `blog/${Date.now()}.jpg`
       const { error } = await supabaseRef.current.storage.from('blog-images').upload(path, compressed, { upsert: true, contentType: 'image/jpeg' })
       if (error) throw error
@@ -152,52 +130,33 @@ function RichTextEditor({ value, onChange, placeholder = 'Write your content her
   }, [insertImage, imageAlt])
 
   const toggleHtml = useCallback(() => {
-    if (!showHtml) {
-      const html = editorInstanceRef.current?.getHTML() || ''
-      setHtmlSource(html)
-      setShowHtml(true)
-    } else {
-      execEditor(editor => editor.commands.setContent(htmlSource, false))
-      onChange(htmlSource)
-      setShowHtml(false)
-    }
+    if (!showHtml) { setHtmlSource(editorInstanceRef.current?.getHTML() || ''); setShowHtml(true) }
+    else { execEditor(editor => editor.commands.setContent(htmlSource, false)); onChange(htmlSource); setShowHtml(false) }
   }, [showHtml, htmlSource, execEditor, onChange])
 
   const isActive = (type, attrs) => editorInstanceRef.current?.isActive(type, attrs) ?? false
-
   const Btn = ({ title, active, children, onMouseDown }) => (
     <button type="button" title={title} onMouseDown={onMouseDown}
-      className={`px-2 py-1 rounded text-sm font-medium border-0 transition-colors whitespace-nowrap
-        ${active ? 'bg-[#1B5FA8]/15 text-[#1B5FA8]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}>
+      className={`px-2 py-1 rounded text-sm font-medium border-0 transition-colors whitespace-nowrap ${active ? 'bg-[#1B5FA8]/15 text-[#1B5FA8]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}>
       {children}
     </button>
   )
   const Sep = () => <span className="w-px h-5 bg-gray-200 mx-1 shrink-0" />
-
   const wc = wordCount(value || '')
 
   const bulletStyles = [
-    { label: '• Disc', marker: '•' }, { label: '◦ Circle', marker: '◦' },
-    { label: '▪ Square', marker: '▪' }, { label: '▸ Arrow', marker: '▸' },
-    { label: '👉 Pointer', marker: '👉' }, { label: '✅ Check', marker: '✅' },
-    { label: '★ Star', marker: '★' }, { label: '➤ Triangle', marker: '➤' },
-    { label: '❌ Cross', marker: '❌' }, { label: '– Dash', marker: '–' },
+    { label: '• Disc', marker: '•' }, { label: '◦ Circle', marker: '◦' }, { label: '▪ Square', marker: '▪' },
+    { label: '▸ Arrow', marker: '▸' }, { label: '👉 Pointer', marker: '👉' }, { label: '✅ Check', marker: '✅' },
+    { label: '★ Star', marker: '★' }, { label: '➤ Triangle', marker: '➤' }, { label: '❌ Cross', marker: '❌' }, { label: '– Dash', marker: '–' },
   ]
   const numberedStyles = [
     { label: '1. 2. 3.', style: 'decimal' }, { label: 'i. ii. iii.', style: 'lower-roman' },
-    { label: 'I. II. III.', style: 'upper-roman' }, { label: 'a. b. c.', style: 'lower-alpha' },
-    { label: 'A. B. C.', style: 'upper-alpha' },
+    { label: 'I. II. III.', style: 'upper-roman' }, { label: 'a. b. c.', style: 'lower-alpha' }, { label: 'A. B. C.', style: 'upper-alpha' },
   ]
-
   const insertCustomList = useCallback((marker) => {
-    execEditor(editor => {
-      editor.chain().focus().insertContent(
-        `<ul style="list-style:none;padding-left:1.2em"><li>${marker} </li></ul>`
-      ).run()
-    })
+    execEditor(editor => editor.chain().focus().insertContent(`<ul style="list-style:none;padding-left:1.2em"><li>${marker} </li></ul>`).run())
     setBulletDropdown(false)
   }, [execEditor])
-
   const insertCustomNumbered = useCallback((style) => {
     execEditor(editor => {
       editor.chain().focus().toggleOrderedList().run()
@@ -216,27 +175,23 @@ function RichTextEditor({ value, onChange, placeholder = 'Write your content her
         <Btn title="Bold" active={isActive('bold')} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().toggleBold().run()) }}><strong>B</strong></Btn>
         <Btn title="Italic" active={isActive('italic')} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().toggleItalic().run()) }}><em>I</em></Btn>
         <Btn title="Underline" active={isActive('underline')} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().toggleUnderline().run()) }}><u>U</u></Btn>
-        <Btn title="Strikethrough" active={isActive('strike')} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().toggleStrike().run()) }}><s className="text-xs">S</s></Btn>
+        <Btn title="Strike" active={isActive('strike')} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().toggleStrike().run()) }}><s className="text-xs">S</s></Btn>
         <Sep />
-        <Btn title="Heading 2" active={isActive('heading', { level: 2 })} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().toggleHeading({ level: 2 }).run()) }}><span className="text-xs font-bold">H2</span></Btn>
-        <Btn title="Heading 3" active={isActive('heading', { level: 3 })} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().toggleHeading({ level: 3 }).run()) }}><span className="text-xs font-bold">H3</span></Btn>
+        <Btn title="H2" active={isActive('heading', { level: 2 })} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().toggleHeading({ level: 2 }).run()) }}><span className="text-xs font-bold">H2</span></Btn>
+        <Btn title="H3" active={isActive('heading', { level: 3 })} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().toggleHeading({ level: 3 }).run()) }}><span className="text-xs font-bold">H3</span></Btn>
         <Btn title="Paragraph" active={isActive('paragraph')} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().setParagraph().run()) }}><span className="text-xs">P</span></Btn>
         <Sep />
-        <Btn title="Align left" active={isActive({ textAlign: 'left' })} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().setTextAlign('left').run()) }}><span className="text-xs">≡L</span></Btn>
-        <Btn title="Align center" active={isActive({ textAlign: 'center' })} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().setTextAlign('center').run()) }}><span className="text-xs">≡C</span></Btn>
-        <Btn title="Align right" active={isActive({ textAlign: 'right' })} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().setTextAlign('right').run()) }}><span className="text-xs">≡R</span></Btn>
+        <Btn title="Left" active={isActive({ textAlign: 'left' })} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().setTextAlign('left').run()) }}><span className="text-xs">≡L</span></Btn>
+        <Btn title="Center" active={isActive({ textAlign: 'center' })} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().setTextAlign('center').run()) }}><span className="text-xs">≡C</span></Btn>
+        <Btn title="Right" active={isActive({ textAlign: 'right' })} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().setTextAlign('right').run()) }}><span className="text-xs">≡R</span></Btn>
         <Btn title="Justify" active={isActive({ textAlign: 'justify' })} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().setTextAlign('justify').run()) }}><span className="text-xs">≡J</span></Btn>
         <Sep />
         <div className="relative">
           <Btn title="Bullet list" active={isActive('bulletList')} onMouseDown={e => { e.preventDefault(); setBulletDropdown(v => !v); setNumberedDropdown(false) }}><span className="text-xs">• List ▾</span></Btn>
           {bulletDropdown && (
             <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1 min-w-[140px]">
-              <button type="button" onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().toggleBulletList().run()); setBulletDropdown(false) }}
-                className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">• Default</button>
-              {bulletStyles.map(s => (
-                <button key={s.marker} type="button" onMouseDown={e => { e.preventDefault(); insertCustomList(s.marker) }}
-                  className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">{s.label}</button>
-              ))}
+              <button type="button" onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().toggleBulletList().run()); setBulletDropdown(false) }} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">• Default</button>
+              {bulletStyles.map(s => <button key={s.marker} type="button" onMouseDown={e => { e.preventDefault(); insertCustomList(s.marker) }} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">{s.label}</button>)}
             </div>
           )}
         </div>
@@ -244,43 +199,30 @@ function RichTextEditor({ value, onChange, placeholder = 'Write your content her
           <Btn title="Numbered list" active={isActive('orderedList')} onMouseDown={e => { e.preventDefault(); setNumberedDropdown(v => !v); setBulletDropdown(false) }}><span className="text-xs">1. List ▾</span></Btn>
           {numberedDropdown && (
             <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-30 py-1 min-w-[140px]">
-              {numberedStyles.map(s => (
-                <button key={s.style} type="button" onMouseDown={e => { e.preventDefault(); insertCustomNumbered(s.style) }}
-                  className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">{s.label}</button>
-              ))}
+              {numberedStyles.map(s => <button key={s.style} type="button" onMouseDown={e => { e.preventDefault(); insertCustomNumbered(s.style) }} className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">{s.label}</button>)}
             </div>
           )}
         </div>
         <Sep />
         <Btn title="Blockquote" active={isActive('blockquote')} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().toggleBlockquote().run()) }}><span className="text-xs">❝ Quote</span></Btn>
-        <Btn title="Insert link" active={isActive('link')} onMouseDown={e => { e.preventDefault(); handleLink() }}><span className="text-xs text-[#1B5FA8]">🔗 Link</span></Btn>
-        <Btn title="Remove link" active={false} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().unsetLink().run()) }}><span className="text-xs text-red-400">✂ Unlink</span></Btn>
-        <Btn title="Insert image" active={false} onMouseDown={e => { e.preventDefault(); setShowImageModal(true) }}><span className="text-xs text-[#0D9488]">🖼 Image</span></Btn>
+        <Btn title="Link" active={isActive('link')} onMouseDown={e => { e.preventDefault(); handleLink() }}><span className="text-xs text-[#1B5FA8]">🔗 Link</span></Btn>
+        <Btn title="Unlink" active={false} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().unsetLink().run()) }}><span className="text-xs text-red-400">✂ Unlink</span></Btn>
+        <Btn title="Image" active={false} onMouseDown={e => { e.preventDefault(); setShowImageModal(true) }}><span className="text-xs text-[#0D9488]">🖼 Image</span></Btn>
         <Sep />
         <Btn title="Undo" active={false} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().undo().run()) }}><span className="text-xs">↩</span></Btn>
         <Btn title="Redo" active={false} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().redo().run()) }}><span className="text-xs">↪</span></Btn>
         <Sep />
-        <Btn title="Clear formatting" active={false} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().clearNodes().unsetAllMarks().run()) }}><span className="text-xs text-gray-400">✕ Clear</span></Btn>
-        <Btn title="Toggle HTML source" active={showHtml} onMouseDown={e => { e.preventDefault(); toggleHtml() }}>
-          <span className="text-xs font-mono">{showHtml ? '← Editor' : '</>'}</span>
-        </Btn>
+        <Btn title="Clear" active={false} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().clearNodes().unsetAllMarks().run()) }}><span className="text-xs text-gray-400">✕ Clear</span></Btn>
+        <Btn title="HTML" active={showHtml} onMouseDown={e => { e.preventDefault(); toggleHtml() }}><span className="text-xs font-mono">{showHtml ? '← Editor' : '</>'}</span></Btn>
         <span className="ml-auto text-xs text-gray-400 px-2 select-none shrink-0">{wc} {wc === 1 ? 'word' : 'words'}</span>
       </div>
-
       {showHtml ? (
-        <textarea value={htmlSource} onChange={e => setHtmlSource(e.target.value)}
-          className="w-full min-h-[280px] px-4 py-3 text-xs text-gray-800 focus:outline-none font-mono resize-y bg-gray-50"
-          placeholder="Edit raw HTML here..." spellCheck={false} />
+        <textarea value={htmlSource} onChange={e => setHtmlSource(e.target.value)} className="w-full min-h-[280px] px-4 py-3 text-xs text-gray-800 focus:outline-none font-mono resize-y bg-gray-50" placeholder="Edit raw HTML..." spellCheck={false} />
       ) : (
         <div className="tiptap-wrapper">
-          {EditorComponent ? (
-            <EditorComponent value={value} onChange={onChange} placeholder={placeholder} />
-          ) : (
-            <div className="min-h-[280px] px-4 py-3 text-sm text-gray-400">Loading editor...</div>
-          )}
+          {EditorComponent ? <EditorComponent value={value} onChange={onChange} placeholder={placeholder} /> : <div className="min-h-[280px] px-4 py-3 text-sm text-gray-400">Loading editor...</div>}
         </div>
       )}
-
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={e => handleImageUpload(e.target.files[0])} />
       {showImageModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={() => setShowImageModal(false)}>
@@ -288,14 +230,11 @@ function RichTextEditor({ value, onChange, placeholder = 'Write your content her
             <h3 className="font-bold text-gray-900 mb-4">Insert Image</h3>
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">Alt text (optional)</label>
-              <input type="text" value={imageAlt} onChange={e => setImageAlt(e.target.value)} placeholder="Describe the image..."
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#0D9488]" />
+              <input type="text" value={imageAlt} onChange={e => setImageAlt(e.target.value)} placeholder="Describe the image..." className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#0D9488]" />
             </div>
-            <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center mb-4 hover:border-[#0D9488]/50 cursor-pointer transition-colors"
-              onClick={() => fileInputRef.current?.click()}>
+            <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center mb-4 hover:border-[#0D9488]/50 cursor-pointer transition-colors" onClick={() => fileInputRef.current?.click()}>
               {imageUploading ? <p className="text-sm text-[#0D9488]">Compressing & uploading...</p> : (
-                <><p className="text-sm font-medium text-gray-700">Click to upload from your computer</p>
-                  <p className="text-xs text-gray-400 mt-1">PNG, JPG, GIF, WebP — auto-compressed to under 2MB</p></>
+                <><p className="text-sm font-medium text-gray-700">Click to upload from your computer</p><p className="text-xs text-gray-400 mt-1">PNG, JPG, GIF, WebP</p></>
               )}
             </div>
             <div className="flex items-center gap-2 mb-4">
@@ -305,12 +244,8 @@ function RichTextEditor({ value, onChange, placeholder = 'Write your content her
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#0D9488] mb-4"
               onKeyDown={e => { if (e.key === 'Enter' && imageUrl) insertImage(imageUrl, imageAlt) }} />
             <div className="flex gap-2">
-              <button type="button" onClick={() => imageUrl && insertImage(imageUrl, imageAlt)} disabled={!imageUrl}
-                className="flex-1 bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-40 transition-colors">
-                Insert from URL
-              </button>
-              <button type="button" onClick={() => setShowImageModal(false)}
-                className="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">Cancel</button>
+              <button type="button" onClick={() => imageUrl && insertImage(imageUrl, imageAlt)} disabled={!imageUrl} className="flex-1 bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-40 transition-colors">Insert from URL</button>
+              <button type="button" onClick={() => setShowImageModal(false)} className="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">Cancel</button>
             </div>
           </div>
         </div>
@@ -325,13 +260,11 @@ function RichTextEditor({ value, onChange, placeholder = 'Write your content her
         .tiptap-wrapper .ProseMirror blockquote { border-left: 3px solid #0D9488; margin: 0.5em 0; padding: 0.3em 1em; color: #4b5563; background: #f0fdf9; border-radius: 0 4px 4px 0; }
         .tiptap-wrapper .ProseMirror a { color: #1B5FA8; text-decoration: underline; }
         .tiptap-wrapper .ProseMirror img { max-width: 100%; height: auto; border-radius: 6px; margin: 8px 0; }
-        .tiptap-wrapper .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); color: #9ca3af; pointer-events: none; float: left; height: 0; }
       `}</style>
     </div>
   )
 }
 
-// ── Schedule Modal ────────────────────────────────────────────────────────────
 function ScheduleModal({ onConfirm, onClose }) {
   const [scheduledAt, setScheduledAt] = useState('')
   const minDate = new Date(Date.now() + 60000).toISOString().slice(0, 16)
@@ -344,9 +277,7 @@ function ScheduleModal({ onConfirm, onClose }) {
           className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:border-[#0D9488] mb-4" />
         <div className="flex gap-2">
           <button onClick={() => scheduledAt && onConfirm(scheduledAt)} disabled={!scheduledAt}
-            className="flex-1 bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-40 transition-colors">
-            Schedule Post
-          </button>
+            className="flex-1 bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-40 transition-colors">Schedule Post</button>
           <button onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
         </div>
       </div>
@@ -354,17 +285,14 @@ function ScheduleModal({ onConfirm, onClose }) {
   )
 }
 
-// ── Publish Split Button ──────────────────────────────────────────────────────
 function PublishButton({ onPublish, onDraft, onSchedule, saving, isEdit }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
-
   useEffect(() => {
     function handleClick(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
-
   return (
     <div className="relative flex" ref={ref}>
       <button onClick={onPublish} disabled={saving}
@@ -372,26 +300,23 @@ function PublishButton({ onPublish, onDraft, onSchedule, saving, isEdit }) {
         {saving ? 'Saving...' : isEdit ? 'Update & Publish' : 'Publish'}
       </button>
       <button onClick={() => setOpen(v => !v)} disabled={saving}
-        className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-2.5 py-2.5 rounded-r-lg text-sm disabled:opacity-50 transition-colors" title="More options">
+        className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-2.5 py-2.5 rounded-r-lg text-sm disabled:opacity-50 transition-colors">
         <svg className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
       {open && (
         <div className="absolute bottom-full left-0 mb-1 bg-white border border-gray-200 rounded-xl shadow-xl z-30 py-1.5 min-w-[180px]">
-          <button onClick={() => { onPublish(); setOpen(false) }}
-            className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-[#1B5FA8]/5 flex items-center gap-2.5">
+          <button onClick={() => { onPublish(); setOpen(false) }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-[#1B5FA8]/5 flex items-center gap-2.5">
             <span className="text-base">🚀</span>
             <div><p className="font-medium text-gray-900">Publish Now</p><p className="text-xs text-gray-400">Make it live immediately</p></div>
           </button>
-          <button onClick={() => { onDraft(); setOpen(false) }}
-            className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5">
+          <button onClick={() => { onDraft(); setOpen(false) }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5">
             <span className="text-base">📝</span>
             <div><p className="font-medium text-gray-900">Save as Draft</p><p className="text-xs text-gray-400">Save without publishing</p></div>
           </button>
           <div className="h-px bg-gray-100 mx-2 my-1" />
-          <button onClick={() => { onSchedule(); setOpen(false) }}
-            className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5">
+          <button onClick={() => { onSchedule(); setOpen(false) }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5">
             <span className="text-base">🕐</span>
             <div><p className="font-medium text-gray-900">Schedule Publish</p><p className="text-xs text-gray-400">Set a future date & time</p></div>
           </button>
@@ -401,7 +326,6 @@ function PublishButton({ onPublish, onDraft, onSchedule, saving, isEdit }) {
   )
 }
 
-// ── Main Admin Panel ──────────────────────────────────────────────────────────
 function AdminPanelInner() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -416,11 +340,7 @@ function AdminPanelInner() {
 
   const [posts, setPosts] = useState([])
   const [postsLoading, setPostsLoading] = useState(false)
-  const [blogForm, setBlogForm] = useState({
-    id: null, title: '', slug: '', excerpt: '', content: '',
-    featured_image: '', meta_title: '', meta_description: '',
-    published: false, author_id: '', scheduled_at: null,
-  })
+  const [blogForm, setBlogForm] = useState({ id: null, title: '', slug: '', excerpt: '', content: '', featured_image: '', meta_title: '', meta_description: '', published: false, author_id: '', scheduled_at: null })
   const [blogView, setBlogView] = useState('list')
   const [blogMsg, setBlogMsg] = useState('')
   const [blogSaving, setBlogSaving] = useState(false)
@@ -435,7 +355,6 @@ function AdminPanelInner() {
 
   const [planChanging, setPlanChanging] = useState(null)
 
-  // ── Authors state ──
   const [authors, setAuthors] = useState([])
   const [authorsLoading, setAuthorsLoading] = useState(false)
   const [authorView, setAuthorView] = useState('list')
@@ -446,9 +365,7 @@ function AdminPanelInner() {
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user || user.email !== ADMIN_EMAIL) { router.push('/dashboard'); return }
-      setUser(user)
-      setLoading(false)
-      loadOverview()
+      setUser(user); setLoading(false); loadOverview()
     })
   }, [])
 
@@ -462,51 +379,37 @@ function AdminPanelInner() {
   useEffect(() => {
     const editId = searchParams.get('edit')
     if (!editId || activeTab !== 'blog') return
-    supabase.from('blog_posts').select('*').eq('id', editId).single()
-      .then(({ data }) => { if (data) editBlogPost(data) })
+    supabase.from('blog_posts').select('*').eq('id', editId).single().then(({ data }) => { if (data) editBlogPost(data) })
   }, [activeTab, searchParams])
 
   async function loadOverview() {
     const { data } = await supabase.from('profiles').select('plan')
-    if (data) {
-      setStats({
-        total: data.length,
-        free: data.filter(u => !u.plan || u.plan === 'free').length,
-        pro: data.filter(u => u.plan === 'pro').length,
-        premium: data.filter(u => u.plan === 'premium').length,
-      })
-    }
+    if (data) setStats({ total: data.length, free: data.filter(u => !u.plan || u.plan === 'free').length, pro: data.filter(u => u.plan === 'pro').length, premium: data.filter(u => u.plan === 'premium').length })
   }
 
   async function loadUsers() {
     setUsersLoading(true)
     const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false })
-    setUsers(data || [])
-    setUsersLoading(false)
+    setUsers(data || []); setUsersLoading(false)
   }
 
   async function loadPosts() {
     setPostsLoading(true)
     const { data } = await supabase.from('blog_posts').select('*').order('created_at', { ascending: false })
-    setPosts(data || [])
-    setPostsLoading(false)
+    setPosts(data || []); setPostsLoading(false)
   }
 
   async function loadPages() {
     setPagesLoading(true)
     const { data } = await supabase.from('cms_pages').select('*').order('created_at', { ascending: false })
-    setPages(data || [])
-    setPagesLoading(false)
+    setPages(data || []); setPagesLoading(false)
   }
 
   async function loadAuthors() {
     setAuthorsLoading(true)
     const { data } = await supabase.from('authors').select('*').order('created_at', { ascending: true })
     setAuthors(data || [])
-    // Set default author_id for blog form if not set
-    if (data && data.length > 0) {
-      setBlogForm(prev => ({ ...prev, author_id: prev.author_id || data[0].slug }))
-    }
+    if (data && data.length > 0) setBlogForm(prev => ({ ...prev, author_id: prev.author_id || data[0].slug }))
     setAuthorsLoading(false)
   }
 
@@ -519,11 +422,7 @@ function AdminPanelInner() {
 
   async function adminAction(action, userId, label) {
     if (!confirm(`Are you sure you want to ${label}? This cannot be undone.`)) return
-    const res = await fetch('/api/admin/users', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, userId, requesterId: user.id })
-    })
+    const res = await fetch('/api/admin/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, userId, requesterId: user.id }) })
     const data = await res.json()
     if (data.error) { alert('Error: ' + data.error); return }
     alert(data.message)
@@ -534,66 +433,48 @@ function AdminPanelInner() {
   function newBlogPost() {
     const defaultAuthor = authors.length > 0 ? authors[0].slug : ''
     setBlogForm({ id: null, title: '', slug: '', excerpt: '', content: '', featured_image: '', meta_title: '', meta_description: '', published: false, author_id: defaultAuthor, scheduled_at: null })
-    setBlogMsg('')
-    setBlogView('form')
+    setBlogMsg(''); setBlogView('form')
   }
 
   function editBlogPost(post) {
     setBlogForm({ ...post, author_id: post.author_id || (authors[0]?.slug || ''), scheduled_at: post.scheduled_at || null })
-    setBlogMsg('')
-    setBlogView('form')
+    setBlogMsg(''); setBlogView('form')
   }
 
   async function saveBlogPost({ published = false, scheduled_at = null } = {}) {
     if (!blogForm.title.trim()) { setBlogMsg('Title is required.'); return }
     setBlogSaving(true); setBlogMsg('')
     const slug = blogForm.slug.trim() || slugify(blogForm.title)
-    const payload = {
-      ...blogForm, slug,
-      meta_title: blogForm.meta_title || blogForm.title,
-      published,
-      scheduled_at,
-      updated_at: new Date().toISOString(),
-    }
+    const payload = { ...blogForm, slug, meta_title: blogForm.meta_title || blogForm.title, published, scheduled_at, updated_at: new Date().toISOString() }
     let error
     if (blogForm.id) {
-      const { error: e } = await supabase.from('blog_posts').update(payload).eq('id', blogForm.id)
-      error = e
+      const { error: e } = await supabase.from('blog_posts').update(payload).eq('id', blogForm.id); error = e
     } else {
       const { id: _id, ...payloadWithoutId } = payload
-      const { error: e } = await supabase.from('blog_posts').insert({ ...payloadWithoutId, created_at: new Date().toISOString() })
-      error = e
+      const { error: e } = await supabase.from('blog_posts').insert({ ...payloadWithoutId, created_at: new Date().toISOString() }); error = e
     }
     if (error) { setBlogMsg('Error: ' + error.message); setBlogSaving(false); return }
-    const statusLabel = scheduled_at ? `Scheduled for ${new Date(scheduled_at).toLocaleString()}` : published ? 'Published!' : 'Saved as draft!'
-    setBlogMsg(statusLabel)
-    setBlogSaving(false)
-    loadPosts()
+    setBlogMsg(scheduled_at ? `Scheduled for ${new Date(scheduled_at).toLocaleString()}` : published ? 'Published!' : 'Saved as draft!')
+    setBlogSaving(false); loadPosts()
     setTimeout(() => setBlogView('list'), 900)
   }
 
   async function deleteBlogPost(id) {
     if (!confirm('Delete this post?')) return
-    await supabase.from('blog_posts').delete().eq('id', id)
-    loadPosts()
+    await supabase.from('blog_posts').delete().eq('id', id); loadPosts()
   }
 
   async function togglePublish(post) {
-    await supabase.from('blog_posts').update({ published: !post.published, scheduled_at: null }).eq('id', post.id)
-    loadPosts()
+    await supabase.from('blog_posts').update({ published: !post.published, scheduled_at: null }).eq('id', post.id); loadPosts()
   }
 
-  // ── Author CRUD ──
   function newAuthor() {
     setAuthorForm({ id: null, slug: '', name: '', title: '', bio: '', avatar: '' })
-    setAuthorMsg('')
-    setAuthorView('form')
+    setAuthorMsg(''); setAuthorView('form')
   }
 
   function editAuthor(author) {
-    setAuthorForm({ ...author })
-    setAuthorMsg('')
-    setAuthorView('form')
+    setAuthorForm({ ...author }); setAuthorMsg(''); setAuthorView('form')
   }
 
   async function saveAuthor() {
@@ -603,37 +484,28 @@ function AdminPanelInner() {
     const payload = { ...authorForm, slug }
     let error
     if (authorForm.id) {
-      const { error: e } = await supabase.from('authors').update(payload).eq('id', authorForm.id)
-      error = e
+      const { error: e } = await supabase.from('authors').update(payload).eq('id', authorForm.id); error = e
     } else {
       const { id: _id, ...payloadWithoutId } = payload
-      const { error: e } = await supabase.from('authors').insert({ ...payloadWithoutId, created_at: new Date().toISOString() })
-      error = e
+      const { error: e } = await supabase.from('authors').insert({ ...payloadWithoutId, created_at: new Date().toISOString() }); error = e
     }
     if (error) { setAuthorMsg('Error: ' + error.message); setAuthorSaving(false); return }
     setAuthorMsg(authorForm.id ? 'Author updated!' : 'Author created!')
-    setAuthorSaving(false)
-    loadAuthors()
+    setAuthorSaving(false); loadAuthors()
     setTimeout(() => setAuthorView('list'), 800)
   }
 
   async function deleteAuthor(id) {
-    if (!confirm('Delete this author? Posts using this author will keep the slug but won\'t show a profile.')) return
-    await supabase.from('authors').delete().eq('id', id)
-    loadAuthors()
+    if (!confirm('Delete this author?')) return
+    await supabase.from('authors').delete().eq('id', id); loadAuthors()
   }
 
   function newPage() {
     setPageForm({ id: null, title: '', slug: '', content: '', meta_title: '', meta_description: '', published: true })
-    setPageMsg('')
-    setPageView('form')
+    setPageMsg(''); setPageView('form')
   }
 
-  function editPage(page) {
-    setPageForm({ ...page })
-    setPageMsg('')
-    setPageView('form')
-  }
+  function editPage(page) { setPageForm({ ...page }); setPageMsg(''); setPageView('form') }
 
   async function savePage() {
     if (!pageForm.title.trim()) { setPageMsg('Title is required.'); return }
@@ -642,34 +514,25 @@ function AdminPanelInner() {
     const payload = { ...pageForm, slug, meta_title: pageForm.meta_title || pageForm.title, updated_at: new Date().toISOString() }
     let error
     if (pageForm.id) {
-      const { error: e } = await supabase.from('cms_pages').update(payload).eq('id', pageForm.id)
-      error = e
+      const { error: e } = await supabase.from('cms_pages').update(payload).eq('id', pageForm.id); error = e
     } else {
-      const { error: e } = await supabase.from('cms_pages').insert({ ...payload, created_at: new Date().toISOString() })
-      error = e
+      const { error: e } = await supabase.from('cms_pages').insert({ ...payload, created_at: new Date().toISOString() }); error = e
     }
     if (error) { setPageMsg('Error: ' + error.message); setPageSaving(false); return }
     setPageMsg(pageForm.id ? 'Page updated!' : 'Page created!')
-    setPageSaving(false)
-    loadPages()
+    setPageSaving(false); loadPages()
     setTimeout(() => setPageView('list'), 800)
   }
 
   async function deletePage(id) {
     if (!confirm('Delete this page?')) return
-    await supabase.from('cms_pages').delete().eq('id', id)
-    loadPages()
+    await supabase.from('cms_pages').delete().eq('id', id); loadPages()
   }
 
-  if (loading) return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
-      <div className="text-[#1B5FA8] font-semibold">Loading Admin Panel...</div>
-    </div>
-  )
+  if (loading) return <div className="flex items-center justify-center min-h-screen bg-gray-50"><div className="text-[#1B5FA8] font-semibold">Loading Admin Panel...</div></div>
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <a href="/dashboard" className="text-xl font-bold text-[#1B5FA8]">RANKIVO</a>
@@ -683,7 +546,6 @@ function AdminPanelInner() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-        {/* Tabs */}
         <div className="flex flex-wrap gap-2 mb-6">
           {TABS.map(t => (
             <button key={t.id} onClick={() => setActiveTab(t.id)}
@@ -693,7 +555,6 @@ function AdminPanelInner() {
           ))}
         </div>
 
-        {/* ── Overview ── */}
         {activeTab === 'overview' && (
           <div>
             <h2 className="text-xl font-bold text-gray-900 mb-5">Overview</h2>
@@ -713,7 +574,7 @@ function AdminPanelInner() {
             <div className="grid md:grid-cols-4 gap-4">
               {[
                 { label: 'Blog Posts', tab: 'blog', desc: 'Create and manage blog content' },
-                { label: 'Authors', tab: 'authors', desc: 'Manage blog authors' },
+                { label: 'Authors', tab: 'authors', desc: 'Manage blog author profiles' },
                 { label: 'Pages / CMS', tab: 'pages', desc: 'Edit About, FAQ and custom pages' },
                 { label: 'Users', tab: 'users', desc: 'Manage user plans and accounts' },
               ].map(c => (
@@ -726,13 +587,10 @@ function AdminPanelInner() {
           </div>
         )}
 
-        {/* ── Users ── */}
         {activeTab === 'users' && (
           <div>
             <h2 className="text-xl font-bold text-gray-900 mb-5">All Users</h2>
-            {usersLoading ? (
-              <div className="text-center py-10 text-gray-400">Loading users...</div>
-            ) : (
+            {usersLoading ? <div className="text-center py-10 text-gray-400">Loading users...</div> : (
               <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -784,17 +642,12 @@ function AdminPanelInner() {
           </div>
         )}
 
-        {/* ── Blog Posts ── */}
         {activeTab === 'blog' && (
           <div>
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-xl font-bold text-gray-900">Blog Posts</h2>
-              {blogView === 'list' && (
-                <button onClick={newBlogPost} className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">+ New Post</button>
-              )}
-              {blogView === 'form' && (
-                <button onClick={() => setBlogView('list')} className="text-sm text-gray-500 hover:text-gray-800 border border-gray-200 px-3 py-1.5 rounded-lg">← Back to Posts</button>
-              )}
+              {blogView === 'list' && <button onClick={newBlogPost} className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">+ New Post</button>}
+              {blogView === 'form' && <button onClick={() => setBlogView('list')} className="text-sm text-gray-500 hover:text-gray-800 border border-gray-200 px-3 py-1.5 rounded-lg">← Back to Posts</button>}
             </div>
 
             {blogView === 'list' && (
@@ -836,51 +689,30 @@ function AdminPanelInner() {
                                 <td className="px-4 py-3 whitespace-nowrap">
                                   {author ? (
                                     <div className="flex items-center gap-2">
-                                      <img src={author.avatar} alt={author.name} className="w-6 h-6 rounded-full bg-gray-100" />
+                                      {author.avatar ? <img src={author.avatar} alt={author.name} className="w-6 h-6 rounded-full bg-gray-100" /> : <div className="w-6 h-6 rounded-full bg-[#1B5FA8]/10 flex items-center justify-center text-[#1B5FA8] text-xs font-bold">{author.name.charAt(0)}</div>}
                                       <span className="text-gray-600 text-xs">{author.name}</span>
                                     </div>
-                                  ) : (
-                                    <span className="text-gray-400 text-xs italic">{post.author_id || 'No author'}</span>
-                                  )}
+                                  ) : <span className="text-gray-400 text-xs italic">{post.author_id || 'No author'}</span>}
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap">
-                                  {isScheduled ? (
-                                    <span className="text-xs px-2 py-0.5 rounded border font-medium bg-[#C9943A]/10 text-[#C9943A] border-[#C9943A]/30">Scheduled</span>
-                                  ) : (
-                                    <span className={`text-xs px-2 py-0.5 rounded border font-medium ${post.published ? 'bg-[#0D9488]/10 text-[#0D9488] border-[#0D9488]/30' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
-                                      {post.published ? 'Published' : 'Draft'}
-                                    </span>
-                                  )}
+                                  {isScheduled
+                                    ? <span className="text-xs px-2 py-0.5 rounded border font-medium bg-[#C9943A]/10 text-[#C9943A] border-[#C9943A]/30">Scheduled</span>
+                                    : <span className={`text-xs px-2 py-0.5 rounded border font-medium ${post.published ? 'bg-[#0D9488]/10 text-[#0D9488] border-[#0D9488]/30' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>{post.published ? 'Published' : 'Draft'}</span>}
                                 </td>
                                 <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
-                                  {isScheduled
-                                    ? <span className="text-[#C9943A]">🕐 {new Date(post.scheduled_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                                    : new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                  {isScheduled ? <span className="text-[#C9943A]">🕐 {new Date(post.scheduled_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span> : new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                 </td>
                                 <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{post.views || 0}</td>
                                 <td className="px-4 py-3">
-                                  {post.published ? (
-                                    <a href={`/blog/${post.slug}`} target="_blank" rel="noopener noreferrer"
-                                      className="text-xs text-[#1B5FA8] hover:underline flex items-center gap-1 whitespace-nowrap">
-                                      /blog/{post.slug}
-                                      <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                      </svg>
-                                    </a>
-                                  ) : (
-                                    <span className="text-xs text-gray-400">/blog/{post.slug}</span>
-                                  )}
+                                  {post.published
+                                    ? <a href={`/blog/${post.slug}`} target="_blank" rel="noopener noreferrer" className="text-xs text-[#1B5FA8] hover:underline flex items-center gap-1 whitespace-nowrap">/blog/{post.slug} <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg></a>
+                                    : <span className="text-xs text-gray-400">/blog/{post.slug}</span>}
                                 </td>
                                 <td className="px-4 py-3">
                                   <div className="flex items-center gap-1.5 whitespace-nowrap">
-                                    <button onClick={() => togglePublish(post)}
-                                      className={`text-xs px-2.5 py-1 rounded-lg border font-medium transition-colors ${post.published ? 'border-gray-200 text-gray-600 hover:bg-gray-50' : 'border-[#0D9488]/40 text-[#0D9488] hover:bg-[#0D9488]/5'}`}>
-                                      {post.published ? 'Unpublish' : 'Publish'}
-                                    </button>
-                                    <button onClick={() => editBlogPost(post)}
-                                      className="text-xs px-2.5 py-1 rounded-lg border border-[#1B5FA8]/40 text-[#1B5FA8] hover:bg-[#1B5FA8]/5 transition-colors font-medium">Edit</button>
-                                    <button onClick={() => deleteBlogPost(post.id)}
-                                      className="text-xs px-2.5 py-1 rounded-lg border border-red-200 text-red-400 hover:bg-red-50 transition-colors font-medium">Delete</button>
+                                    <button onClick={() => togglePublish(post)} className={`text-xs px-2.5 py-1 rounded-lg border font-medium transition-colors ${post.published ? 'border-gray-200 text-gray-600 hover:bg-gray-50' : 'border-[#0D9488]/40 text-[#0D9488] hover:bg-[#0D9488]/5'}`}>{post.published ? 'Unpublish' : 'Publish'}</button>
+                                    <button onClick={() => editBlogPost(post)} className="text-xs px-2.5 py-1 rounded-lg border border-[#1B5FA8]/40 text-[#1B5FA8] hover:bg-[#1B5FA8]/5 transition-colors font-medium">Edit</button>
+                                    <button onClick={() => deleteBlogPost(post.id)} className="text-xs px-2.5 py-1 rounded-lg border border-red-200 text-red-400 hover:bg-red-50 transition-colors font-medium">Delete</button>
                                   </div>
                                 </td>
                               </tr>
@@ -897,7 +729,6 @@ function AdminPanelInner() {
             {blogView === 'form' && (
               <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4 shadow-sm">
                 <h3 className="font-bold text-gray-900">{blogForm.id ? 'Edit Post' : 'New Blog Post'}</h3>
-
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
@@ -912,64 +743,47 @@ function AdminPanelInner() {
                       className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm font-mono" />
                   </div>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Excerpt</label>
                   <input type="text" value={blogForm.excerpt} placeholder="Short description shown on blog listing..."
                     onChange={e => setBlogForm(prev => ({ ...prev, excerpt: e.target.value }))}
                     className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm" />
                 </div>
-
-                {/* Author selector — dynamic from Supabase */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Author</label>
-                  {authorsLoading ? (
-                    <p className="text-sm text-gray-400">Loading authors...</p>
-                  ) : authors.length === 0 ? (
+                  {authorsLoading ? <p className="text-sm text-gray-400">Loading authors...</p> : authors.length === 0 ? (
                     <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                      <span className="text-amber-500">⚠️</span>
+                      <span>⚠️</span>
                       <p className="text-sm text-amber-700">No authors found. <button type="button" onClick={() => setActiveTab('authors')} className="underline font-medium">Create one first.</button></p>
                     </div>
                   ) : (
                     <div className="flex flex-wrap gap-3">
                       {authors.map(author => (
-                        <button key={author.id} type="button"
-                          onClick={() => setBlogForm(prev => ({ ...prev, author_id: author.slug }))}
+                        <button key={author.id} type="button" onClick={() => setBlogForm(prev => ({ ...prev, author_id: author.slug }))}
                           className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border transition-all ${blogForm.author_id === author.slug ? 'border-[#1B5FA8] bg-[#1B5FA8]/5 shadow-sm' : 'border-gray-200 hover:border-gray-300 bg-white'}`}>
-                          {author.avatar ? (
-                            <img src={author.avatar} alt={author.name} className="w-8 h-8 rounded-full bg-gray-100" />
-                          ) : (
-                            <div className="w-8 h-8 rounded-full bg-[#1B5FA8]/10 flex items-center justify-center text-[#1B5FA8] font-bold text-sm">
-                              {author.name.charAt(0)}
-                            </div>
-                          )}
+                          {author.avatar ? <img src={author.avatar} alt={author.name} className="w-8 h-8 rounded-full bg-gray-100" /> : <div className="w-8 h-8 rounded-full bg-[#1B5FA8]/10 flex items-center justify-center text-[#1B5FA8] font-bold text-sm">{author.name.charAt(0)}</div>}
                           <div className="text-left">
                             <p className={`text-sm font-semibold ${blogForm.author_id === author.slug ? 'text-[#1B5FA8]' : 'text-gray-800'}`}>{author.name}</p>
                             <p className="text-xs text-gray-400">{author.title}</p>
                           </div>
                           {blogForm.author_id === author.slug && (
-                            <svg className="w-4 h-4 text-[#1B5FA8] ml-1" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                            </svg>
+                            <svg className="w-4 h-4 text-[#1B5FA8] ml-1" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
                           )}
                         </button>
                       ))}
                     </div>
                   )}
                 </div>
-
-                {/* Featured image */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Featured Image</label>
                   <div className="flex gap-2">
-                    <input type="url" value={blogForm.featured_image} placeholder="https://... (paste image URL or upload below)"
+                    <input type="url" value={blogForm.featured_image} placeholder="https://... or upload below"
                       onChange={e => setBlogForm(prev => ({ ...prev, featured_image: e.target.value }))}
                       className="flex-1 border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm" />
                     <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap">
                       Upload
                       <input type="file" accept="image/*" className="hidden" onChange={async e => {
-                        const file = e.target.files[0]
-                        if (!file) return
+                        const file = e.target.files[0]; if (!file) return
                         const compressed = await compressImageFile(file)
                         try {
                           const path = `blog/featured-${Date.now()}.jpg`
@@ -984,41 +798,31 @@ function AdminPanelInner() {
                   {blogForm.featured_image && (
                     <div className="mt-2 relative inline-block">
                       <img src={blogForm.featured_image} alt="Featured preview" className="h-24 rounded-lg object-cover border border-gray-200" />
-                      <button type="button" onClick={() => setBlogForm(prev => ({ ...prev, featured_image: '' }))}
-                        className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center hover:bg-red-600">✕</button>
+                      <button type="button" onClick={() => setBlogForm(prev => ({ ...prev, featured_image: '' }))} className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center hover:bg-red-600">✕</button>
                     </div>
                   )}
                 </div>
-
-                {/* Content */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
                   <RichTextEditor value={blogForm.content} onChange={content => setBlogForm(prev => ({ ...prev, content }))} placeholder="Write your blog post content here..." />
                 </div>
-
-                {/* SEO */}
                 <div className="border-t border-gray-100 pt-4">
                   <h4 className="text-sm font-semibold text-gray-700 mb-3">SEO / Meta</h4>
                   <div className="grid md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">
-                        Meta Title <span className={`ml-1 ${blogForm.meta_title.length > 60 ? 'text-red-400' : 'text-gray-400'}`}>({blogForm.meta_title.length}/60)</span>
-                      </label>
-                      <input type="text" value={blogForm.meta_title} placeholder="SEO title (50–60 chars)"
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Meta Title <span className={`ml-1 ${blogForm.meta_title.length > 60 ? 'text-red-400' : 'text-gray-400'}`}>({blogForm.meta_title.length}/60)</span></label>
+                      <input type="text" value={blogForm.meta_title} placeholder="SEO title (50-60 chars)"
                         onChange={e => setBlogForm(prev => ({ ...prev, meta_title: e.target.value }))}
                         className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm" />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">
-                        Meta Description <span className={`ml-1 ${blogForm.meta_description.length > 160 ? 'text-red-400' : 'text-gray-400'}`}>({blogForm.meta_description.length}/160)</span>
-                      </label>
-                      <textarea value={blogForm.meta_description} rows={2} placeholder="SEO description (150–160 chars)"
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Meta Description <span className={`ml-1 ${blogForm.meta_description.length > 160 ? 'text-red-400' : 'text-gray-400'}`}>({blogForm.meta_description.length}/160)</span></label>
+                      <textarea value={blogForm.meta_description} rows={2} placeholder="SEO description (150-160 chars)"
                         onChange={e => setBlogForm(prev => ({ ...prev, meta_description: e.target.value }))}
                         className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm resize-none" />
                     </div>
                   </div>
                 </div>
-
                 {blogForm.scheduled_at && (
                   <div className="flex items-center gap-2 bg-[#C9943A]/5 border border-[#C9943A]/20 rounded-lg px-4 py-2.5">
                     <span className="text-base">🕐</span>
@@ -1026,9 +830,7 @@ function AdminPanelInner() {
                     <button onClick={() => setBlogForm(prev => ({ ...prev, scheduled_at: null }))} className="ml-auto text-xs text-gray-400 hover:text-red-400">Remove</button>
                   </div>
                 )}
-
                 {blogMsg && <p className={`text-sm font-medium ${blogMsg.startsWith('Error') ? 'text-red-500' : 'text-[#0D9488]'}`}>{blogMsg}</p>}
-
                 <div className="flex flex-wrap gap-3 items-center pt-1">
                   <PublishButton saving={blogSaving} isEdit={!!blogForm.id}
                     onPublish={() => saveBlogPost({ published: true })}
@@ -1038,17 +840,10 @@ function AdminPanelInner() {
                 </div>
               </div>
             )}
-
-            {showScheduleModal && (
-              <ScheduleModal
-                onConfirm={dt => { setShowScheduleModal(false); saveBlogPost({ published: false, scheduled_at: dt }) }}
-                onClose={() => setShowScheduleModal(false)}
-              />
-            )}
+            {showScheduleModal && <ScheduleModal onConfirm={dt => { setShowScheduleModal(false); saveBlogPost({ published: false, scheduled_at: dt }) }} onClose={() => setShowScheduleModal(false)} />}
           </div>
         )}
 
-        {/* ── Authors ── */}
         {activeTab === 'authors' && (
           <div>
             <div className="flex items-center justify-between mb-5">
@@ -1056,14 +851,9 @@ function AdminPanelInner() {
                 <h2 className="text-xl font-bold text-gray-900">Authors</h2>
                 <p className="text-sm text-gray-500 mt-0.5">Manage blog author profiles</p>
               </div>
-              {authorView === 'list' && (
-                <button onClick={newAuthor} className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">+ New Author</button>
-              )}
-              {authorView === 'form' && (
-                <button onClick={() => setAuthorView('list')} className="text-sm text-gray-500 hover:text-gray-800 border border-gray-200 px-3 py-1.5 rounded-lg">← Back to Authors</button>
-              )}
+              {authorView === 'list' && <button onClick={newAuthor} className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">+ New Author</button>}
+              {authorView === 'form' && <button onClick={() => setAuthorView('list')} className="text-sm text-gray-500 hover:text-gray-800 border border-gray-200 px-3 py-1.5 rounded-lg">← Back to Authors</button>}
             </div>
-
             {authorView === 'list' && (
               authorsLoading ? <div className="text-center py-10 text-gray-400">Loading authors...</div> : (
                 <div className="space-y-3">
@@ -1076,13 +866,9 @@ function AdminPanelInner() {
                   )}
                   {authors.map(author => (
                     <div key={author.id} className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-4 hover:border-[#1B5FA8]/30 transition-colors">
-                      {author.avatar ? (
-                        <img src={author.avatar} alt={author.name} className="w-12 h-12 rounded-full bg-gray-100 shrink-0 object-cover" />
-                      ) : (
-                        <div className="w-12 h-12 rounded-full bg-[#1B5FA8]/10 flex items-center justify-center text-[#1B5FA8] font-bold text-lg shrink-0">
-                          {author.name.charAt(0)}
-                        </div>
-                      )}
+                      {author.avatar
+                        ? <img src={author.avatar} alt={author.name} className="w-12 h-12 rounded-full bg-gray-100 shrink-0 object-cover" />
+                        : <div className="w-12 h-12 rounded-full bg-[#1B5FA8]/10 flex items-center justify-center text-[#1B5FA8] font-bold text-lg shrink-0">{author.name.charAt(0)}</div>}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-semibold text-gray-900">{author.name}</p>
@@ -1100,11 +886,9 @@ function AdminPanelInner() {
                 </div>
               )
             )}
-
             {authorView === 'form' && (
               <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4 shadow-sm max-w-2xl">
                 <h3 className="font-bold text-gray-900">{authorForm.id ? 'Edit Author' : 'New Author'}</h3>
-
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
@@ -1119,42 +903,30 @@ function AdminPanelInner() {
                       className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm font-mono" />
                   </div>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Title / Role</label>
-                  <input type="text" value={authorForm.titl                  <input type="text" value={authorForm.title} placeholder="e.g. SEO Strategist"
+                  <input type="text" value={authorForm.title} placeholder="e.g. SEO Strategist"
                     onChange={e => setAuthorForm(prev => ({ ...prev, title: e.target.value }))}
                     className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm" />
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
                   <textarea value={authorForm.bio} rows={3} placeholder="Short author bio..."
                     onChange={e => setAuthorForm(prev => ({ ...prev, bio: e.target.value }))}
                     className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm resize-none" />
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Avatar URL</label>
                   <input type="url" value={authorForm.avatar} placeholder="https://..."
                     onChange={e => setAuthorForm(prev => ({ ...prev, avatar: e.target.value }))}
                     className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm" />
-                  <p className="text-xs text-gray-400 mt-1">
-                    Tip: use <a href="https://api.dicebear.com/7.x/avataaars/svg?seed=YourName" target="_blank" rel="noopener noreferrer" className="text-[#1B5FA8] hover:underline">DiceBear avatars</a> — replace YourName in the URL.
-                  </p>
-                  {authorForm.avatar && (
-                    <div className="mt-2">
-                      <img src={authorForm.avatar} alt="Avatar preview" className="w-14 h-14 rounded-full border border-gray-200 object-cover" />
-                    </div>
-                  )}
+                  <p className="text-xs text-gray-400 mt-1">Tip: use DiceBear — https://api.dicebear.com/7.x/avataaars/svg?seed=YourName</p>
+                  {authorForm.avatar && <div className="mt-2"><img src={authorForm.avatar} alt="Preview" className="w-14 h-14 rounded-full border border-gray-200 object-cover" /></div>}
                 </div>
-
                 {authorMsg && <p className={`text-sm font-medium ${authorMsg.startsWith('Error') ? 'text-red-500' : 'text-[#0D9488]'}`}>{authorMsg}</p>}
-
                 <div className="flex gap-3">
-                  <button onClick={saveAuthor} disabled={authorSaving}
-                    className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-6 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-50 transition-colors">
-                    {authorSaving ? 'Saving...' : (authorForm.id ? 'Update Author' : 'Create Author')}
+                  <button onClick={saveAuthor} disabled={authorSaving} className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-6 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-50 transition-colors">
+                    {authorSaving ? 'Saving...' : authorForm.id ? 'Update Author' : 'Create Author'}
                   </button>
                   <button onClick={() => setAuthorView('list')} className="bg-gray-100 hover:bg-gray-200 text-gray-600 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors">Cancel</button>
                 </div>
@@ -1163,7 +935,6 @@ function AdminPanelInner() {
           </div>
         )}
 
-        {/* ── Pages ── */}
         {activeTab === 'pages' && (
           <div>
             <div className="flex items-center justify-between mb-5">
@@ -1171,14 +942,9 @@ function AdminPanelInner() {
                 <h2 className="text-xl font-bold text-gray-900">Pages / CMS</h2>
                 <p className="text-sm text-gray-500 mt-0.5">Manage About, FAQ, Contact and custom pages</p>
               </div>
-              {pageView === 'list' && (
-                <button onClick={newPage} className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">+ New Page</button>
-              )}
-              {pageView === 'form' && (
-                <button onClick={() => setPageView('list')} className="text-sm text-gray-500 hover:text-gray-800 border border-gray-200 px-3 py-1.5 rounded-lg">Back to Pages</button>
-              )}
+              {pageView === 'list' && <button onClick={newPage} className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">+ New Page</button>}
+              {pageView === 'form' && <button onClick={() => setPageView('list')} className="text-sm text-gray-500 hover:text-gray-800 border border-gray-200 px-3 py-1.5 rounded-lg">Back to Pages</button>}
             </div>
-
             {pageView === 'list' && (
               pagesLoading ? <div className="text-center py-10 text-gray-400">Loading pages...</div> : (
                 <div className="space-y-3">
@@ -1194,9 +960,7 @@ function AdminPanelInner() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-semibold text-gray-900">{page.title}</p>
-                          <span className={`text-xs px-2 py-0.5 rounded border font-medium ${page.published ? 'bg-[#0D9488]/10 text-[#0D9488] border-[#0D9488]/30' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
-                            {page.published ? 'Published' : 'Draft'}
-                          </span>
+                          <span className={`text-xs px-2 py-0.5 rounded border font-medium ${page.published ? 'bg-[#0D9488]/10 text-[#0D9488] border-[#0D9488]/30' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>{page.published ? 'Published' : 'Draft'}</span>
                         </div>
                         <p className="text-xs text-gray-400 mt-0.5">/{page.slug} · Updated {new Date(page.updated_at || page.created_at).toLocaleDateString()}</p>
                       </div>
@@ -1209,7 +973,6 @@ function AdminPanelInner() {
                 </div>
               )
             )}
-
             {pageView === 'form' && (
               <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4 shadow-sm">
                 <h3 className="font-bold text-gray-900">{pageForm.id ? 'Edit Page' : 'New Page'}</h3>
@@ -1254,7 +1017,7 @@ function AdminPanelInner() {
                 {pageMsg && <p className={`text-sm font-medium ${pageMsg.startsWith('Error') ? 'text-red-500' : 'text-[#0D9488]'}`}>{pageMsg}</p>}
                 <div className="flex gap-3">
                   <button onClick={savePage} disabled={pageSaving} className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-6 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-50 transition-colors">
-                    {pageSaving ? 'Saving...' : (pageForm.id ? 'Update Page' : 'Create Page')}
+                    {pageSaving ? 'Saving...' : pageForm.id ? 'Update Page' : 'Create Page'}
                   </button>
                   <button onClick={() => setPageView('list')} className="bg-gray-100 hover:bg-gray-200 text-gray-600 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors">Cancel</button>
                 </div>
@@ -1263,7 +1026,6 @@ function AdminPanelInner() {
           </div>
         )}
 
-        {/* ── Settings ── */}
         {activeTab === 'settings' && (
           <div className="max-w-xl">
             <h2 className="text-xl font-bold text-gray-900 mb-5">Site Settings</h2>
@@ -1283,11 +1045,7 @@ function AdminPanelInner() {
 
 export default function AdminPanel() {
   return (
-    <Suspense fallback={
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-[#1B5FA8] font-semibold">Loading...</div>
-      </div>
-    }>
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen bg-gray-50"><div className="text-[#1B5FA8] font-semibold">Loading...</div></div>}>
       <AdminPanelInner />
     </Suspense>
   )
