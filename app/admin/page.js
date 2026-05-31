@@ -1122,4 +1122,173 @@ function AdminPanelInner() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Title / Role</label>
-                  <input type="text" value={authorForm.titl
+                  <input type="text" value={authorForm.titl                  <input type="text" value={authorForm.title} placeholder="e.g. SEO Strategist"
+                    onChange={e => setAuthorForm(prev => ({ ...prev, title: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm" />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
+                  <textarea value={authorForm.bio} rows={3} placeholder="Short author bio..."
+                    onChange={e => setAuthorForm(prev => ({ ...prev, bio: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm resize-none" />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Avatar URL</label>
+                  <input type="url" value={authorForm.avatar} placeholder="https://..."
+                    onChange={e => setAuthorForm(prev => ({ ...prev, avatar: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm" />
+                  <p className="text-xs text-gray-400 mt-1">
+                    Tip: use <a href="https://api.dicebear.com/7.x/avataaars/svg?seed=YourName" target="_blank" rel="noopener noreferrer" className="text-[#1B5FA8] hover:underline">DiceBear avatars</a> — replace YourName in the URL.
+                  </p>
+                  {authorForm.avatar && (
+                    <div className="mt-2">
+                      <img src={authorForm.avatar} alt="Avatar preview" className="w-14 h-14 rounded-full border border-gray-200 object-cover" />
+                    </div>
+                  )}
+                </div>
+
+                {authorMsg && <p className={`text-sm font-medium ${authorMsg.startsWith('Error') ? 'text-red-500' : 'text-[#0D9488]'}`}>{authorMsg}</p>}
+
+                <div className="flex gap-3">
+                  <button onClick={saveAuthor} disabled={authorSaving}
+                    className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-6 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-50 transition-colors">
+                    {authorSaving ? 'Saving...' : (authorForm.id ? 'Update Author' : 'Create Author')}
+                  </button>
+                  <button onClick={() => setAuthorView('list')} className="bg-gray-100 hover:bg-gray-200 text-gray-600 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors">Cancel</button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Pages ── */}
+        {activeTab === 'pages' && (
+          <div>
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Pages / CMS</h2>
+                <p className="text-sm text-gray-500 mt-0.5">Manage About, FAQ, Contact and custom pages</p>
+              </div>
+              {pageView === 'list' && (
+                <button onClick={newPage} className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">+ New Page</button>
+              )}
+              {pageView === 'form' && (
+                <button onClick={() => setPageView('list')} className="text-sm text-gray-500 hover:text-gray-800 border border-gray-200 px-3 py-1.5 rounded-lg">Back to Pages</button>
+              )}
+            </div>
+
+            {pageView === 'list' && (
+              pagesLoading ? <div className="text-center py-10 text-gray-400">Loading pages...</div> : (
+                <div className="space-y-3">
+                  {pages.length === 0 && (
+                    <div className="bg-white border border-dashed border-gray-300 rounded-xl p-10 text-center">
+                      <p className="font-semibold text-gray-700 mb-1">No custom pages yet</p>
+                      <p className="text-sm text-gray-400 mb-4">Create pages like About, FAQ, Terms etc.</p>
+                      <button onClick={newPage} className="bg-[#1B5FA8] text-white px-5 py-2 rounded-lg text-sm font-semibold">Create First Page</button>
+                    </div>
+                  )}
+                  {pages.map(page => (
+                    <div key={page.id} className="bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-between gap-4 hover:border-[#1B5FA8]/30 transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-semibold text-gray-900">{page.title}</p>
+                          <span className={`text-xs px-2 py-0.5 rounded border font-medium ${page.published ? 'bg-[#0D9488]/10 text-[#0D9488] border-[#0D9488]/30' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
+                            {page.published ? 'Published' : 'Draft'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-400 mt-0.5">/{page.slug} · Updated {new Date(page.updated_at || page.created_at).toLocaleDateString()}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button onClick={() => editPage(page)} className="text-xs px-3 py-1.5 rounded-lg border border-[#1B5FA8]/40 text-[#1B5FA8] hover:bg-[#1B5FA8]/5 transition-colors font-medium">Edit</button>
+                        <button onClick={() => deletePage(page.id)} className="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-400 hover:bg-red-50 transition-colors font-medium">Delete</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            )}
+
+            {pageView === 'form' && (
+              <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4 shadow-sm">
+                <h3 className="font-bold text-gray-900">{pageForm.id ? 'Edit Page' : 'New Page'}</h3>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Page Title *</label>
+                    <input type="text" value={pageForm.title} placeholder="e.g. About Us"
+                      onChange={e => setPageForm(prev => ({ ...prev, title: e.target.value, slug: prev.slug || slugify(e.target.value) }))}
+                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Slug (URL path)</label>
+                    <input type="text" value={pageForm.slug} placeholder="about-us"
+                      onChange={e => setPageForm(prev => ({ ...prev, slug: e.target.value }))}
+                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm font-mono" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
+                  <textarea value={pageForm.content} rows={12} placeholder="Page content..."
+                    onChange={e => setPageForm(prev => ({ ...prev, content: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-lg px-4 py-3 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm resize-y" />
+                </div>
+                <div className="grid md:grid-cols-2 gap-4 border-t border-gray-100 pt-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Meta Title (SEO)</label>
+                    <input type="text" value={pageForm.meta_title} placeholder="SEO title"
+                      onChange={e => setPageForm(prev => ({ ...prev, meta_title: e.target.value }))}
+                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Meta Description (SEO)</label>
+                    <input type="text" value={pageForm.meta_description} placeholder="SEO description"
+                      onChange={e => setPageForm(prev => ({ ...prev, meta_description: e.target.value }))}
+                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm" />
+                  </div>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={pageForm.published} onChange={e => setPageForm(prev => ({ ...prev, published: e.target.checked }))} className="w-4 h-4 rounded accent-[#0D9488]" />
+                  <span className="text-sm text-gray-700 font-medium">Published</span>
+                </label>
+                {pageMsg && <p className={`text-sm font-medium ${pageMsg.startsWith('Error') ? 'text-red-500' : 'text-[#0D9488]'}`}>{pageMsg}</p>}
+                <div className="flex gap-3">
+                  <button onClick={savePage} disabled={pageSaving} className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-6 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-50 transition-colors">
+                    {pageSaving ? 'Saving...' : (pageForm.id ? 'Update Page' : 'Create Page')}
+                  </button>
+                  <button onClick={() => setPageView('list')} className="bg-gray-100 hover:bg-gray-200 text-gray-600 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors">Cancel</button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Settings ── */}
+        {activeTab === 'settings' && (
+          <div className="max-w-xl">
+            <h2 className="text-xl font-bold text-gray-900 mb-5">Site Settings</h2>
+            <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4 shadow-sm">
+              <p className="text-sm text-gray-500">Site-wide settings are managed via Supabase.</p>
+              <div className="bg-[#1B5FA8]/5 border border-[#1B5FA8]/20 rounded-lg p-4">
+                <p className="text-sm font-semibold text-[#1B5FA8] mb-1">Admin Email</p>
+                <p className="text-sm text-gray-600">{ADMIN_EMAIL}</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default function AdminPanel() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-[#1B5FA8] font-semibold">Loading...</div>
+      </div>
+    }>
+      <AdminPanelInner />
+    </Suspense>
+  )
+}
