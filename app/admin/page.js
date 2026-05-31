@@ -916,12 +916,56 @@ function AdminPanelInner() {
                     className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm resize-none" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Avatar URL</label>
-                  <input type="url" value={authorForm.avatar} placeholder="https://..."
-                    onChange={e => setAuthorForm(prev => ({ ...prev, avatar: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm" />
-                  <p className="text-xs text-gray-400 mt-1">Tip: use DiceBear — https://api.dicebear.com/7.x/avataaars/svg?seed=YourName</p>
-                  {authorForm.avatar && <div className="mt-2"><img src={authorForm.avatar} alt="Preview" className="w-14 h-14 rounded-full border border-gray-200 object-cover" /></div>}
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Avatar</label>
+                  <div className="flex items-start gap-4">
+                    {/* Preview */}
+                    <div className="shrink-0">
+                      {authorForm.avatar
+                        ? <img src={authorForm.avatar} alt="Preview" className="w-16 h-16 rounded-full border-2 border-[#1B5FA8]/20 object-cover" />
+                        : <div className="w-16 h-16 rounded-full bg-[#1B5FA8]/10 border-2 border-dashed border-[#1B5FA8]/20 flex items-center justify-center text-[#1B5FA8]/40 text-2xl font-bold">
+                            {authorForm.name ? authorForm.name.charAt(0).toUpperCase() : '?'}
+                          </div>
+                      }
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      {/* Upload button */}
+                      <label className="flex items-center gap-2 cursor-pointer bg-white border border-gray-200 hover:border-[#1B5FA8]/40 rounded-lg px-4 py-2.5 transition-colors w-full">
+                        <span className="text-base">📁</span>
+                        <span className="text-sm font-medium text-gray-700">Upload from computer</span>
+                        <input type="file" accept="image/*" className="hidden" onChange={async e => {
+                          const file = e.target.files[0]; if (!file) return
+                          const compressed = await compressImageFile(file, 200, 400)
+                          try {
+                            const path = `authors/${Date.now()}.jpg`
+                            const { error } = await supabase.storage.from('blog-images').upload(path, compressed, { upsert: true, contentType: 'image/jpeg' })
+                            if (error) throw error
+                            const { data: { publicUrl } } = supabase.storage.from('blog-images').getPublicUrl(path)
+                            setAuthorForm(prev => ({ ...prev, avatar: publicUrl }))
+                          } catch (err) { alert('Upload failed: ' + err.message) }
+                        }} />
+                      </label>
+                      {/* Auto-generate button */}
+                      <button type="button"
+                        onClick={() => {
+                          const seed = authorForm.name.trim() || 'Author'
+                          const colors = ['b6e3f4','ffd5dc','c0aede','d1d4f9','ffdfbf']
+                          const bg = colors[Math.floor(Math.random() * colors.length)]
+                          setAuthorForm(prev => ({ ...prev, avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(seed)}&backgroundColor=${bg}` }))
+                        }}
+                        className="flex items-center gap-2 bg-[#0D9488]/5 border border-[#0D9488]/30 hover:border-[#0D9488]/60 rounded-lg px-4 py-2.5 transition-colors w-full">
+                        <span className="text-base">✨</span>
+                        <span className="text-sm font-medium text-[#0D9488]">Auto-generate avatar</span>
+                      </button>
+                      {/* Manual URL input */}
+                      <input type="url" value={authorForm.avatar} placeholder="Or paste image URL..."
+                        onChange={e => setAuthorForm(prev => ({ ...prev, avatar: e.target.value }))}
+                        className="w-full border border-gray-200 rounded-lg px-4 py-2 text-gray-800 focus:outline-none focus:border-[#0D9488] text-xs" />
+                      {authorForm.avatar && (
+                        <button type="button" onClick={() => setAuthorForm(prev => ({ ...prev, avatar: '' }))}
+                          className="text-xs text-red-400 hover:text-red-600">✕ Remove avatar</button>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 {authorMsg && <p className={`text-sm font-medium ${authorMsg.startsWith('Error') ? 'text-red-500' : 'text-[#0D9488]'}`}>{authorMsg}</p>}
                 <div className="flex gap-3">
