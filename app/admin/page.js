@@ -9,36 +9,12 @@ const TABS = [
   { id: 'overview', label: 'Overview' },
   { id: 'users', label: 'Users' },
   { id: 'blog', label: 'Blog Posts' },
+  { id: 'authors', label: 'Authors' },
   { id: 'pages', label: 'Pages / CMS' },
   { id: 'settings', label: 'Site Settings' },
 ]
 
-// ── Persona authors ──────────────────────────────────────────────────────────
-const AUTHORS = [
-  {
-    id: 'alex-carter',
-    name: 'Alex Carter',
-    title: 'SEO Strategist',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=AlexCarter&backgroundColor=b6e3f4',
-    bio: 'Alex has spent 8+ years helping brands dominate search rankings. Specializes in technical SEO, keyword strategy, and content systems that drive compounding organic traffic.',
-  },
-  {
-    id: 'sarah-malik',
-    name: 'Sarah Malik',
-    title: 'Content & Keyword Expert',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=SarahMalik&backgroundColor=ffd5dc',
-    bio: 'Sarah blends data-driven keyword research with compelling storytelling. She helps SaaS brands build topical authority through content that ranks and converts.',
-  },
-  {
-    id: 'james-wu',
-    name: 'James Wu',
-    title: 'AI & Content Automation',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=JamesWu&backgroundColor=c0aede',
-    bio: 'James explores the intersection of AI and content marketing. He writes about using tools like RANKIVO to produce high-quality, SEO-optimized content at scale.',
-  },
-]
-
-const TRENDING_THRESHOLD = 100 // views needed for 🔥 badge
+const TRENDING_THRESHOLD = 100
 
 function slugify(text) {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
@@ -74,7 +50,7 @@ function compressImageFile(file, maxSizeKB = 1800, maxWidth = 1600) {
   })
 }
 
-// ── Rich Text Editor (unchanged) ─────────────────────────────────────────────
+// ── Rich Text Editor ──────────────────────────────────────────────────────────
 function RichTextEditor({ value, onChange, placeholder = 'Write your content here...' }) {
   const [EditorComponent, setEditorComponent] = useState(null)
   const [showImageModal, setShowImageModal] = useState(false)
@@ -237,9 +213,9 @@ function RichTextEditor({ value, onChange, placeholder = 'Write your content her
   return (
     <div className="border border-gray-200 rounded-lg overflow-visible focus-within:border-[#0D9488] transition-colors">
       <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 bg-gray-50 border-b border-gray-200 sticky top-0 z-20 rounded-t-lg shadow-sm">
-        <Btn title="Bold (Ctrl+B)" active={isActive('bold')} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().toggleBold().run()) }}><strong>B</strong></Btn>
-        <Btn title="Italic (Ctrl+I)" active={isActive('italic')} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().toggleItalic().run()) }}><em>I</em></Btn>
-        <Btn title="Underline (Ctrl+U)" active={isActive('underline')} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().toggleUnderline().run()) }}><u>U</u></Btn>
+        <Btn title="Bold" active={isActive('bold')} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().toggleBold().run()) }}><strong>B</strong></Btn>
+        <Btn title="Italic" active={isActive('italic')} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().toggleItalic().run()) }}><em>I</em></Btn>
+        <Btn title="Underline" active={isActive('underline')} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().toggleUnderline().run()) }}><u>U</u></Btn>
         <Btn title="Strikethrough" active={isActive('strike')} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().toggleStrike().run()) }}><s className="text-xs">S</s></Btn>
         <Sep />
         <Btn title="Heading 2" active={isActive('heading', { level: 2 })} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().toggleHeading({ level: 2 }).run()) }}><span className="text-xs font-bold">H2</span></Btn>
@@ -281,8 +257,8 @@ function RichTextEditor({ value, onChange, placeholder = 'Write your content her
         <Btn title="Remove link" active={false} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().unsetLink().run()) }}><span className="text-xs text-red-400">✂ Unlink</span></Btn>
         <Btn title="Insert image" active={false} onMouseDown={e => { e.preventDefault(); setShowImageModal(true) }}><span className="text-xs text-[#0D9488]">🖼 Image</span></Btn>
         <Sep />
-        <Btn title="Undo (Ctrl+Z)" active={false} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().undo().run()) }}><span className="text-xs">↩</span></Btn>
-        <Btn title="Redo (Ctrl+Y)" active={false} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().redo().run()) }}><span className="text-xs">↪</span></Btn>
+        <Btn title="Undo" active={false} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().undo().run()) }}><span className="text-xs">↩</span></Btn>
+        <Btn title="Redo" active={false} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().redo().run()) }}><span className="text-xs">↪</span></Btn>
         <Sep />
         <Btn title="Clear formatting" active={false} onMouseDown={e => { e.preventDefault(); execEditor(ed => ed.chain().focus().clearNodes().unsetAllMarks().run()) }}><span className="text-xs text-gray-400">✕ Clear</span></Btn>
         <Btn title="Toggle HTML source" active={showHtml} onMouseDown={e => { e.preventDefault(); toggleHtml() }}>
@@ -364,19 +340,11 @@ function ScheduleModal({ onConfirm, onClose }) {
       <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm mx-4" onClick={e => e.stopPropagation()}>
         <h3 className="font-bold text-gray-900 mb-1">Schedule Publish</h3>
         <p className="text-sm text-gray-500 mb-4">Choose when this post should go live.</p>
-        <input
-          type="datetime-local"
-          min={minDate}
-          value={scheduledAt}
-          onChange={e => setScheduledAt(e.target.value)}
-          className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:border-[#0D9488] mb-4"
-        />
+        <input type="datetime-local" min={minDate} value={scheduledAt} onChange={e => setScheduledAt(e.target.value)}
+          className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:border-[#0D9488] mb-4" />
         <div className="flex gap-2">
-          <button
-            onClick={() => scheduledAt && onConfirm(scheduledAt)}
-            disabled={!scheduledAt}
-            className="flex-1 bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-40 transition-colors"
-          >
+          <button onClick={() => scheduledAt && onConfirm(scheduledAt)} disabled={!scheduledAt}
+            className="flex-1 bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-40 transition-colors">
             Schedule Post
           </button>
           <button onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
@@ -399,55 +367,33 @@ function PublishButton({ onPublish, onDraft, onSchedule, saving, isEdit }) {
 
   return (
     <div className="relative flex" ref={ref}>
-      <button
-        onClick={onPublish}
-        disabled={saving}
-        className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-5 py-2.5 rounded-l-lg text-sm font-semibold disabled:opacity-50 transition-colors border-r border-[#1B5FA8]/40"
-      >
+      <button onClick={onPublish} disabled={saving}
+        className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-5 py-2.5 rounded-l-lg text-sm font-semibold disabled:opacity-50 transition-colors border-r border-[#1B5FA8]/40">
         {saving ? 'Saving...' : isEdit ? 'Update & Publish' : 'Publish'}
       </button>
-      <button
-        onClick={() => setOpen(v => !v)}
-        disabled={saving}
-        className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-2.5 py-2.5 rounded-r-lg text-sm disabled:opacity-50 transition-colors"
-        title="More options"
-      >
+      <button onClick={() => setOpen(v => !v)} disabled={saving}
+        className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-2.5 py-2.5 rounded-r-lg text-sm disabled:opacity-50 transition-colors" title="More options">
         <svg className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
       {open && (
         <div className="absolute bottom-full left-0 mb-1 bg-white border border-gray-200 rounded-xl shadow-xl z-30 py-1.5 min-w-[180px]">
-          <button
-            onClick={() => { onPublish(); setOpen(false) }}
-            className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-[#1B5FA8]/5 flex items-center gap-2.5"
-          >
+          <button onClick={() => { onPublish(); setOpen(false) }}
+            className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-[#1B5FA8]/5 flex items-center gap-2.5">
             <span className="text-base">🚀</span>
-            <div>
-              <p className="font-medium text-gray-900">Publish Now</p>
-              <p className="text-xs text-gray-400">Make it live immediately</p>
-            </div>
+            <div><p className="font-medium text-gray-900">Publish Now</p><p className="text-xs text-gray-400">Make it live immediately</p></div>
           </button>
-          <button
-            onClick={() => { onDraft(); setOpen(false) }}
-            className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5"
-          >
+          <button onClick={() => { onDraft(); setOpen(false) }}
+            className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5">
             <span className="text-base">📝</span>
-            <div>
-              <p className="font-medium text-gray-900">Save as Draft</p>
-              <p className="text-xs text-gray-400">Save without publishing</p>
-            </div>
+            <div><p className="font-medium text-gray-900">Save as Draft</p><p className="text-xs text-gray-400">Save without publishing</p></div>
           </button>
           <div className="h-px bg-gray-100 mx-2 my-1" />
-          <button
-            onClick={() => { onSchedule(); setOpen(false) }}
-            className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5"
-          >
+          <button onClick={() => { onSchedule(); setOpen(false) }}
+            className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5">
             <span className="text-base">🕐</span>
-            <div>
-              <p className="font-medium text-gray-900">Schedule Publish</p>
-              <p className="text-xs text-gray-400">Set a future date & time</p>
-            </div>
+            <div><p className="font-medium text-gray-900">Schedule Publish</p><p className="text-xs text-gray-400">Set a future date & time</p></div>
           </button>
         </div>
       )}
@@ -473,7 +419,7 @@ function AdminPanelInner() {
   const [blogForm, setBlogForm] = useState({
     id: null, title: '', slug: '', excerpt: '', content: '',
     featured_image: '', meta_title: '', meta_description: '',
-    published: false, author_id: 'alex-carter', scheduled_at: null,
+    published: false, author_id: '', scheduled_at: null,
   })
   const [blogView, setBlogView] = useState('list')
   const [blogMsg, setBlogMsg] = useState('')
@@ -489,6 +435,14 @@ function AdminPanelInner() {
 
   const [planChanging, setPlanChanging] = useState(null)
 
+  // ── Authors state ──
+  const [authors, setAuthors] = useState([])
+  const [authorsLoading, setAuthorsLoading] = useState(false)
+  const [authorView, setAuthorView] = useState('list')
+  const [authorForm, setAuthorForm] = useState({ id: null, slug: '', name: '', title: '', bio: '', avatar: '' })
+  const [authorMsg, setAuthorMsg] = useState('')
+  const [authorSaving, setAuthorSaving] = useState(false)
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user || user.email !== ADMIN_EMAIL) { router.push('/dashboard'); return }
@@ -500,18 +454,16 @@ function AdminPanelInner() {
 
   useEffect(() => {
     if (activeTab === 'users') loadUsers()
-    if (activeTab === 'blog') loadPosts()
+    if (activeTab === 'blog') { loadPosts(); loadAuthors() }
     if (activeTab === 'pages') loadPages()
+    if (activeTab === 'authors') loadAuthors()
   }, [activeTab])
 
-  // Auto-open a specific post for editing when ?edit=ID is in the URL
   useEffect(() => {
     const editId = searchParams.get('edit')
     if (!editId || activeTab !== 'blog') return
     supabase.from('blog_posts').select('*').eq('id', editId).single()
-      .then(({ data }) => {
-        if (data) editBlogPost(data)
-      })
+      .then(({ data }) => { if (data) editBlogPost(data) })
   }, [activeTab, searchParams])
 
   async function loadOverview() {
@@ -547,6 +499,17 @@ function AdminPanelInner() {
     setPagesLoading(false)
   }
 
+  async function loadAuthors() {
+    setAuthorsLoading(true)
+    const { data } = await supabase.from('authors').select('*').order('created_at', { ascending: true })
+    setAuthors(data || [])
+    // Set default author_id for blog form if not set
+    if (data && data.length > 0) {
+      setBlogForm(prev => ({ ...prev, author_id: prev.author_id || data[0].slug }))
+    }
+    setAuthorsLoading(false)
+  }
+
   async function changePlan(userId, plan) {
     setPlanChanging(userId)
     await supabase.from('profiles').update({ plan }).eq('id', userId)
@@ -569,13 +532,14 @@ function AdminPanelInner() {
   }
 
   function newBlogPost() {
-    setBlogForm({ id: null, title: '', slug: '', excerpt: '', content: '', featured_image: '', meta_title: '', meta_description: '', published: false, author_id: 'alex-carter', scheduled_at: null })
+    const defaultAuthor = authors.length > 0 ? authors[0].slug : ''
+    setBlogForm({ id: null, title: '', slug: '', excerpt: '', content: '', featured_image: '', meta_title: '', meta_description: '', published: false, author_id: defaultAuthor, scheduled_at: null })
     setBlogMsg('')
     setBlogView('form')
   }
 
   function editBlogPost(post) {
-    setBlogForm({ ...post, author_id: post.author_id || 'alex-carter', scheduled_at: post.scheduled_at || null })
+    setBlogForm({ ...post, author_id: post.author_id || (authors[0]?.slug || ''), scheduled_at: post.scheduled_at || null })
     setBlogMsg('')
     setBlogView('form')
   }
@@ -617,6 +581,46 @@ function AdminPanelInner() {
   async function togglePublish(post) {
     await supabase.from('blog_posts').update({ published: !post.published, scheduled_at: null }).eq('id', post.id)
     loadPosts()
+  }
+
+  // ── Author CRUD ──
+  function newAuthor() {
+    setAuthorForm({ id: null, slug: '', name: '', title: '', bio: '', avatar: '' })
+    setAuthorMsg('')
+    setAuthorView('form')
+  }
+
+  function editAuthor(author) {
+    setAuthorForm({ ...author })
+    setAuthorMsg('')
+    setAuthorView('form')
+  }
+
+  async function saveAuthor() {
+    if (!authorForm.name.trim()) { setAuthorMsg('Name is required.'); return }
+    setAuthorSaving(true); setAuthorMsg('')
+    const slug = authorForm.slug.trim() || slugify(authorForm.name)
+    const payload = { ...authorForm, slug }
+    let error
+    if (authorForm.id) {
+      const { error: e } = await supabase.from('authors').update(payload).eq('id', authorForm.id)
+      error = e
+    } else {
+      const { id: _id, ...payloadWithoutId } = payload
+      const { error: e } = await supabase.from('authors').insert({ ...payloadWithoutId, created_at: new Date().toISOString() })
+      error = e
+    }
+    if (error) { setAuthorMsg('Error: ' + error.message); setAuthorSaving(false); return }
+    setAuthorMsg(authorForm.id ? 'Author updated!' : 'Author created!')
+    setAuthorSaving(false)
+    loadAuthors()
+    setTimeout(() => setAuthorView('list'), 800)
+  }
+
+  async function deleteAuthor(id) {
+    if (!confirm('Delete this author? Posts using this author will keep the slug but won\'t show a profile.')) return
+    await supabase.from('authors').delete().eq('id', id)
+    loadAuthors()
   }
 
   function newPage() {
@@ -706,9 +710,10 @@ function AdminPanelInner() {
                 </div>
               ))}
             </div>
-            <div className="grid md:grid-cols-3 gap-4">
+            <div className="grid md:grid-cols-4 gap-4">
               {[
                 { label: 'Blog Posts', tab: 'blog', desc: 'Create and manage blog content' },
+                { label: 'Authors', tab: 'authors', desc: 'Manage blog authors' },
                 { label: 'Pages / CMS', tab: 'pages', desc: 'Edit About, FAQ and custom pages' },
                 { label: 'Users', tab: 'users', desc: 'Manage user plans and accounts' },
               ].map(c => (
@@ -785,18 +790,13 @@ function AdminPanelInner() {
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-xl font-bold text-gray-900">Blog Posts</h2>
               {blogView === 'list' && (
-                <button onClick={newBlogPost} className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
-                  + New Post
-                </button>
+                <button onClick={newBlogPost} className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">+ New Post</button>
               )}
               {blogView === 'form' && (
-                <button onClick={() => setBlogView('list')} className="text-sm text-gray-500 hover:text-gray-800 border border-gray-200 px-3 py-1.5 rounded-lg">
-                  ← Back to Posts
-                </button>
+                <button onClick={() => setBlogView('list')} className="text-sm text-gray-500 hover:text-gray-800 border border-gray-200 px-3 py-1.5 rounded-lg">← Back to Posts</button>
               )}
             </div>
 
-            {/* ── Blog List — WordPress-style table ── */}
             {blogView === 'list' && (
               postsLoading ? <div className="text-center py-10 text-gray-400">Loading posts...</div> : (
                 <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
@@ -822,57 +822,46 @@ function AdminPanelInner() {
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                           {posts.map(post => {
-                            const author = AUTHORS.find(a => a.id === post.author_id) || AUTHORS[0]
+                            const author = authors.find(a => a.slug === post.author_id)
                             const isTrending = (post.views || 0) >= TRENDING_THRESHOLD
                             const isScheduled = post.scheduled_at && !post.published
                             return (
                               <tr key={post.id} className="hover:bg-gray-50/70 transition-colors">
-                                {/* Title */}
                                 <td className="px-4 py-3 max-w-[220px]">
                                   <div className="flex items-start gap-1.5">
                                     {isTrending && <span title="Trending">🔥</span>}
                                     <p className="font-medium text-gray-900 leading-snug line-clamp-2">{post.title}</p>
                                   </div>
                                 </td>
-                                {/* Author */}
                                 <td className="px-4 py-3 whitespace-nowrap">
-                                  <div className="flex items-center gap-2">
-                                    <img src={author.avatar} alt={author.name} className="w-6 h-6 rounded-full bg-gray-100" />
-                                    <span className="text-gray-600 text-xs">{author.name}</span>
-                                  </div>
+                                  {author ? (
+                                    <div className="flex items-center gap-2">
+                                      <img src={author.avatar} alt={author.name} className="w-6 h-6 rounded-full bg-gray-100" />
+                                      <span className="text-gray-600 text-xs">{author.name}</span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-gray-400 text-xs italic">{post.author_id || 'No author'}</span>
+                                  )}
                                 </td>
-                                {/* Status */}
                                 <td className="px-4 py-3 whitespace-nowrap">
                                   {isScheduled ? (
-                                    <span className="text-xs px-2 py-0.5 rounded border font-medium bg-[#C9943A]/10 text-[#C9943A] border-[#C9943A]/30">
-                                      Scheduled
-                                    </span>
+                                    <span className="text-xs px-2 py-0.5 rounded border font-medium bg-[#C9943A]/10 text-[#C9943A] border-[#C9943A]/30">Scheduled</span>
                                   ) : (
                                     <span className={`text-xs px-2 py-0.5 rounded border font-medium ${post.published ? 'bg-[#0D9488]/10 text-[#0D9488] border-[#0D9488]/30' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
                                       {post.published ? 'Published' : 'Draft'}
                                     </span>
                                   )}
                                 </td>
-                                {/* Date */}
                                 <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
                                   {isScheduled
                                     ? <span className="text-[#C9943A]">🕐 {new Date(post.scheduled_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                                    : new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                                  }
+                                    : new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                 </td>
-                                {/* Views */}
-                                <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
-                                  {post.views || 0}
-                                </td>
-                                {/* URL */}
+                                <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{post.views || 0}</td>
                                 <td className="px-4 py-3">
                                   {post.published ? (
-                                    <a
-                                      href={`/blog/${post.slug}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-xs text-[#1B5FA8] hover:underline flex items-center gap-1 whitespace-nowrap"
-                                    >
+                                    <a href={`/blog/${post.slug}`} target="_blank" rel="noopener noreferrer"
+                                      className="text-xs text-[#1B5FA8] hover:underline flex items-center gap-1 whitespace-nowrap">
                                       /blog/{post.slug}
                                       <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -882,7 +871,6 @@ function AdminPanelInner() {
                                     <span className="text-xs text-gray-400">/blog/{post.slug}</span>
                                   )}
                                 </td>
-                                {/* Actions */}
                                 <td className="px-4 py-3">
                                   <div className="flex items-center gap-1.5 whitespace-nowrap">
                                     <button onClick={() => togglePublish(post)}
@@ -890,13 +878,9 @@ function AdminPanelInner() {
                                       {post.published ? 'Unpublish' : 'Publish'}
                                     </button>
                                     <button onClick={() => editBlogPost(post)}
-                                      className="text-xs px-2.5 py-1 rounded-lg border border-[#1B5FA8]/40 text-[#1B5FA8] hover:bg-[#1B5FA8]/5 transition-colors font-medium">
-                                      Edit
-                                    </button>
+                                      className="text-xs px-2.5 py-1 rounded-lg border border-[#1B5FA8]/40 text-[#1B5FA8] hover:bg-[#1B5FA8]/5 transition-colors font-medium">Edit</button>
                                     <button onClick={() => deleteBlogPost(post.id)}
-                                      className="text-xs px-2.5 py-1 rounded-lg border border-red-200 text-red-400 hover:bg-red-50 transition-colors font-medium">
-                                      Delete
-                                    </button>
+                                      className="text-xs px-2.5 py-1 rounded-lg border border-red-200 text-red-400 hover:bg-red-50 transition-colors font-medium">Delete</button>
                                   </div>
                                 </td>
                               </tr>
@@ -910,7 +894,6 @@ function AdminPanelInner() {
               )
             )}
 
-            {/* ── Blog Form ── */}
             {blogView === 'form' && (
               <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4 shadow-sm">
                 <h3 className="font-bold text-gray-900">{blogForm.id ? 'Edit Post' : 'New Blog Post'}</h3>
@@ -937,30 +920,42 @@ function AdminPanelInner() {
                     className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm" />
                 </div>
 
-                {/* Author selector */}
+                {/* Author selector — dynamic from Supabase */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Author</label>
-                  <div className="flex flex-wrap gap-3">
-                    {AUTHORS.map(author => (
-                      <button
-                        key={author.id}
-                        type="button"
-                        onClick={() => setBlogForm(prev => ({ ...prev, author_id: author.id }))}
-                        className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border transition-all ${blogForm.author_id === author.id ? 'border-[#1B5FA8] bg-[#1B5FA8]/5 shadow-sm' : 'border-gray-200 hover:border-gray-300 bg-white'}`}
-                      >
-                        <img src={author.avatar} alt={author.name} className="w-8 h-8 rounded-full bg-gray-100" />
-                        <div className="text-left">
-                          <p className={`text-sm font-semibold ${blogForm.author_id === author.id ? 'text-[#1B5FA8]' : 'text-gray-800'}`}>{author.name}</p>
-                          <p className="text-xs text-gray-400">{author.title}</p>
-                        </div>
-                        {blogForm.author_id === author.id && (
-                          <svg className="w-4 h-4 text-[#1B5FA8] ml-1" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                          </svg>
-                        )}
-                      </button>
-                    ))}
-                  </div>
+                  {authorsLoading ? (
+                    <p className="text-sm text-gray-400">Loading authors...</p>
+                  ) : authors.length === 0 ? (
+                    <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <span className="text-amber-500">⚠️</span>
+                      <p className="text-sm text-amber-700">No authors found. <button type="button" onClick={() => setActiveTab('authors')} className="underline font-medium">Create one first.</button></p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-3">
+                      {authors.map(author => (
+                        <button key={author.id} type="button"
+                          onClick={() => setBlogForm(prev => ({ ...prev, author_id: author.slug }))}
+                          className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border transition-all ${blogForm.author_id === author.slug ? 'border-[#1B5FA8] bg-[#1B5FA8]/5 shadow-sm' : 'border-gray-200 hover:border-gray-300 bg-white'}`}>
+                          {author.avatar ? (
+                            <img src={author.avatar} alt={author.name} className="w-8 h-8 rounded-full bg-gray-100" />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-[#1B5FA8]/10 flex items-center justify-center text-[#1B5FA8] font-bold text-sm">
+                              {author.name.charAt(0)}
+                            </div>
+                          )}
+                          <div className="text-left">
+                            <p className={`text-sm font-semibold ${blogForm.author_id === author.slug ? 'text-[#1B5FA8]' : 'text-gray-800'}`}>{author.name}</p>
+                            <p className="text-xs text-gray-400">{author.title}</p>
+                          </div>
+                          {blogForm.author_id === author.slug && (
+                            <svg className="w-4 h-4 text-[#1B5FA8] ml-1" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Featured image */}
@@ -998,11 +993,7 @@ function AdminPanelInner() {
                 {/* Content */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
-                  <RichTextEditor
-                    value={blogForm.content}
-                    onChange={content => setBlogForm(prev => ({ ...prev, content }))}
-                    placeholder="Write your blog post content here..."
-                  />
+                  <RichTextEditor value={blogForm.content} onChange={content => setBlogForm(prev => ({ ...prev, content }))} placeholder="Write your blog post content here..." />
                 </div>
 
                 {/* SEO */}
@@ -1028,90 +1019,81 @@ function AdminPanelInner() {
                   </div>
                 </div>
 
-                {/* Scheduled info */}
                 {blogForm.scheduled_at && (
                   <div className="flex items-center gap-2 bg-[#C9943A]/5 border border-[#C9943A]/20 rounded-lg px-4 py-2.5">
                     <span className="text-base">🕐</span>
-                    <p className="text-sm text-[#C9943A] font-medium">
-                      Scheduled for {new Date(blogForm.scheduled_at).toLocaleString()}
-                    </p>
-                    <button onClick={() => setBlogForm(prev => ({ ...prev, scheduled_at: null }))}
-                      className="ml-auto text-xs text-gray-400 hover:text-red-400">Remove</button>
+                    <p className="text-sm text-[#C9943A] font-medium">Scheduled for {new Date(blogForm.scheduled_at).toLocaleString()}</p>
+                    <button onClick={() => setBlogForm(prev => ({ ...prev, scheduled_at: null }))} className="ml-auto text-xs text-gray-400 hover:text-red-400">Remove</button>
                   </div>
                 )}
 
                 {blogMsg && <p className={`text-sm font-medium ${blogMsg.startsWith('Error') ? 'text-red-500' : 'text-[#0D9488]'}`}>{blogMsg}</p>}
 
-                {/* Action buttons */}
                 <div className="flex flex-wrap gap-3 items-center pt-1">
-                  <PublishButton
-                    saving={blogSaving}
-                    isEdit={!!blogForm.id}
+                  <PublishButton saving={blogSaving} isEdit={!!blogForm.id}
                     onPublish={() => saveBlogPost({ published: true })}
                     onDraft={() => saveBlogPost({ published: false })}
-                    onSchedule={() => setShowScheduleModal(true)}
-                  />
-                  <button onClick={() => setBlogView('list')}
-                    className="bg-gray-100 hover:bg-gray-200 text-gray-600 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors">
-                    Cancel
-                  </button>
+                    onSchedule={() => setShowScheduleModal(true)} />
+                  <button onClick={() => setBlogView('list')} className="bg-gray-100 hover:bg-gray-200 text-gray-600 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors">Cancel</button>
                 </div>
               </div>
             )}
 
-            {/* Schedule modal */}
             {showScheduleModal && (
               <ScheduleModal
-                onConfirm={dt => {
-                  setShowScheduleModal(false)
-                  saveBlogPost({ published: false, scheduled_at: dt })
-                }}
+                onConfirm={dt => { setShowScheduleModal(false); saveBlogPost({ published: false, scheduled_at: dt }) }}
                 onClose={() => setShowScheduleModal(false)}
               />
             )}
           </div>
         )}
 
-        {/* ── Pages ── */}
-        {activeTab === 'pages' && (
+        {/* ── Authors ── */}
+        {activeTab === 'authors' && (
           <div>
             <div className="flex items-center justify-between mb-5">
               <div>
-                <h2 className="text-xl font-bold text-gray-900">Pages / CMS</h2>
-                <p className="text-sm text-gray-500 mt-0.5">Manage About, FAQ, Contact and custom pages</p>
+                <h2 className="text-xl font-bold text-gray-900">Authors</h2>
+                <p className="text-sm text-gray-500 mt-0.5">Manage blog author profiles</p>
               </div>
-              {pageView === 'list' && (
-                <button onClick={newPage} className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">+ New Page</button>
+              {authorView === 'list' && (
+                <button onClick={newAuthor} className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">+ New Author</button>
               )}
-              {pageView === 'form' && (
-                <button onClick={() => setPageView('list')} className="text-sm text-gray-500 hover:text-gray-800 border border-gray-200 px-3 py-1.5 rounded-lg">Back to Pages</button>
+              {authorView === 'form' && (
+                <button onClick={() => setAuthorView('list')} className="text-sm text-gray-500 hover:text-gray-800 border border-gray-200 px-3 py-1.5 rounded-lg">← Back to Authors</button>
               )}
             </div>
 
-            {pageView === 'list' && (
-              pagesLoading ? <div className="text-center py-10 text-gray-400">Loading pages...</div> : (
+            {authorView === 'list' && (
+              authorsLoading ? <div className="text-center py-10 text-gray-400">Loading authors...</div> : (
                 <div className="space-y-3">
-                  {pages.length === 0 && (
+                  {authors.length === 0 && (
                     <div className="bg-white border border-dashed border-gray-300 rounded-xl p-10 text-center">
-                      <p className="font-semibold text-gray-700 mb-1">No custom pages yet</p>
-                      <p className="text-sm text-gray-400 mb-4">Create pages like About, FAQ, Terms etc.</p>
-                      <button onClick={newPage} className="bg-[#1B5FA8] text-white px-5 py-2 rounded-lg text-sm font-semibold">Create First Page</button>
+                      <p className="font-semibold text-gray-700 mb-1">No authors yet</p>
+                      <p className="text-sm text-gray-400 mb-4">Create your first author profile.</p>
+                      <button onClick={newAuthor} className="bg-[#1B5FA8] text-white px-5 py-2 rounded-lg text-sm font-semibold">Create First Author</button>
                     </div>
                   )}
-                  {pages.map(page => (
-                    <div key={page.id} className="bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-between gap-4 hover:border-[#1B5FA8]/30 transition-colors">
+                  {authors.map(author => (
+                    <div key={author.id} className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-4 hover:border-[#1B5FA8]/30 transition-colors">
+                      {author.avatar ? (
+                        <img src={author.avatar} alt={author.name} className="w-12 h-12 rounded-full bg-gray-100 shrink-0 object-cover" />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-[#1B5FA8]/10 flex items-center justify-center text-[#1B5FA8] font-bold text-lg shrink-0">
+                          {author.name.charAt(0)}
+                        </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-semibold text-gray-900">{page.title}</p>
-                          <span className={`text-xs px-2 py-0.5 rounded border font-medium ${page.published ? 'bg-[#0D9488]/10 text-[#0D9488] border-[#0D9488]/30' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
-                            {page.published ? 'Published' : 'Draft'}
-                          </span>
+                          <p className="font-semibold text-gray-900">{author.name}</p>
+                          <span className="text-xs text-[#0D9488] bg-[#0D9488]/10 px-2 py-0.5 rounded-full">{author.title}</span>
                         </div>
-                        <p className="text-xs text-gray-400 mt-0.5">/{page.slug} · Updated {new Date(page.updated_at || page.created_at).toLocaleDateString()}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">Slug: {author.slug}</p>
+                        {author.bio && <p className="text-xs text-gray-500 mt-1 line-clamp-1">{author.bio}</p>}
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <button onClick={() => editPage(page)} className="text-xs px-3 py-1.5 rounded-lg border border-[#1B5FA8]/40 text-[#1B5FA8] hover:bg-[#1B5FA8]/5 transition-colors font-medium">Edit</button>
-                        <button onClick={() => deletePage(page.id)} className="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-400 hover:bg-red-50 transition-colors font-medium">Delete</button>
+                        <button onClick={() => editAuthor(author)} className="text-xs px-3 py-1.5 rounded-lg border border-[#1B5FA8]/40 text-[#1B5FA8] hover:bg-[#1B5FA8]/5 transition-colors font-medium">Edit</button>
+                        <button onClick={() => deleteAuthor(author.id)} className="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-400 hover:bg-red-50 transition-colors font-medium">Delete</button>
                       </div>
                     </div>
                   ))}
@@ -1119,87 +1101,25 @@ function AdminPanelInner() {
               )
             )}
 
-            {pageView === 'form' && (
-              <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4 shadow-sm">
-                <h3 className="font-bold text-gray-900">{pageForm.id ? 'Edit Page' : 'New Page'}</h3>
+            {authorView === 'form' && (
+              <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4 shadow-sm max-w-2xl">
+                <h3 className="font-bold text-gray-900">{authorForm.id ? 'Edit Author' : 'New Author'}</h3>
+
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Page Title *</label>
-                    <input type="text" value={pageForm.title} placeholder="e.g. About Us"
-                      onChange={e => setPageForm(prev => ({ ...prev, title: e.target.value, slug: prev.slug || slugify(e.target.value) }))}
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                    <input type="text" value={authorForm.name} placeholder="e.g. Alex Carter"
+                      onChange={e => setAuthorForm(prev => ({ ...prev, name: e.target.value, slug: prev.slug || slugify(e.target.value) }))}
                       className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Slug (URL path)</label>
-                    <input type="text" value={pageForm.slug} placeholder="about-us"
-                      onChange={e => setPageForm(prev => ({ ...prev, slug: e.target.value }))}
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Slug (auto-generated)</label>
+                    <input type="text" value={authorForm.slug} placeholder="e.g. alex-carter"
+                      onChange={e => setAuthorForm(prev => ({ ...prev, slug: e.target.value }))}
                       className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm font-mono" />
                   </div>
                 </div>
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
-                  <textarea value={pageForm.content} rows={12} placeholder="Page content..."
-                    onChange={e => setPageForm(prev => ({ ...prev, content: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-4 py-3 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm resize-y" />
-                </div>
-                <div className="grid md:grid-cols-2 gap-4 border-t border-gray-100 pt-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Meta Title (SEO)</label>
-                    <input type="text" value={pageForm.meta_title} placeholder="SEO title"
-                      onChange={e => setPageForm(prev => ({ ...prev, meta_title: e.target.value }))}
-                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Meta Description (SEO)</label>
-                    <input type="text" value={pageForm.meta_description} placeholder="SEO description"
-                      onChange={e => setPageForm(prev => ({ ...prev, meta_description: e.target.value }))}
-                      className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm" />
-                  </div>
-                </div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={pageForm.published}
-                    onChange={e => setPageForm(prev => ({ ...prev, published: e.target.checked }))}
-                    className="w-4 h-4 rounded accent-[#0D9488]" />
-                  <span className="text-sm text-gray-700 font-medium">Published</span>
-                </label>
-                {pageMsg && <p className={`text-sm font-medium ${pageMsg.startsWith('Error') ? 'text-red-500' : 'text-[#0D9488]'}`}>{pageMsg}</p>}
-                <div className="flex gap-3">
-                  <button onClick={savePage} disabled={pageSaving} className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-6 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-50 transition-colors">
-                    {pageSaving ? 'Saving...' : (pageForm.id ? 'Update Page' : 'Create Page')}
-                  </button>
-                  <button onClick={() => setPageView('list')} className="bg-gray-100 hover:bg-gray-200 text-gray-600 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors">Cancel</button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── Settings ── */}
-        {activeTab === 'settings' && (
-          <div className="max-w-xl">
-            <h2 className="text-xl font-bold text-gray-900 mb-5">Site Settings</h2>
-            <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4 shadow-sm">
-              <p className="text-sm text-gray-500">Site-wide settings are managed via Supabase.</p>
-              <div className="bg-[#1B5FA8]/5 border border-[#1B5FA8]/20 rounded-lg p-4">
-                <p className="text-sm font-semibold text-[#1B5FA8] mb-1">Admin Email</p>
-                <p className="text-sm text-gray-600">{ADMIN_EMAIL}</p>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-export default function AdminPanel() {
-  return (
-    <Suspense fallback={
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-[#1B5FA8] font-semibold">Loading...</div>
-      </div>
-    }>
-      <AdminPanelInner />
-    </Suspense>
-  )
-}
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Title / Role</label>
+                  <input type="text" value={authorForm.titl
