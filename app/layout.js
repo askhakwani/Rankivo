@@ -1,19 +1,4 @@
 import Script from 'next/script'
-
-// Add these two Script components inside your layout, just before </body>:
-
-<Script
-  src="https://www.googletagmanager.com/gtag/js?id=G-XCZBWXEQ4H"
-  strategy="afterInteractive"
-/>
-<Script id="google-analytics" strategy="afterInteractive">
-  {`
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-XCZBWXEQ4H');
-  `}
-</Script>
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -79,7 +64,21 @@ export default function RootLayout({ children }) {
           }}
         />
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-XCZBWXEQ4H"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-XCZBWXEQ4H');
+          `}
+        </Script>
+      </body>
     </html>
   );
 }
