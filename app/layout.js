@@ -15,9 +15,9 @@ const geistMono = Geist_Mono({
 export const metadata = {
   title: "RANKIVO — Write Less. Rank More. Grow Faster.",
   description: "Rankivo is the AI platform that writes SEO-optimized content for your blog, social media, ads and more — then helps you rank for it. One tool. Total content + SEO.",
-  metadataBase: new URL("https://www.rankivo.co"),
+  metadataBase: new URL("https://rankivo.co"),
   alternates: {
-    canonical: "/",
+    canonical: "https://rankivo.co",
   },
   openGraph: {
     title: "RANKIVO — Write Less. Rank More. Grow Faster.",
