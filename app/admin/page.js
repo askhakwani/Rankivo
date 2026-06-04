@@ -77,7 +77,7 @@ function RichTextEditor({ value, onChange, placeholder = 'Write your content her
         const editor = useEditor({
           extensions: [
             StarterKit, Underline,
-            Link.configure({ openOnClick: false, HTMLAttributes: { rel: 'noopener noreferrer' } }),
+            Link.configure({ openOnClick: false, HTMLAttributes: { rel: null, target: null } }),
             Image.configure({ inline: false }),
             TextAlign.configure({ types: ['heading', 'paragraph'] }),
           ],
