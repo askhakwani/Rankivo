@@ -10,42 +10,18 @@ export const metadata = {
 
 export default function Home() {
   const features = [
-    {
-      title: 'AI That Writes & Ranks',
-      desc: 'Not just content — SEO-ready content. Every output comes with meta titles, H1 options and keyword structure baked in.',
-      icon: '✦', color: 'blue',
-    },
-    {
-      title: 'Every Platform, One Place',
-      desc: 'Instagram captions, blog posts, LinkedIn articles, TikTok scripts, YouTube videos, email copy, ads — all from one dashboard.',
-      icon: '◈', color: 'teal',
-    },
-    {
-      title: '6 Languages, Global Reach',
-      desc: 'Publish in English, Spanish, French, German, Arabic and Urdu. Your content, your audience, no limits.',
-      icon: '◉', color: 'gold',
-    },
-    {
-      title: 'Human-Polished Output',
-      desc: 'Want that extra edge? Our professional editors take your AI draft from good to undeniably great.',
-      icon: '◐', color: 'blue',
-    },
-    {
-      title: 'Built Around Your Audience',
-      desc: 'Set your tone, niche and target reader once. Every piece Rankivo writes is tailored — not templated.',
-      icon: '◎', color: 'teal',
-    },
-    {
-      title: 'Your Content. Always There.',
-      desc: 'Full history of everything you\'ve generated. Access, copy, remix and reuse any time.',
-      icon: '◆', color: 'gold',
-    },
+    { title: 'AI That Writes & Ranks',        desc: 'Not just content — SEO-ready content. Every output comes with meta titles, H1 options and keyword structure baked in.',                        icon: '✦', color: 'blue' },
+    { title: 'Every Platform, One Place',      desc: 'Instagram captions, blog posts, LinkedIn articles, TikTok scripts, YouTube videos, email copy, ads — all from one dashboard.',              icon: '◈', color: 'teal' },
+    { title: '6 Languages, Global Reach',      desc: 'Publish in English, Spanish, French, German, Arabic and Urdu. Your content, your audience, no limits.',                                     icon: '◉', color: 'gold' },
+    { title: 'Human-Polished Output',          desc: 'Want that extra edge? Our professional editors take your AI draft from good to undeniably great.',                                           icon: '◐', color: 'blue' },
+    { title: 'Built Around Your Audience',     desc: 'Set your tone, niche and target reader once. Every piece Rankivo writes is tailored — not templated.',                                      icon: '◎', color: 'teal' },
+    { title: 'Your Content. Always There.',    desc: "Full history of everything you've generated. Access, copy, remix and reuse any time.",                                                      icon: '◆', color: 'gold' },
   ]
 
   const testimonials = [
     { name: 'Sarah M.',  role: 'Social Media Manager',    text: 'RANKIVO cut my content creation time from 3 hours to 15 minutes. The SEO optimization is genuinely impressive.',       stars: 5 },
     { name: 'Ahmed K.',  role: 'E-commerce Owner',         text: 'I was spending $500/month on content writers. Now I generate 10x more content for a fraction of the cost.',           stars: 5 },
-    { name: 'Priya R.',  role: 'Digital Marketing Agency', text: 'The multi-language support is a game changer for our international clients. Best AI content tool we\'ve tried.',      stars: 5 },
+    { name: 'Priya R.',  role: 'Digital Marketing Agency', text: "The multi-language support is a game changer for our international clients. Best AI content tool we've tried.",      stars: 5 },
     { name: 'James T.',  role: 'Blogger',                  text: 'My blog traffic doubled in 2 months after switching to RANKIVO for SEO content. The meta descriptions are spot-on.',  stars: 5 },
     { name: 'Fatima A.', role: 'Startup Founder',          text: 'As a non-native English speaker, RANKIVO helps me create professional content that sounds native. Life-changing.',    stars: 5 },
     { name: 'Carlos D.', role: 'YouTube Creator',          text: 'The YouTube script generator is incredible. My video watch time increased 40% after using RANKIVO scripts.',          stars: 5 },
@@ -80,16 +56,10 @@ export default function Home() {
             One tool for freelancers, founders, marketers and agencies who are done wasting time.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link
-              href="/auth?mode=signup"
-              className="w-full sm:w-auto bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-8 py-4 rounded-xl font-bold text-lg transition-colors shadow-lg shadow-[#1B5FA8]/20 text-center"
-            >
+            <Link href="/auth?mode=signup" className="w-full sm:w-auto bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-8 py-4 rounded-xl font-bold text-lg transition-colors shadow-lg shadow-[#1B5FA8]/20 text-center">
               Start Free — No Credit Card
             </Link>
-            <Link
-              href="/auth"
-              className="w-full sm:w-auto border-2 border-gray-300 hover:border-[#1B5FA8] text-gray-600 hover:text-[#1B5FA8] px-8 py-4 rounded-xl font-semibold text-lg transition-colors text-center"
-            >
+            <Link href="/auth" className="w-full sm:w-auto border-2 border-gray-300 hover:border-[#1B5FA8] text-gray-600 hover:text-[#1B5FA8] px-8 py-4 rounded-xl font-semibold text-lg transition-colors text-center">
               Login to Dashboard
             </Link>
           </div>
@@ -110,8 +80,7 @@ export default function Home() {
             { icon: '🔒', text: 'No credit card to start' },
           ].map(({ icon, text }) => (
             <div key={text} className="flex items-center gap-2 text-sm text-gray-400 font-medium">
-              <span>{icon}</span>
-              <span>{text}</span>
+              <span>{icon}</span><span>{text}</span>
             </div>
           ))}
         </div>
@@ -121,9 +90,9 @@ export default function Home() {
       <section className="py-12 border-b border-gray-200 bg-gray-50">
         <div className="max-w-4xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
           {[
-            { value: '8+',   label: 'Platforms Supported', color: 'text-[#1B5FA8]' },
-            { value: '6',    label: 'Languages',            color: 'text-[#0D9488]' },
-            { value: '10x',  label: 'Faster Than Manual',  color: 'text-[#C9943A]' },
+            { value: '8+',   label: 'Platforms Supported',  color: 'text-[#1B5FA8]' },
+            { value: '6',    label: 'Languages',             color: 'text-[#0D9488]' },
+            { value: '10x',  label: 'Faster Than Manual',   color: 'text-[#C9943A]' },
             { value: '100%', label: 'SEO-Optimized Output', color: 'text-[#1B5FA8]' },
           ].map((s) => (
             <div key={s.label}>
@@ -137,9 +106,7 @@ export default function Home() {
       {/* ── Features ─────────────────────────────────────────────────────────── */}
       <section id="features" className="py-20 px-6 bg-white">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-3 text-gray-900">
-            Everything to Create, Rank and Scale
-          </h2>
+          <h2 className="text-3xl font-bold text-center mb-3 text-gray-900">Everything to Create, Rank and Scale</h2>
           <p className="text-gray-500 text-center mb-12 max-w-xl mx-auto">
             Rankivo combines an AI content engine with an SEO strategy layer — so every post you publish has a real shot at ranking.
           </p>
@@ -158,6 +125,69 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── Human Writing Services ───────────────────────────────────────────── */}
+      <section className="py-20 px-6 bg-gray-50">
+        <div className="max-w-5xl mx-auto">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-12">
+            <div>
+              <div className="inline-flex items-center gap-2 bg-[#C9943A]/10 border border-[#C9943A]/30 text-[#C9943A] text-xs px-3 py-1.5 rounded-full mb-3 font-semibold">
+                ✍️ Human-Crafted · Expert-Reviewed
+              </div>
+              <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                Need More Than AI?<br />
+                <span className="text-[#C9943A]">Our Human Writers Deliver.</span>
+              </h2>
+              <p className="text-gray-500 max-w-md text-sm leading-relaxed">
+                AI for speed. Humans for depth. Every piece comes with full on-page SEO optimisation and a Copyscape plagiarism report — included as standard.
+              </p>
+            </div>
+            <Link href="/services/human-writing"
+              className="shrink-0 border-2 border-[#C9943A] hover:bg-[#C9943A]/10 text-[#C9943A] px-6 py-3 rounded-xl font-semibold text-sm transition-colors whitespace-nowrap">
+              View All Services →
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            {[
+              { icon: '✍️', label: 'SEO Blog Writing',     desc: 'Long-form articles built to rank',           href: '/services/seo-blog-writing',     tag: true  },
+              { icon: '🖥️', label: 'Website Copywriting',  desc: 'Pages that convert visitors into buyers',    href: '/services/website-copywriting',  tag: false },
+              { icon: '📱', label: 'Social Media Content', desc: 'Human-written posts for every platform',     href: '/services/social-media-content', tag: false },
+              { icon: '📧', label: 'Email Sequences',      desc: 'Flows that turn subscribers into customers', href: '/services/email-sequences',       tag: false },
+            ].map((s) => (
+              <Link key={s.label} href={s.href}
+                className="group bg-white border border-gray-200 hover:border-[#C9943A]/40 rounded-xl p-5 transition-all hover:shadow-md hover:-translate-y-0.5">
+                <div className="flex items-start justify-between mb-3">
+                  <span className="text-2xl">{s.icon}</span>
+                  {s.tag && (
+                    <span className="text-[10px] font-bold bg-[#C9943A]/15 text-[#C9943A] border border-[#C9943A]/30 px-2 py-0.5 rounded-full">🔥 Popular</span>
+                  )}
+                </div>
+                <h3 className="font-semibold text-gray-900 text-sm mb-2 group-hover:text-[#C9943A] transition-colors">{s.label}</h3>
+                <p className="text-xs text-gray-400 leading-relaxed">{s.desc}</p>
+              </Link>
+            ))}
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-xl px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+              {[
+                { icon: '🎯', text: 'Full on-page SEO included' },
+                { icon: '✅', text: 'Copyscape report on every order' },
+                { icon: '⚡', text: '3–5 day turnaround' },
+                { icon: '🏢', text: 'White label for agencies' },
+              ].map(({ icon, text }) => (
+                <div key={text} className="flex items-center gap-2 text-xs text-gray-500 font-medium">
+                  <span>{icon}</span><span>{text}</span>
+                </div>
+              ))}
+            </div>
+            <Link href="/services/human-writing#pricing" className="text-xs font-semibold text-[#C9943A] hover:underline whitespace-nowrap">
+              See pricing →
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* ── How It Works ─────────────────────────────────────────────────────── */}
       <section className="py-20 px-6 bg-gray-50">
         <div className="max-w-4xl mx-auto text-center">
@@ -167,27 +197,12 @@ export default function Home() {
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              {
-                step: '1', color: '#1B5FA8',
-                title: 'Pick Your Platform',
-                desc: 'Instagram, TikTok, LinkedIn, Blog, YouTube, Email, Ads — choose where you\'re publishing.',
-              },
-              {
-                step: '2', color: '#0D9488',
-                title: 'Tell Us What You Need',
-                desc: 'Drop in your topic, target keyword, tone and audience. Rankivo handles the rest.',
-              },
-              {
-                step: '3', color: '#C9943A',
-                title: 'Publish & Rank',
-                desc: 'Get fully SEO-optimized content in seconds. Copy, paste, publish. Done.',
-              },
+              { step: '1', color: '#1B5FA8', title: 'Pick Your Platform',     desc: "Instagram, TikTok, LinkedIn, Blog, YouTube, Email, Ads — choose where you're publishing." },
+              { step: '2', color: '#0D9488', title: 'Tell Us What You Need',  desc: 'Drop in your topic, target keyword, tone and audience. Rankivo handles the rest.' },
+              { step: '3', color: '#C9943A', title: 'Publish & Rank',         desc: 'Get fully SEO-optimized content in seconds. Copy, paste, publish. Done.' },
             ].map((s) => (
               <div key={s.step} className="flex flex-col items-center">
-                <div
-                  className="w-14 h-14 rounded-full flex items-center justify-center text-white text-xl font-bold mb-4 shadow-lg"
-                  style={{ backgroundColor: s.color }}
-                >
+                <div className="w-14 h-14 rounded-full flex items-center justify-center text-white text-xl font-bold mb-4 shadow-lg" style={{ backgroundColor: s.color }}>
                   {s.step}
                 </div>
                 <h3 className="font-semibold text-gray-900 mb-2">{s.title}</h3>
@@ -206,12 +221,8 @@ export default function Home() {
       {/* ── Pricing ──────────────────────────────────────────────────────────── */}
       <section id="pricing" className="py-20 px-6 bg-white">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-3 text-gray-900">
-            Pricing That Scales With You
-          </h2>
-          <p className="text-gray-500 text-center mb-12">
-            Start free. No credit card. Upgrade the moment you need more.
-          </p>
+          <h2 className="text-3xl font-bold text-center mb-3 text-gray-900">Pricing That Scales With You</h2>
+          <p className="text-gray-500 text-center mb-12">Start free. No credit card. Upgrade the moment you need more.</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
               {
@@ -249,14 +260,10 @@ export default function Home() {
                     </li>
                   ))}
                 </ul>
-                <Link
-                  href={p.href}
+                <Link href={p.href}
                   className={`block text-center py-3 rounded-lg font-semibold text-sm transition-colors ${
-                    p.popular
-                      ? 'bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white'
-                      : 'border-2 border-gray-300 hover:border-[#1B5FA8] hover:text-[#1B5FA8] text-gray-600'
-                  }`}
-                >
+                    p.popular ? 'bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white' : 'border-2 border-gray-300 hover:border-[#1B5FA8] hover:text-[#1B5FA8] text-gray-600'
+                  }`}>
                   {p.cta}
                 </Link>
               </div>
@@ -264,9 +271,7 @@ export default function Home() {
           </div>
           <p className="text-center text-sm text-gray-400 mt-6">
             Running an agency?{' '}
-            <Link href="/upgrade" className="text-[#C9943A] hover:underline font-medium">
-              See the unlimited Agency plan →
-            </Link>
+            <Link href="/upgrade" className="text-[#C9943A] hover:underline font-medium">See the unlimited Agency plan →</Link>
           </p>
         </div>
       </section>
@@ -274,9 +279,7 @@ export default function Home() {
       {/* ── Testimonials ─────────────────────────────────────────────────────── */}
       <section className="py-20 px-6 bg-gray-50">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-3 text-gray-900">
-            Real People. Real Results.
-          </h2>
+          <h2 className="text-3xl font-bold text-center mb-3 text-gray-900">Real People. Real Results.</h2>
           <p className="text-gray-500 text-center mb-12">
             Marketers, founders, bloggers and agencies — all growing faster with Rankivo.
           </p>
@@ -284,9 +287,7 @@ export default function Home() {
             {testimonials.map((t) => (
               <div key={t.name} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
                 <div className="flex gap-0.5 mb-3">
-                  {[...Array(t.stars)].map((_, i) => (
-                    <span key={i} className="text-[#C9943A]">★</span>
-                  ))}
+                  {[...Array(t.stars)].map((_, i) => <span key={i} className="text-[#C9943A]">★</span>)}
                 </div>
                 <p className="text-gray-600 text-sm leading-relaxed mb-4">"{t.text}"</p>
                 <div>
@@ -306,20 +307,15 @@ export default function Home() {
             Your Competitors Are Already Using AI.<br />Are You?
           </h2>
           <p className="text-gray-500 mb-8 text-lg max-w-lg mx-auto">
-            Stop writing from scratch. Stop guessing what ranks.
-            Rankivo does both — so you can focus on growing.
+            Stop writing from scratch. Stop guessing what ranks. Rankivo does both — so you can focus on growing.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link
-              href="/auth?mode=signup"
-              className="w-full sm:w-auto bg-[#0D9488] hover:bg-[#0D9488]/90 text-white px-8 py-4 rounded-xl font-bold text-lg transition-colors shadow-lg shadow-[#0D9488]/20 text-center"
-            >
+            <Link href="/auth?mode=signup"
+              className="w-full sm:w-auto bg-[#0D9488] hover:bg-[#0D9488]/90 text-white px-8 py-4 rounded-xl font-bold text-lg transition-colors shadow-lg shadow-[#0D9488]/20 text-center">
               Start Free Today
             </Link>
-            <Link
-              href="/upgrade"
-              className="w-full sm:w-auto border-2 border-[#C9943A] hover:bg-[#C9943A]/10 text-[#C9943A] px-8 py-4 rounded-xl font-bold text-lg transition-colors text-center"
-            >
+            <Link href="/upgrade"
+              className="w-full sm:w-auto border-2 border-[#C9943A] hover:bg-[#C9943A]/10 text-[#C9943A] px-8 py-4 rounded-xl font-bold text-lg transition-colors text-center">
               View All Plans
             </Link>
           </div>

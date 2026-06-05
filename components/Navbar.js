@@ -74,6 +74,17 @@ const STATIC_LINKS = [
   { href: '/contact',  label: 'Contact' },
 ]
 
+const SERVICES_LINKS = [
+  { href: '/services/seo-blog-writing',     icon: '✍️',  label: 'SEO Blog Writing',      desc: 'Long-form articles built to rank',        tag: 'Popular' },
+  { href: '/services/website-copywriting',  icon: '🖥️',  label: 'Website Copywriting',   desc: 'Pages that convert visitors into buyers', tag: null      },
+  { href: '/services/social-media-content', icon: '📱',  label: 'Social Media Content',  desc: 'Human-written posts for every platform',  tag: null      },
+  { href: '/services/email-sequences',       icon: '📧',  label: 'Email Sequences',       desc: 'Flows that turn subscribers into buyers', tag: null      },
+  { href: '/services/product-descriptions', icon: '🛍️',  label: 'Product Descriptions',  desc: 'SEO-rich copy that sells and ranks',      tag: null      },
+  { href: '/services/video-scripts',        icon: '🎬',  label: 'Video Scripts',         desc: 'Scripts with hooks, flow and CTAs',       tag: null      },
+  { href: '/services/content-strategy',     icon: '🗺️',  label: 'Content Strategy',      desc: 'Keyword clusters & content roadmaps',     tag: null      },
+  { href: '/services/human-writing',        icon: '⭐',  label: 'All Services',          desc: 'View the full human writing hub',         tag: null      },
+]
+
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
 const ANIMATION_CSS = `
@@ -277,6 +288,57 @@ function ContentDropdown({ onClose, onMouseEnter, onMouseLeave }) {
   )
 }
 
+// ─── Services Dropdown ────────────────────────────────────────────────────────
+
+function ServicesDropdown({ onClose, onMouseEnter, onMouseLeave }) {
+  return (
+    <div
+      className="drop-animate absolute top-full left-0 mt-3 z-50"
+      style={{ width: '380px', maxWidth: 'calc(100vw - 3rem)' }}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
+      <div className="absolute -top-1.5 left-[12%] w-3 h-3 bg-white border-l border-t border-gray-200 rotate-45" style={{ zIndex: 1 }} />
+      <div className="relative bg-white border border-gray-200 rounded-2xl shadow-2xl overflow-hidden" style={{ zIndex: 2 }}>
+        <div className="p-5">
+          <SectionLabel label="Human Writing Services" color="#C9943A" />
+          <div className="space-y-1 mt-3">
+            {SERVICES_LINKS.map(s => (
+              <Link
+                key={s.href}
+                href={s.href}
+                onClick={onClose}
+                className="tool-card flex items-start gap-3 p-3 rounded-xl hover:bg-gray-50 hover:shadow-md group"
+              >
+                <span className="text-xl mt-0.5 shrink-0">{s.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-sm font-semibold text-gray-800 group-hover:text-[#C9943A] transition-colors">
+                      {s.label}
+                    </span>
+                    {s.tag && (
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${TAG_STYLES[s.tag]}`}>
+                        🔥 {s.tag}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-400 leading-relaxed">{s.desc}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+        <div className="border-t border-gray-100 bg-[#C9943A]/5 px-5 py-3 flex items-center justify-between">
+          <p className="text-xs text-gray-400">✍️ Human-crafted · Expert-reviewed</p>
+          <Link href="/services/human-writing" onClick={onClose} className="text-xs font-semibold text-[#C9943A] hover:text-[#C9943A]/80 transition-colors">
+            View all services →
+          </Link>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── useHoverDropdown hook ────────────────────────────────────────────────────
 
 function useHoverDropdown() {
@@ -305,8 +367,9 @@ export default function Navbar() {
   const [mobileSection, setMobileSection] = useState(null) // 'seo' | 'content' | null
   const [user, setUser] = useState(null)
 
-  const seo     = useHoverDropdown()
-  const content = useHoverDropdown()
+  const seo      = useHoverDropdown()
+  const content  = useHoverDropdown()
+  const services = useHoverDropdown()
 
   const supabase = createClient()
 
@@ -327,6 +390,7 @@ export default function Navbar() {
   function closeAll() {
     seo.close()
     content.close()
+    services.close()
     setMobileOpen(false)
   }
 
@@ -368,6 +432,21 @@ export default function Navbar() {
                 onClose={closeAll}
                 onMouseEnter={content.open}
                 onMouseLeave={content.close}
+              />
+            </NavDropdownTrigger>
+
+            {/* Services */}
+            <NavDropdownTrigger
+              label="Services"
+              isOpen={services.isOpen}
+              onMouseEnter={services.open}
+              onMouseLeave={services.close}
+              dropdownRef={services.ref}
+            >
+              <ServicesDropdown
+                onClose={closeAll}
+                onMouseEnter={services.open}
+                onMouseLeave={services.close}
               />
             </NavDropdownTrigger>
 
@@ -478,6 +557,32 @@ export default function Navbar() {
 
             {/* Static links */}
             <div className="border-t border-gray-100 pt-4 space-y-0.5">
+              {/* Services section */}
+              <button
+                onClick={() => setMobileSection(s => s === 'services' ? null : 'services')}
+                className="w-full flex items-center justify-between text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 py-1"
+              >
+                <span className="flex items-center gap-2">
+                  <span className="w-3 h-px bg-[#C9943A] inline-block" />
+                  Human Writing Services
+                </span>
+                <svg className={`w-3 h-3 transition-transform ${mobileSection === 'services' ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {mobileSection === 'services' && (
+                <div className="space-y-0.5 mb-3">
+                  {SERVICES_LINKS.map(t => (
+                    <Link key={t.href} href={t.href} onClick={() => setMobileOpen(false)}
+                      className="flex items-center gap-3 text-gray-600 hover:text-[#C9943A] text-sm py-2 px-2 rounded-lg hover:bg-gray-50 transition-colors">
+                      <span>{t.icon}</span>
+                      <span>{t.label}</span>
+                      {t.tag && <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-auto ${TAG_STYLES[t.tag]}`}>{t.tag}</span>}
+                    </Link>
+                  ))}
+                </div>
+              )}
+              {/* Static page links */}
               {STATIC_LINKS.map(l => (
                 <Link key={l.href} href={l.href} onClick={() => setMobileOpen(false)}
                   className="block text-gray-600 hover:text-[#1B5FA8] text-sm py-2 px-2 rounded-lg hover:bg-gray-50 transition-colors">
