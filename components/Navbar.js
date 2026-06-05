@@ -215,7 +215,7 @@ function ContentDropdown({ onClose, onMouseEnter, onMouseLeave }) {
   return (
     <div
       className="drop-animate absolute top-full left-1/2 -translate-x-1/2 mt-3 z-50"
-      style={{ width: '520px', maxWidth: 'calc(100vw - 3rem)' }}
+      style={{ width: '720px', maxWidth: 'calc(100vw - 3rem)' }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
@@ -248,10 +248,10 @@ function ContentDropdown({ onClose, onMouseEnter, onMouseLeave }) {
         </div>
 
         {/* Tool list */}
-        <div className="p-5 overflow-y-auto" style={{ maxHeight: 'calc(80vh - 120px)' }}>
+        <div className="p-5">
           {isFiltering ? (
             filteredTools.length > 0 ? (
-              <div className="space-y-1">
+              <div className="grid grid-cols-3 gap-1">
                 {filteredTools.map(tool => (
                   <ToolCard key={tool.href} {...tool} onClose={onClose} />
                 ))}
@@ -260,8 +260,8 @@ function ContentDropdown({ onClose, onMouseEnter, onMouseLeave }) {
               <p className="text-sm text-gray-400 text-center py-6">No tools found for "{query}"</p>
             )
           ) : (
-            /* Grouped view */
-            <div className="grid grid-cols-2 gap-x-6 gap-y-5">
+            /* Grouped view — 3 columns, one per group */
+            <div className="grid grid-cols-3 gap-x-6">
               {CONTENT_GROUPS.map(group => (
                 <div key={group.label}>
                   <SectionLabel label={group.label} color={group.accentColor} />
@@ -294,7 +294,7 @@ function ServicesDropdown({ onClose, onMouseEnter, onMouseLeave }) {
   return (
     <div
       className="drop-animate absolute top-full left-0 mt-3 z-50"
-      style={{ width: '380px', maxWidth: 'calc(100vw - 3rem)' }}
+      style={{ width: '540px', maxWidth: 'calc(100vw - 3rem)' }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
@@ -302,7 +302,7 @@ function ServicesDropdown({ onClose, onMouseEnter, onMouseLeave }) {
       <div className="relative bg-white border border-gray-200 rounded-2xl shadow-2xl overflow-hidden" style={{ zIndex: 2 }}>
         <div className="p-5">
           <SectionLabel label="Human Writing Services" color="#C9943A" />
-          <div className="space-y-1 mt-3">
+          <div className="grid grid-cols-2 gap-1 mt-3">
             {SERVICES_LINKS.map(s => (
               <Link
                 key={s.href}
