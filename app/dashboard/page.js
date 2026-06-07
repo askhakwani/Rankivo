@@ -707,7 +707,24 @@ function HireWriterTab({ user, supabase }) {
   }
 
   // ── HOME VIEW ──────────────────────────────────────────────────────────────
-  if (view === 'home') return (
+  if (view === 'home') {
+    // Redirect admin to admin panel orders tab
+    if (user?.email === 'askhakwani@gmail.com') return (
+      <div className="max-w-xl">
+        <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">Order Management</h2>
+        <p className="text-gray-500 text-sm mb-6">As admin, manage all client orders from the Admin Panel.</p>
+        <div className="bg-white border-2 border-[#C9943A]/30 rounded-xl p-8 text-center shadow-sm">
+          <div className="text-5xl mb-4">📦</div>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">Go to Order Management</h3>
+          <p className="text-gray-500 mb-5 text-sm">View all orders, update statuses, manage batches, reply to client messages and add deliverable links.</p>
+          <a href="/admin?tab=orders" className="inline-block bg-[#C9943A] hover:bg-[#C9943A]/90 text-white px-6 py-3 rounded-xl font-semibold transition-colors text-sm">
+            Open Admin Orders →
+          </a>
+        </div>
+      </div>
+    )
+
+    return (
     <div className="max-w-4xl">
       <div className="flex items-start justify-between flex-wrap gap-4 mb-8">
         <div>
@@ -755,6 +772,7 @@ function HireWriterTab({ user, supabase }) {
       </div>
     </div>
   )
+  } // end home view
 
   // ── NEW ORDER VIEW ─────────────────────────────────────────────────────────
   if (view === 'new-order') return (

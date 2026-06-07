@@ -7,10 +7,11 @@ const ADMIN_EMAIL = 'askhakwani@gmail.com'
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
-  { id: 'users', label: 'Users' },
-  { id: 'blog', label: 'Blog Posts' },
-  { id: 'authors', label: 'Authors' },
-  { id: 'pages', label: 'Pages / CMS' },
+  { id: 'orders',   label: '📦 Orders' },
+  { id: 'users',    label: 'Users' },
+  { id: 'blog',     label: 'Blog Posts' },
+  { id: 'authors',  label: 'Authors' },
+  { id: 'pages',    label: 'Pages / CMS' },
   { id: 'settings', label: 'Site Settings' },
 ]
 
@@ -362,6 +363,17 @@ function AdminPanelInner() {
   const [authorMsg, setAuthorMsg] = useState('')
   const [authorSaving, setAuthorSaving] = useState(false)
 
+  // Orders
+  const [orders, setOrders]               = useState([])
+  const [ordersLoading, setOrdersLoading] = useState(false)
+  const [selectedOrder, setSelectedOrder] = useState(null)
+  const [orderBatches, setOrderBatches]   = useState([])
+  const [orderMessages, setOrderMessages] = useState([])
+  const [adminReply, setAdminReply]       = useState('')
+  const [sendingReply, setSendingReply]   = useState(false)
+  const [statusFilter, setStatusFilter]   = useState('all')
+  const [orderView, setOrderView]         = useState('list')
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user || user.email !== ADMIN_EMAIL) { router.push('/dashboard'); return }
@@ -374,6 +386,7 @@ function AdminPanelInner() {
     if (activeTab === 'blog') { loadPosts(); loadAuthors() }
     if (activeTab === 'pages') loadPages()
     if (activeTab === 'authors') loadAuthors()
+    if (activeTab === 'orders') loadOrders()
   }, [activeTab])
 
   useEffect(() => {
@@ -411,6 +424,66 @@ function AdminPanelInner() {
     setAuthors(data || [])
     if (data && data.length > 0) setBlogForm(prev => ({ ...prev, author_id: prev.author_id || data[0].slug }))
     setAuthorsLoading(false)
+  }
+
+  async function loadOrders() {
+    setOrdersLoading(true)
+    const { data } = await supabase.from('orders').select('*').order('created_at', { ascending: false })
+    setOrders(data || [])
+    setOrdersLoading(false)
+  }
+
+  async function openOrderDetail(order) {
+    setSelectedOrder(order)
+    setOrderView('detail')
+    const [{ data: b }, { data: m }] = await Promise.all([
+      supabase.from('order_batches').select('*').eq('order_id', order.id).order('batch_number'),
+      supabase.from('order_messages').select('*').eq('order_id', order.id).order('created_at'),
+    ])
+    setOrderBatches(b || [])
+    setOrderMessages(m || [])
+  }
+
+  async function updateOrderStatus(orderId, status) {
+    await supabase.from('orders').update({ status, ...(status === 'complete' ? { completed_at: new Date().toISOString() } : {}) }).eq('id', orderId)
+    setSelectedOrder(prev => ({ ...prev, status }))
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o))
+  }
+
+  async function updateBatchWorkStatus(batchId, work_status) {
+    await supabase.from('order_batches').update({ work_status, ...(work_status === 'delivered' ? { delivered_at: new Date().toISOString() } : {}), ...(work_status === 'approved' ? { approved_at: new Date().toISOString() } : {}) }).eq('id', batchId)
+    setOrderBatches(prev => prev.map(b => b.id === batchId ? { ...b, work_status } : b))
+  }
+
+  async function updateBatchPayment(batchId, payment_status) {
+    await supabase.from('order_batches').update({ payment_status, ...(payment_status === 'paid' ? { paid_at: new Date().toISOString() } : {}) }).eq('id', batchId)
+    setOrderBatches(prev => prev.map(b => b.id === batchId ? { ...b, payment_status } : b))
+    // Update paid_amount on order
+    const paid = orderBatches.filter(b => b.id === batchId ? payment_status === 'paid' : b.payment_status === 'paid').reduce((sum, b) => sum + Number(b.amount), 0)
+    await supabase.from('orders').update({ paid_amount: paid }).eq('id', selectedOrder.id)
+    setSelectedOrder(prev => ({ ...prev, paid_amount: paid }))
+  }
+
+  async function addDeliverableLink(batchId) {
+    const url = prompt('Enter the deliverable URL (Google Drive, Dropbox, etc.):')
+    if (!url) return
+    await supabase.from('order_batches').update({ deliverable_url: url }).eq('id', batchId)
+    setOrderBatches(prev => prev.map(b => b.id === batchId ? { ...b, deliverable_url: url } : b))
+  }
+
+  async function sendAdminReply() {
+    if (!adminReply.trim() || !selectedOrder) return
+    setSendingReply(true)
+    await supabase.from('order_messages').insert({
+      order_id:     selectedOrder.id,
+      sender_role:  'admin',
+      sender_email: user.email,
+      message:      adminReply.trim(),
+    })
+    setAdminReply('')
+    const { data: m } = await supabase.from('order_messages').select('*').eq('order_id', selectedOrder.id).order('created_at')
+    setOrderMessages(m || [])
+    setSendingReply(false)
   }
 
   async function changePlan(userId, plan) {
@@ -577,6 +650,7 @@ function AdminPanelInner() {
                 { label: 'Authors', tab: 'authors', desc: 'Manage blog author profiles' },
                 { label: 'Pages / CMS', tab: 'pages', desc: 'Edit About, FAQ and custom pages' },
                 { label: 'Users', tab: 'users', desc: 'Manage user plans and accounts' },
+                { label: '📦 Orders', tab: 'orders', desc: 'Manage client orders and messages' },
               ].map(c => (
                 <button key={c.tab} onClick={() => setActiveTab(c.tab)} className="bg-white border border-gray-200 rounded-xl p-5 text-left hover:border-[#1B5FA8]/40 hover:shadow-sm transition-all group">
                   <p className="font-semibold text-gray-900 group-hover:text-[#1B5FA8]">{c.label}</p>
@@ -1067,6 +1141,211 @@ function AdminPanelInner() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'orders' && (
+          <div className="max-w-5xl">
+            {orderView === 'list' && (
+              <>
+                <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
+                  <h2 className="text-xl font-bold text-gray-900">All Orders</h2>
+                  <div className="flex flex-wrap gap-2">
+                    {['all', 'awaiting_brief', 'brief_received', 'in_progress', 'review', 'complete', 'cancelled'].map(s => (
+                      <button key={s} onClick={() => setStatusFilter(s)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                          statusFilter === s ? 'bg-[#1B5FA8] text-white border-[#1B5FA8]' : 'bg-white text-gray-500 border-gray-200 hover:border-[#1B5FA8]/40'
+                        }`}>
+                        {s === 'all' ? 'All' : s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {ordersLoading ? (
+                  <div className="text-center py-12 text-gray-400 text-sm">Loading orders…</div>
+                ) : orders.filter(o => statusFilter === 'all' || o.status === statusFilter).length === 0 ? (
+                  <div className="text-center py-12 bg-white border border-gray-200 rounded-xl">
+                    <div className="text-4xl mb-3">📋</div>
+                    <p className="font-semibold text-gray-700 mb-1">No orders found</p>
+                    <p className="text-sm text-gray-400">Orders will appear here when clients place them</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {orders.filter(o => statusFilter === 'all' || o.status === statusFilter).map(order => {
+                      const STATUS_CONFIG = {
+                        awaiting_brief:  { label: 'Awaiting Brief',  color: 'bg-yellow-100 text-yellow-700 border-yellow-200',  icon: '📋' },
+                        brief_received:  { label: 'Brief Received',  color: 'bg-blue-100 text-blue-700 border-blue-200',        icon: '📨' },
+                        in_progress:     { label: 'In Progress',     color: 'bg-purple-100 text-purple-700 border-purple-200',  icon: '⚡' },
+                        review:          { label: 'Under Review',    color: 'bg-orange-100 text-orange-700 border-orange-200',  icon: '👀' },
+                        complete:        { label: 'Complete',        color: 'bg-green-100 text-green-700 border-green-200',     icon: '✅' },
+                        cancelled:       { label: 'Cancelled',       color: 'bg-red-100 text-red-700 border-red-200',           icon: '❌' },
+                      }
+                      const st = STATUS_CONFIG[order.status] || STATUS_CONFIG.awaiting_brief
+                      return (
+                        <div key={order.id} onClick={() => openOrderDetail(order)}
+                          className="bg-white border border-gray-200 hover:border-[#1B5FA8]/40 rounded-xl p-5 cursor-pointer transition-all hover:shadow-sm">
+                          <div className="flex items-start justify-between gap-4 flex-wrap">
+                            <div>
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <span className="text-xs font-bold text-gray-400 font-mono">{order.project_id}</span>
+                                <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${st.color}`}>{st.icon} {st.label}</span>
+                              </div>
+                              <p className="font-semibold text-gray-900 text-sm">{order.service}</p>
+                              <p className="text-xs text-gray-400 mt-0.5">{order.user_email}</p>
+                              <p className="text-xs text-gray-400 line-clamp-1 mt-0.5">{order.description}</p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className="font-bold text-gray-900">${order.total_amount}</p>
+                              <p className="text-xs text-[#0D9488] font-semibold">Paid: ${order.paid_amount || 0}</p>
+                              <p className="text-xs text-gray-400 mt-0.5">{new Date(order.created_at).toLocaleDateString()}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+
+            {orderView === 'detail' && selectedOrder && (() => {
+              const STATUS_CONFIG = {
+                awaiting_brief:  { label: 'Awaiting Brief',  color: 'bg-yellow-100 text-yellow-700 border-yellow-200',  icon: '📋' },
+                brief_received:  { label: 'Brief Received',  color: 'bg-blue-100 text-blue-700 border-blue-200',        icon: '📨' },
+                in_progress:     { label: 'In Progress',     color: 'bg-purple-100 text-purple-700 border-purple-200',  icon: '⚡' },
+                review:          { label: 'Under Review',    color: 'bg-orange-100 text-orange-700 border-orange-200',  icon: '👀' },
+                complete:        { label: 'Complete',        color: 'bg-green-100 text-green-700 border-green-200',     icon: '✅' },
+                cancelled:       { label: 'Cancelled',       color: 'bg-red-100 text-red-700 border-red-200',           icon: '❌' },
+              }
+              const st = STATUS_CONFIG[selectedOrder.status] || STATUS_CONFIG.awaiting_brief
+              return (
+                <div>
+                  {/* Header */}
+                  <div className="flex items-center gap-3 mb-5">
+                    <button onClick={() => { setOrderView('list'); setSelectedOrder(null) }}
+                      className="text-gray-400 hover:text-gray-600 transition-colors">←</button>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h2 className="text-lg font-bold text-gray-900">{selectedOrder.service}</h2>
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${st.color}`}>{st.icon} {st.label}</span>
+                      </div>
+                      <p className="text-xs text-gray-400 font-mono">{selectedOrder.project_id} · {selectedOrder.user_email}</p>
+                    </div>
+                  </div>
+
+                  {/* Status updater */}
+                  <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Update Status</p>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+                        <button key={key} onClick={() => updateOrderStatus(selectedOrder.id, key)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
+                            selectedOrder.status === key ? `${cfg.color} border-current` : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400'
+                          }`}>
+                          {cfg.icon} {cfg.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Brief */}
+                  <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Client Brief</p>
+                    <p className="text-sm text-gray-600 leading-relaxed">{selectedOrder.description}</p>
+                  </div>
+
+                  {/* Batches */}
+                  <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Milestones / Batches</p>
+                      <p className="text-sm font-bold text-gray-700">Paid: ${selectedOrder.paid_amount || 0} / ${selectedOrder.total_amount}</p>
+                    </div>
+                    {orderBatches.length === 0 ? (
+                      <p className="text-sm text-gray-400 text-center py-4">No batches</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {orderBatches.map(batch => (
+                          <div key={batch.id} className="p-4 bg-gray-50 rounded-xl">
+                            <div className="flex items-start justify-between gap-4 flex-wrap mb-3">
+                              <div>
+                                <p className="text-xs font-bold text-gray-500 mb-0.5">Batch {batch.batch_number}</p>
+                                <p className="text-sm text-gray-700 font-medium">{batch.description}</p>
+                              </div>
+                              <p className="font-bold text-gray-900">${batch.amount}</p>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {/* Work status */}
+                              {['pending', 'in_progress', 'delivered', 'approved'].map(s => (
+                                <button key={s} onClick={() => updateBatchWorkStatus(batch.id, s)}
+                                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${
+                                    batch.work_status === s ? 'bg-[#1B5FA8] text-white border-[#1B5FA8]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400'
+                                  }`}>
+                                  {s.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                                </button>
+                              ))}
+                              {/* Payment */}
+                              <button onClick={() => updateBatchPayment(batch.id, batch.payment_status === 'paid' ? 'unpaid' : 'paid')}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${
+                                  batch.payment_status === 'paid' ? 'bg-green-100 text-green-700 border-green-300' : 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                                }`}>
+                                {batch.payment_status === 'paid' ? '✓ Paid' : 'Mark Paid'}
+                              </button>
+                              {/* Deliverable */}
+                              <button onClick={() => addDeliverableLink(batch.id)}
+                                className="px-2.5 py-1 rounded-lg text-xs font-semibold border bg-white text-gray-500 border-gray-200 hover:border-[#0D9488] hover:text-[#0D9488] transition-colors">
+                                📥 {batch.deliverable_url ? 'Update Link' : 'Add Link'}
+                              </button>
+                            </div>
+                            {batch.deliverable_url && (
+                              <a href={batch.deliverable_url} target="_blank" rel="noreferrer"
+                                className="text-xs text-[#1B5FA8] hover:underline mt-2 inline-block">
+                                {batch.deliverable_url}
+                              </a>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Messages */}
+                  <div className="bg-white border border-gray-200 rounded-xl p-5">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Messages</p>
+                    {orderMessages.length === 0 ? (
+                      <p className="text-sm text-gray-400 text-center py-4">No messages yet</p>
+                    ) : (
+                      <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
+                        {orderMessages.map(msg => (
+                          <div key={msg.id} className={`flex ${msg.sender_role === 'admin' ? 'justify-end' : 'justify-start'}`}>
+                            <div className={`max-w-xs px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
+                              msg.sender_role === 'admin'
+                                ? 'bg-[#C9943A] text-white rounded-br-sm'
+                                : 'bg-gray-100 text-gray-700 rounded-bl-sm'
+                            }`}>
+                              <p>{msg.message}</p>
+                              <p className={`text-[10px] mt-1 ${msg.sender_role === 'admin' ? 'text-white/60' : 'text-gray-400'}`}>
+                                {msg.sender_role === 'user' ? 'Client · ' : 'You · '}{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <input value={adminReply} onChange={e => setAdminReply(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendAdminReply()}
+                        className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9943A]/20 focus:border-[#C9943A]"
+                        placeholder="Reply to client…" />
+                      <button onClick={sendAdminReply} disabled={sendingReply || !adminReply.trim()}
+                        className="px-4 py-2.5 bg-[#C9943A] hover:bg-[#C9943A]/90 disabled:opacity-40 text-white rounded-xl text-sm font-semibold transition-colors">
+                        Send
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
           </div>
         )}
 
