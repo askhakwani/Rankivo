@@ -489,16 +489,7 @@ function DashboardInner() {
 
         {/* ── HIRE ─────────────────────────────────────────────────────── */}
         {activeTab === 'hire' && (
-          <div className="max-w-2xl">
-            <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">Hire a Writer</h2>
-            <p className="text-gray-500 mb-6 text-sm">Get your AI-generated content polished by a professional human writer.</p>
-            <div className="bg-white border border-gray-200 rounded-xl p-8 text-center shadow-sm">
-              <div className="text-5xl mb-4">✍️</div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Human Writer Marketplace</h3>
-              <p className="text-gray-500 mb-5 text-sm">Connect with professional writers who can polish your AI drafts into publication-ready content.</p>
-              <a href="/contact" className="inline-block bg-[#C9943A] hover:bg-[#C9943A]/90 text-white px-6 py-3 rounded-xl font-semibold transition-colors text-sm">Contact Us to Get Started</a>
-            </div>
-          </div>
+          <HireWriterTab user={user} supabase={supabase} />
         )}
 
         {/* ── SETTINGS ─────────────────────────────────────────────────── */}
@@ -562,6 +553,505 @@ function DashboardInner() {
       </div>
     </div>
   )
+}
+
+// ── Services Data ─────────────────────────────────────────────────────────────
+const SERVICES_LIST = [
+  { id: 'seo-blog',      icon: '✍️', label: 'SEO Blog Writing',     desc: 'Long-form articles built to rank',           href: '/services/seo-blog-writing',     from: '$5/article'  },
+  { id: 'web-copy',      icon: '🖥️', label: 'Website Copywriting',  desc: 'Pages that convert visitors into buyers',    href: '/services/website-copywriting',  from: '$15/page'    },
+  { id: 'social',        icon: '📱', label: 'Social Media Content', desc: 'Human-written posts for every platform',     href: '/services/social-media-content', from: '$1.50/post'  },
+  { id: 'email',         icon: '📧', label: 'Email Sequences',      desc: 'Flows that turn subscribers into customers', href: '/services/email-sequences',       from: '$5/email'    },
+  { id: 'product-desc',  icon: '🛍️', label: 'Product Descriptions', desc: 'Platform-specific copy that sells',         href: '/services/product-descriptions', from: '$3/item'     },
+  { id: 'strategy',      icon: '🗺️', label: 'Content Strategy',     desc: 'Keyword research + content roadmap',         href: '/services/content-strategy',     from: '$29'         },
+  { id: 'video',         icon: '🎬', label: 'Video Scripts',        desc: 'Hooks, structure and CTAs that convert',     href: '/services/video-scripts',        from: '$5/script'   },
+]
+
+const STATUS_CONFIG = {
+  awaiting_brief:  { label: 'Awaiting Brief',  color: 'bg-yellow-100 text-yellow-700 border-yellow-200',  icon: '📋' },
+  brief_received:  { label: 'Brief Received',  color: 'bg-blue-100 text-blue-700 border-blue-200',        icon: '📨' },
+  in_progress:     { label: 'In Progress',     color: 'bg-purple-100 text-purple-700 border-purple-200',  icon: '⚡' },
+  review:          { label: 'Under Review',    color: 'bg-orange-100 text-orange-700 border-orange-200',  icon: '👀' },
+  complete:        { label: 'Complete',        color: 'bg-green-100 text-green-700 border-green-200',     icon: '✅' },
+  cancelled:       { label: 'Cancelled',       color: 'bg-red-100 text-red-700 border-red-200',           icon: '❌' },
+}
+
+const BATCH_STATUS_CONFIG = {
+  pending:     { label: 'Pending',    color: 'text-gray-500'   },
+  in_progress: { label: 'Working',   color: 'text-purple-600' },
+  delivered:   { label: 'Delivered', color: 'text-blue-600'   },
+  approved:    { label: 'Approved',  color: 'text-green-600'  },
+}
+
+// ── HireWriterTab Component ────────────────────────────────────────────────────
+function HireWriterTab({ user, supabase }) {
+  const [view, setView]               = useState('home')     // home | new-order | orders | order-detail
+  const [orders, setOrders]           = useState([])
+  const [ordersLoading, setOrdersLoading] = useState(true)
+  const [selectedOrder, setSelectedOrder] = useState(null)
+  const [batches, setBatches]         = useState([])
+  const [messages, setMessages]       = useState([])
+  const [newMessage, setNewMessage]   = useState('')
+  const [sendingMsg, setSendingMsg]   = useState(false)
+
+  // New order form
+  const [orderForm, setOrderForm] = useState({
+    service: '', description: '', batchDesc: '', batchAmount: '',
+  })
+  const [orderStep, setOrderStep]   = useState(1) // 1=service, 2=details, 3=batch, 4=pay
+  const [submitting, setSubmitting] = useState(false)
+  const [orderError, setOrderError] = useState('')
+
+  useEffect(() => {
+    if (user) fetchOrders()
+  }, [user])
+
+  async function fetchOrders() {
+    setOrdersLoading(true)
+    const { data } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+    setOrders(data || [])
+    setOrdersLoading(false)
+  }
+
+  async function fetchOrderDetail(order) {
+    setSelectedOrder(order)
+    setView('order-detail')
+    const [{ data: b }, { data: m }] = await Promise.all([
+      supabase.from('order_batches').select('*').eq('order_id', order.id).order('batch_number'),
+      supabase.from('order_messages').select('*').eq('order_id', order.id).order('created_at'),
+    ])
+    setBatches(b || [])
+    setMessages(m || [])
+  }
+
+  async function submitOrder() {
+    if (!orderForm.service || !orderForm.description || !orderForm.batchDesc || !orderForm.batchAmount) {
+      setOrderError('Please fill in all fields.')
+      return
+    }
+    const amount = parseFloat(orderForm.batchAmount)
+    if (isNaN(amount) || amount <= 0) {
+      setOrderError('Please enter a valid amount.')
+      return
+    }
+    setSubmitting(true)
+    setOrderError('')
+    try {
+      // Create order
+      const { data: order, error: orderErr } = await supabase.from('orders').insert({
+        user_id:      user.id,
+        user_email:   user.email,
+        service:      orderForm.service,
+        description:  orderForm.description,
+        total_amount: amount,
+        status:       'awaiting_brief',
+        project_id:   '',
+      }).select().single()
+
+      if (orderErr) throw orderErr
+
+      // Create first batch
+      await supabase.from('order_batches').insert({
+        order_id:       order.id,
+        batch_number:   1,
+        description:    orderForm.batchDesc,
+        amount:         amount,
+        payment_status: 'unpaid',
+        work_status:    'pending',
+      })
+
+      await fetchOrders()
+      setOrderForm({ service: '', description: '', batchDesc: '', batchAmount: '' })
+      setOrderStep(1)
+      setView('orders')
+    } catch (e) {
+      setOrderError('Something went wrong. Please try again.')
+    }
+    setSubmitting(false)
+  }
+
+  async function sendMessage() {
+    if (!newMessage.trim() || !selectedOrder) return
+    setSendingMsg(true)
+    await supabase.from('order_messages').insert({
+      order_id:     selectedOrder.id,
+      sender_role:  'user',
+      sender_email: user.email,
+      message:      newMessage.trim(),
+    })
+    setNewMessage('')
+    const { data: m } = await supabase.from('order_messages').select('*').eq('order_id', selectedOrder.id).order('created_at')
+    setMessages(m || [])
+    setSendingMsg(false)
+  }
+
+  async function addBatch() {
+    if (!selectedOrder) return
+    const desc   = prompt('Describe this batch (e.g. "5 blog articles on SEO topics"):')
+    const amount = prompt('Amount for this batch ($):')
+    if (!desc || !amount) return
+    const batchNum = batches.length + 1
+    await supabase.from('order_batches').insert({
+      order_id:       selectedOrder.id,
+      batch_number:   batchNum,
+      description:    desc,
+      amount:         parseFloat(amount),
+      payment_status: 'unpaid',
+      work_status:    'pending',
+    })
+    const { data: b } = await supabase.from('order_batches').select('*').eq('order_id', selectedOrder.id).order('batch_number')
+    setBatches(b || [])
+  }
+
+  // ── HOME VIEW ──────────────────────────────────────────────────────────────
+  if (view === 'home') return (
+    <div className="max-w-4xl">
+      <div className="flex items-start justify-between flex-wrap gap-4 mb-8">
+        <div>
+          <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">Hire a Writer</h2>
+          <p className="text-gray-500 text-sm">Expert-crafted content — SEO optimised, Copyscape verified, delivered to your inbox.</p>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => { fetchOrders(); setView('orders') }}
+            className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-semibold text-gray-600 hover:border-[#1B5FA8] hover:text-[#1B5FA8] transition-colors">
+            My Orders
+          </button>
+          <button onClick={() => setView('new-order')}
+            className="px-4 py-2 rounded-lg bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white text-sm font-semibold transition-colors">
+            + New Order
+          </button>
+        </div>
+      </div>
+
+      {/* Service cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
+        {SERVICES_LIST.map(s => (
+          <div key={s.id} className="bg-white border border-gray-200 rounded-xl p-4 hover:border-[#1B5FA8]/40 hover:shadow-sm transition-all">
+            <div className="flex items-start justify-between mb-2">
+              <span className="text-2xl">{s.icon}</span>
+              <span className="text-xs font-bold text-[#0D9488]">{s.from}</span>
+            </div>
+            <h3 className="font-semibold text-gray-900 text-sm mb-1">{s.label}</h3>
+            <p className="text-xs text-gray-400 mb-3">{s.desc}</p>
+            <div className="flex gap-2">
+              <button onClick={() => { setOrderForm(f => ({ ...f, service: s.label })); setView('new-order') }}
+                className="flex-1 text-center py-1.5 rounded-lg bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white text-xs font-semibold transition-colors">
+                Order
+              </button>
+              <a href={s.href} target="_blank" rel="noreferrer"
+                className="px-2 py-1.5 rounded-lg border border-gray-200 hover:border-gray-300 text-gray-400 hover:text-gray-600 text-xs font-semibold transition-colors">
+                Details
+              </a>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-[#1B5FA8]/5 border border-[#1B5FA8]/20 rounded-xl p-4 text-sm text-gray-500 text-center">
+        All communication via <strong className="text-gray-700">sales@rankivo.co</strong> · We reply within 24 hours · Milestone-based payments
+      </div>
+    </div>
+  )
+
+  // ── NEW ORDER VIEW ─────────────────────────────────────────────────────────
+  if (view === 'new-order') return (
+    <div className="max-w-2xl">
+      <div className="flex items-center gap-3 mb-6">
+        <button onClick={() => setView('home')} className="text-gray-400 hover:text-gray-600 transition-colors">←</button>
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">New Order</h2>
+          <p className="text-gray-500 text-sm">Step {orderStep} of 3</p>
+        </div>
+      </div>
+
+      {/* Progress */}
+      <div className="flex items-center gap-2 mb-8">
+        {['Service', 'Brief', 'First Batch'].map((s, i) => (
+          <div key={s} className="flex items-center gap-2 flex-1">
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+              orderStep > i + 1 ? 'bg-[#0D9488] text-white' : orderStep === i + 1 ? 'bg-[#1B5FA8] text-white' : 'bg-gray-100 text-gray-400'
+            }`}>{orderStep > i + 1 ? '✓' : i + 1}</div>
+            <span className={`text-xs font-medium ${orderStep === i + 1 ? 'text-[#1B5FA8]' : 'text-gray-400'}`}>{s}</span>
+            {i < 2 && <div className="flex-1 h-px bg-gray-200" />}
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+        {/* Step 1 — Service */}
+        {orderStep === 1 && (
+          <div>
+            <h3 className="font-bold text-gray-900 mb-4">Which service do you need?</h3>
+            <div className="space-y-2 mb-6">
+              {SERVICES_LIST.map(s => (
+                <button key={s.id} onClick={() => setOrderForm(f => ({ ...f, service: s.label }))}
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
+                    orderForm.service === s.label ? 'border-[#1B5FA8] bg-[#1B5FA8]/5' : 'border-gray-200 hover:border-gray-300'
+                  }`}>
+                  <span className="text-xl shrink-0">{s.icon}</span>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-gray-800">{s.label}</p>
+                    <p className="text-xs text-gray-400">{s.from}</p>
+                  </div>
+                  {orderForm.service === s.label && <span className="w-5 h-5 rounded-full bg-[#1B5FA8] flex items-center justify-center text-white text-xs font-bold shrink-0">✓</span>}
+                </button>
+              ))}
+            </div>
+            <button onClick={() => orderForm.service && setOrderStep(2)}
+              disabled={!orderForm.service}
+              className="w-full py-3 rounded-xl bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 disabled:opacity-40 text-white font-semibold text-sm transition-colors">
+              Continue →
+            </button>
+          </div>
+        )}
+
+        {/* Step 2 — Brief */}
+        {orderStep === 2 && (
+          <div>
+            <h3 className="font-bold text-gray-900 mb-1">Tell us about your project</h3>
+            <p className="text-sm text-gray-400 mb-4">Selected: <strong className="text-gray-600">{orderForm.service}</strong></p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Project Description *</label>
+              <textarea value={orderForm.description} onChange={e => setOrderForm(f => ({ ...f, description: e.target.value }))}
+                rows={5} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B5FA8]/20 focus:border-[#1B5FA8] resize-none"
+                placeholder="Describe your project — topic, audience, tone, keywords, any specific requirements…" />
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setOrderStep(1)} className="px-4 py-3 rounded-xl border border-gray-200 text-gray-500 text-sm font-semibold hover:border-gray-300 transition-colors">← Back</button>
+              <button onClick={() => orderForm.description && setOrderStep(3)}
+                disabled={!orderForm.description}
+                className="flex-1 py-3 rounded-xl bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 disabled:opacity-40 text-white font-semibold text-sm transition-colors">
+                Continue →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3 — First Batch */}
+        {orderStep === 3 && (
+          <div>
+            <h3 className="font-bold text-gray-900 mb-1">Set your first milestone</h3>
+            <p className="text-sm text-gray-400 mb-4">You only pay for this batch now. Add more batches later as you go.</p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Batch Description *</label>
+              <input value={orderForm.batchDesc} onChange={e => setOrderForm(f => ({ ...f, batchDesc: e.target.value }))}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B5FA8]/20 focus:border-[#1B5FA8]"
+                placeholder="e.g. 5 blog articles on SEO topics, 1,000 words each" />
+            </div>
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Amount ($) *</label>
+              <input type="number" value={orderForm.batchAmount} onChange={e => setOrderForm(f => ({ ...f, batchAmount: e.target.value }))}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B5FA8]/20 focus:border-[#1B5FA8]"
+                placeholder="e.g. 25" min="1" />
+              <p className="text-xs text-gray-400 mt-1">We'll send you a Paddle payment link after confirming your order via email.</p>
+            </div>
+            {orderError && <p className="text-red-500 text-sm mb-3">{orderError}</p>}
+            <div className="flex gap-3">
+              <button onClick={() => setOrderStep(2)} className="px-4 py-3 rounded-xl border border-gray-200 text-gray-500 text-sm font-semibold hover:border-gray-300 transition-colors">← Back</button>
+              <button onClick={submitOrder} disabled={submitting}
+                className="flex-1 py-3 rounded-xl bg-[#0D9488] hover:bg-[#0D9488]/90 disabled:opacity-50 text-white font-bold text-sm transition-colors">
+                {submitting ? 'Placing Order…' : 'Place Order →'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+
+  // ── ORDERS LIST VIEW ───────────────────────────────────────────────────────
+  if (view === 'orders') return (
+    <div className="max-w-4xl">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setView('home')} className="text-gray-400 hover:text-gray-600 transition-colors">←</button>
+          <h2 className="text-xl font-bold text-gray-900">My Orders</h2>
+        </div>
+        <button onClick={() => setView('new-order')}
+          className="px-4 py-2 rounded-lg bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white text-sm font-semibold transition-colors">
+          + New Order
+        </button>
+      </div>
+
+      {ordersLoading ? (
+        <div className="text-center py-12 text-gray-400 text-sm">Loading orders…</div>
+      ) : orders.length === 0 ? (
+        <div className="text-center py-12 bg-white border border-gray-200 rounded-xl">
+          <div className="text-4xl mb-3">📋</div>
+          <p className="font-semibold text-gray-700 mb-1">No orders yet</p>
+          <p className="text-sm text-gray-400 mb-4">Place your first order to get started</p>
+          <button onClick={() => setView('new-order')} className="px-5 py-2 bg-[#1B5FA8] text-white rounded-lg text-sm font-semibold hover:bg-[#1B5FA8]/90 transition-colors">
+            + New Order
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {orders.map(order => {
+            const st = STATUS_CONFIG[order.status] || STATUS_CONFIG.awaiting_brief
+            return (
+              <div key={order.id} onClick={() => fetchOrderDetail(order)}
+                className="bg-white border border-gray-200 hover:border-[#1B5FA8]/40 rounded-xl p-5 cursor-pointer transition-all hover:shadow-sm">
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-bold text-gray-400 font-mono">{order.project_id}</span>
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${st.color}`}>
+                        {st.icon} {st.label}
+                      </span>
+                    </div>
+                    <p className="font-semibold text-gray-900 text-sm">{order.service}</p>
+                    <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{order.description}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="font-bold text-gray-900">${order.total_amount}</p>
+                    <p className="text-xs text-gray-400">{new Date(order.created_at).toLocaleDateString()}</p>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+
+  // ── ORDER DETAIL VIEW ──────────────────────────────────────────────────────
+  if (view === 'order-detail' && selectedOrder) {
+    const st = STATUS_CONFIG[selectedOrder.status] || STATUS_CONFIG.awaiting_brief
+    return (
+      <div className="max-w-3xl">
+        <div className="flex items-center gap-3 mb-6">
+          <button onClick={() => { setView('orders'); fetchOrders() }} className="text-gray-400 hover:text-gray-600 transition-colors">←</button>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-bold text-gray-900">{selectedOrder.service}</h2>
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${st.color}`}>{st.icon} {st.label}</span>
+            </div>
+            <p className="text-xs text-gray-400 font-mono">{selectedOrder.project_id}</p>
+          </div>
+        </div>
+
+        {/* Milestone tracker */}
+        <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Project Timeline</p>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            {['awaiting_brief', 'brief_received', 'in_progress', 'review', 'complete'].map((s, i, arr) => {
+              const cfg    = STATUS_CONFIG[s]
+              const active = selectedOrder.status === s
+              const done   = arr.indexOf(selectedOrder.status) > i
+              return (
+                <div key={s} className="flex items-center gap-2">
+                  <div className={`flex flex-col items-center`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm border-2 font-bold ${
+                      done   ? 'bg-[#0D9488] border-[#0D9488] text-white' :
+                      active ? 'bg-[#1B5FA8] border-[#1B5FA8] text-white' :
+                               'bg-white border-gray-200 text-gray-300'
+                    }`}>{done ? '✓' : cfg.icon}</div>
+                    <p className={`text-[10px] mt-1 font-medium text-center ${active ? 'text-[#1B5FA8]' : done ? 'text-[#0D9488]' : 'text-gray-300'}`}>
+                      {cfg.label}
+                    </p>
+                  </div>
+                  {i < arr.length - 1 && <div className={`h-px w-6 mb-4 ${done ? 'bg-[#0D9488]' : 'bg-gray-200'}`} />}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Project brief */}
+        <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Your Brief</p>
+          <p className="text-sm text-gray-600 leading-relaxed">{selectedOrder.description}</p>
+        </div>
+
+        {/* Batches */}
+        <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Milestones / Batches</p>
+            <button onClick={addBatch} className="text-xs font-semibold text-[#1B5FA8] hover:underline">+ Add Batch</button>
+          </div>
+          {batches.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-4">No batches yet</p>
+          ) : (
+            <div className="space-y-3">
+              {batches.map(batch => {
+                const ws = BATCH_STATUS_CONFIG[batch.work_status]
+                return (
+                  <div key={batch.id} className="flex items-start justify-between gap-4 p-3 bg-gray-50 rounded-xl">
+                    <div>
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-xs font-bold text-gray-500">Batch {batch.batch_number}</span>
+                        <span className={`text-xs font-semibold ${ws.color}`}>{ws.label}</span>
+                      </div>
+                      <p className="text-sm text-gray-700">{batch.description}</p>
+                      {batch.deliverable_url && (
+                        <a href={batch.deliverable_url} target="_blank" rel="noreferrer"
+                          className="text-xs text-[#1B5FA8] hover:underline font-semibold mt-1 inline-block">
+                          📥 Download Deliverable
+                        </a>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="font-bold text-gray-900">${batch.amount}</p>
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                        batch.payment_status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                      }`}>
+                        {batch.payment_status === 'paid' ? '✓ Paid' : 'Unpaid'}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+          <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between text-sm">
+            <span className="text-gray-500">Total paid</span>
+            <span className="font-bold text-gray-900">${selectedOrder.paid_amount || 0} / ${selectedOrder.total_amount}</span>
+          </div>
+        </div>
+
+        {/* Messages */}
+        <div className="bg-white border border-gray-200 rounded-xl p-5">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Messages</p>
+          {messages.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-4">No messages yet — send us a note below</p>
+          ) : (
+            <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
+              {messages.map(msg => (
+                <div key={msg.id} className={`flex ${msg.sender_role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-xs px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
+                    msg.sender_role === 'user'
+                      ? 'bg-[#1B5FA8] text-white rounded-br-sm'
+                      : 'bg-gray-100 text-gray-700 rounded-bl-sm'
+                  }`}>
+                    <p>{msg.message}</p>
+                    <p className={`text-[10px] mt-1 ${msg.sender_role === 'user' ? 'text-white/60' : 'text-gray-400'}`}>
+                      {msg.sender_role === 'admin' ? 'Rankivo Team · ' : ''}{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <input value={newMessage} onChange={e => setNewMessage(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+              className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B5FA8]/20 focus:border-[#1B5FA8]"
+              placeholder="Type a message…" />
+            <button onClick={sendMessage} disabled={sendingMsg || !newMessage.trim()}
+              className="px-4 py-2.5 bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 disabled:opacity-40 text-white rounded-xl text-sm font-semibold transition-colors">
+              Send
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return null
 }
 
 export default function Dashboard() {
