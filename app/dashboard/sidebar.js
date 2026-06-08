@@ -83,7 +83,7 @@ export default function Sidebar({ activeTab, setActiveTab, user, profile, isAdmi
         <div>
           <p className="text-xs text-gray-400 font-medium mb-2 px-1 uppercase tracking-wider">Human Services</p>
           <ul className="space-y-1">
-            {navItem('hire', 'Hire a Writer', '✍️')}
+            {toolPageItem('/services/human-writing', 'Hire a Writer', '✍️')}
           </ul>
         </div>
 
