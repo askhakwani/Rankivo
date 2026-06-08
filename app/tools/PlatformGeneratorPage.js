@@ -532,8 +532,6 @@ export default function PlatformGeneratorPage({ config }) {
 
               {/* Tips */}
               {tips.length > 0 && (
-              {/* Tips */}
-              {tips.length > 0 && (
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mt-6">
                   <h2 className="text-base font-bold text-[#1B5FA8] mb-4">💡 Tips for Better {platform} Content</h2>
                   <ul className="space-y-3">
