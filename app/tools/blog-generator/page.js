@@ -402,6 +402,26 @@ export default function BlogGeneratorPage() {
               )}
             </div>
 
+            {/* How It Works */}
+            <div className="mt-6 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <h2 className="text-base font-bold text-[#1B5FA8] mb-6">How the AI Blog Generator Works</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                {[
+                  { step: '1', icon: '✍️', title: 'Enter Your Topic', desc: 'Type your blog topic, add target keywords, choose your tone, audience and preferred length — short, medium or long.' },
+                  { step: '2', icon: '⚡', title: 'AI Writes Your Post', desc: 'Our AI generates a fully structured blog post with an H1, subheadings, body content, meta title and meta description.' },
+                  { step: '3', icon: '🚀', title: 'Copy and Publish', desc: 'Copy your content, check the SEO score, make any edits and publish directly to your blog or CMS.' },
+                ].map(({ step, icon, title, desc }) => (
+                  <div key={step} className="flex flex-col items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-[#1B5FA8] text-white text-sm font-bold flex items-center justify-center shrink-0">{step}</div>
+                    <div>
+                      <p className="text-sm font-bold text-gray-800 mb-1">{icon} {title}</p>
+                      <p className="text-sm text-gray-500">{desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* FAQs */}
             <div className="mt-6 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <h2 className="text-base font-bold text-[#1B5FA8] mb-4">❓ Frequently Asked Questions</h2>
