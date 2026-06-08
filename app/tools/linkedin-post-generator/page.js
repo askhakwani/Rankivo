@@ -30,6 +30,7 @@ export default function LinkedInPostGenerator() {
         { q: 'Can I include a link in my LinkedIn post?', a: 'Yes. Add your link and it will be woven naturally into the post content.' },
         { q: 'Is this free to use?', a: 'Preview one variation free. Create a free account to unlock all 4 variations.' },
       ],
+humanServiceLink: '/services/human-writing',   // ← add this line
     }} />
   )
 }

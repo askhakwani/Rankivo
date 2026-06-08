@@ -29,6 +29,7 @@ export default function XPostGenerator() {
         { q: 'Can I add a link to my X post?', a: 'Yes — add your URL in the link field and it will appear naturally in the generated post.' },
         { q: 'Is this X post generator free?', a: 'Preview one variation for free. Sign up for a free account to unlock all 4 variations.' },
       ],
+humanServiceLink: '/services/human-writing',   // ← add this line
     }} />
   )
 }

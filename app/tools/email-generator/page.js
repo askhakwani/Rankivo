@@ -30,6 +30,7 @@ export default function EmailGenerator() {
         { q: 'Can I include a link in the email?', a: 'Yes — add your URL in the link field and the AI will include it as a CTA in the email body.' },
         { q: 'Is this email generator free?', a: 'Yes — sign up for a free account to generate and copy full emails.' },
       ],
+humanServiceLink: '/services/human-writing',   // ← add this line
     }} />
   )
 }

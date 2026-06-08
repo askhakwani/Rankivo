@@ -30,6 +30,7 @@ export default function TikTokCaptionGenerator() {
         { q: 'Are TikTok captions important for views?', a: 'Yes — captions with strong hooks and relevant hashtags help TikTok\'s algorithm surface your content to the right audience.' },
         { q: 'Is this tool free?', a: 'Preview one caption free. Sign up for free to unlock all 4 variations.' },
       ],
+humanServiceLink: '/services/human-writing',   // ← add this line
     }} />
   )
 }

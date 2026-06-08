@@ -516,6 +516,22 @@ export default function PlatformGeneratorPage({ config }) {
                 </div>
               )}
 
+{/* Human Service Cross-link */}
+              {config.humanServiceLink && (
+                <div className="bg-gradient-to-r from-[#1B5FA8]/5 to-[#0D9488]/5 border border-[#0D9488]/20 rounded-2xl p-5 mt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-bold text-gray-800 mb-0.5">✍️ Want this done for you by an expert?</p>
+                    <p className="text-sm text-gray-500">Our human writers deliver SEO-optimised, expert-crafted content — with a Copyscape report included.</p>
+                  </div>
+                  <a href={config.humanServiceLink}
+                    className="shrink-0 bg-[#1B5FA8] hover:bg-[#0D9488] text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-colors whitespace-nowrap">
+                    View Human Writing Service →
+                  </a>
+                </div>
+              )}
+
+              {/* Tips */}
+              {tips.length > 0 && (
               {/* Tips */}
               {tips.length > 0 && (
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mt-6">

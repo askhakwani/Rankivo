@@ -30,6 +30,8 @@ export default function AdCopyGenerator() {
         { q: 'Can I include a landing page link in the ad copy?', a: 'Yes — add your URL and it will be included in the CTA line of each variation.' },
         { q: 'Is this ad copy generator free?', a: 'Preview one variation free. Sign up for a free account to unlock all 4 variations.' },
       ],
+
+humanServiceLink: '/services/human-writing',   // ← add this line
     }} />
   )
 }

@@ -30,6 +30,7 @@ export default function YouTubeScriptGenerator() {
         { q: 'Is a YouTube script generator useful for beginners?', a: 'Absolutely. A script helps you stay on track, reduces filler words, and makes editing much easier.' },
         { q: 'Is this tool free?', a: 'Yes — sign up free to generate and copy full YouTube scripts.' },
       ],
+humanServiceLink: '/services/human-writing',   // ← add this line
     }} />
   )
 }

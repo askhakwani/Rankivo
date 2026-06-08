@@ -30,6 +30,7 @@ export default function InstagramCaptionGenerator() {
         { q: 'Is this Instagram caption generator free?', a: 'Yes, you can preview one caption for free. Sign up for a free account to unlock all 4 variations.' },
         { q: 'What makes a good Instagram caption?', a: 'A strong hook, relevant emojis, a clear CTA, and targeted hashtags. This tool handles all of that automatically.' },
       ],
+humanServiceLink: '/services/human-writing',   // ← add this line
     }} />
   )
 }

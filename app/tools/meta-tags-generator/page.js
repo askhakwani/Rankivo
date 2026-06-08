@@ -244,6 +244,18 @@ export default function MetaTagsGeneratorPage() {
                 </div>
               )}
 
+              {/* Human Writing Cross-link */}
+              <div className="bg-gradient-to-r from-[#1B5FA8]/5 to-[#0D9488]/5 border border-[#0D9488]/20 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-bold text-gray-800 mb-0.5">✍️ Want this done for you by an expert?</p>
+                  <p className="text-sm text-gray-500">Our human writers deliver SEO-optimised, expert-crafted content — with a Copyscape report included.</p>
+                </div>
+                <Link href="/services/seo-blog-writing"
+                  className="shrink-0 bg-[#1B5FA8] hover:bg-[#0D9488] text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-colors whitespace-nowrap">
+                  View Human Writing Service →
+                </Link>
+              </div>
+
               {/* CTA */}
               <div className="bg-gradient-to-r from-[#1B5FA8] to-[#0D9488] rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div>
