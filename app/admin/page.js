@@ -373,6 +373,13 @@ function AdminPanelInner() {
   const [sendingReply, setSendingReply]   = useState(false)
   const [statusFilter, setStatusFilter]   = useState('all')
   const [orderView, setOrderView]         = useState('list')
+  const [orderSearch, setOrderSearch]     = useState('')
+  const [orderSort, setOrderSort]         = useState('newest')
+  const [editingOrder, setEditingOrder]   = useState(null)
+  const [editingBatch, setEditingBatch]   = useState(null)
+  const [addingBatch, setAddingBatch]     = useState(false)
+  const [newBatchForm, setNewBatchForm]   = useState({ description: '', amount: '' })
+  const [orderStats, setOrderStats]       = useState({ total: 0, pending: 0, inProgress: 0, complete: 0, revenue: 0 })
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -429,7 +436,15 @@ function AdminPanelInner() {
   async function loadOrders() {
     setOrdersLoading(true)
     const { data } = await supabase.from('orders').select('*').order('created_at', { ascending: false })
-    setOrders(data || [])
+    const all = data || []
+    setOrders(all)
+    setOrderStats({
+      total:      all.length,
+      pending:    all.filter(o => ['awaiting_brief','brief_received'].includes(o.status)).length,
+      inProgress: all.filter(o => ['in_progress','review'].includes(o.status)).length,
+      complete:   all.filter(o => o.status === 'complete').length,
+      revenue:    all.reduce((sum, o) => sum + Number(o.paid_amount || 0), 0),
+    })
     setOrdersLoading(false)
   }
 
@@ -450,18 +465,65 @@ function AdminPanelInner() {
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o))
   }
 
+  async function saveOrderEdit() {
+    if (!editingOrder) return
+    await supabase.from('orders').update({
+      service:      editingOrder.service,
+      description:  editingOrder.description,
+      total_amount: editingOrder.total_amount,
+    }).eq('id', editingOrder.id)
+    setSelectedOrder(prev => ({ ...prev, ...editingOrder }))
+    setOrders(prev => prev.map(o => o.id === editingOrder.id ? { ...o, ...editingOrder } : o))
+    setEditingOrder(null)
+  }
+
+  async function deleteOrder(orderId) {
+    if (!confirm('Delete this order permanently? This cannot be undone.')) return
+    await supabase.from('order_messages').delete().eq('order_id', orderId)
+    await supabase.from('order_batches').delete().eq('order_id', orderId)
+    await supabase.from('orders').delete().eq('id', orderId)
+    setOrders(prev => prev.filter(o => o.id !== orderId))
+    setOrderView('list')
+    setSelectedOrder(null)
+    loadOrders()
+  }
+
   async function updateBatchWorkStatus(batchId, work_status) {
-    await supabase.from('order_batches').update({ work_status, ...(work_status === 'delivered' ? { delivered_at: new Date().toISOString() } : {}), ...(work_status === 'approved' ? { approved_at: new Date().toISOString() } : {}) }).eq('id', batchId)
+    await supabase.from('order_batches').update({
+      work_status,
+      ...(work_status === 'delivered' ? { delivered_at: new Date().toISOString() } : {}),
+      ...(work_status === 'approved'  ? { approved_at:  new Date().toISOString() } : {}),
+    }).eq('id', batchId)
     setOrderBatches(prev => prev.map(b => b.id === batchId ? { ...b, work_status } : b))
   }
 
   async function updateBatchPayment(batchId, payment_status) {
-    await supabase.from('order_batches').update({ payment_status, ...(payment_status === 'paid' ? { paid_at: new Date().toISOString() } : {}) }).eq('id', batchId)
-    setOrderBatches(prev => prev.map(b => b.id === batchId ? { ...b, payment_status } : b))
-    // Update paid_amount on order
-    const paid = orderBatches.filter(b => b.id === batchId ? payment_status === 'paid' : b.payment_status === 'paid').reduce((sum, b) => sum + Number(b.amount), 0)
+    await supabase.from('order_batches').update({
+      payment_status,
+      ...(payment_status === 'paid'     ? { paid_at: new Date().toISOString() } : {}),
+    }).eq('id', batchId)
+    const updated = orderBatches.map(b => b.id === batchId ? { ...b, payment_status } : b)
+    setOrderBatches(updated)
+    const paid = updated.filter(b => b.payment_status === 'paid').reduce((sum, b) => sum + Number(b.amount), 0)
     await supabase.from('orders').update({ paid_amount: paid }).eq('id', selectedOrder.id)
     setSelectedOrder(prev => ({ ...prev, paid_amount: paid }))
+    setOrders(prev => prev.map(o => o.id === selectedOrder.id ? { ...o, paid_amount: paid } : o))
+  }
+
+  async function saveBatchEdit() {
+    if (!editingBatch) return
+    await supabase.from('order_batches').update({
+      description: editingBatch.description,
+      amount:      editingBatch.amount,
+    }).eq('id', editingBatch.id)
+    setOrderBatches(prev => prev.map(b => b.id === editingBatch.id ? { ...b, ...editingBatch } : b))
+    setEditingBatch(null)
+  }
+
+  async function deleteBatch(batchId) {
+    if (!confirm('Delete this batch?')) return
+    await supabase.from('order_batches').delete().eq('id', batchId)
+    setOrderBatches(prev => prev.filter(b => b.id !== batchId))
   }
 
   async function addDeliverableLink(batchId) {
@@ -471,12 +533,42 @@ function AdminPanelInner() {
     setOrderBatches(prev => prev.map(b => b.id === batchId ? { ...b, deliverable_url: url } : b))
   }
 
-  async function sendAdminReply() {
+  async function addAdminBatch() {
+    if (!newBatchForm.description || !newBatchForm.amount) return
+    const batchNum = orderBatches.length + 1
+    const { data } = await supabase.from('order_batches').insert({
+      order_id:       selectedOrder.id,
+      batch_number:   batchNum,
+      description:    newBatchForm.description,
+      amount:         parseFloat(newBatchForm.amount),
+      payment_status: 'unpaid',
+      work_status:    'pending',
+    }).select().single()
+    if (data) setOrderBatches(prev => [...prev, data])
+    setNewBatchForm({ description: '', amount: '' })
+    setAddingBatch(false)
+  }
+
+  async function sendPaymentRequest(batch) {
+    const paddleLink = prompt('Enter your Paddle payment link for this batch:')
+    if (!paddleLink) return
+    const msg = `💳 Payment Request — Batch ${batch.batch_number}\n\nAmount: $${batch.amount}\nFor: ${batch.description}\n\nPlease complete your payment here:\n${paddleLink}\n\nOnce payment is confirmed, we'll begin work on this batch.`
+    await supabase.from('order_messages').insert({
+      order_id:     selectedOrder.id,
+      sender_role:  'admin',
+      sender_email: user.email,
+      message:      msg,
+    })
+    const { data: m } = await supabase.from('order_messages').select('*').eq('order_id', selectedOrder.id).order('created_at')
+    setOrderMessages(m || [])
+  }
+
+  async function sendAdminReply(isInternal = false) {
     if (!adminReply.trim() || !selectedOrder) return
     setSendingReply(true)
     await supabase.from('order_messages').insert({
       order_id:     selectedOrder.id,
-      sender_role:  'admin',
+      sender_role:  isInternal ? 'admin_internal' : 'admin',
       sender_email: user.email,
       message:      adminReply.trim(),
     })
@@ -484,6 +576,12 @@ function AdminPanelInner() {
     const { data: m } = await supabase.from('order_messages').select('*').eq('order_id', selectedOrder.id).order('created_at')
     setOrderMessages(m || [])
     setSendingReply(false)
+  }
+
+  async function deleteMessage(msgId) {
+    if (!confirm('Delete this message?')) return
+    await supabase.from('order_messages').delete().eq('id', msgId)
+    setOrderMessages(prev => prev.filter(m => m.id !== msgId))
   }
 
   async function changePlan(userId, plan) {
@@ -1146,93 +1244,176 @@ function AdminPanelInner() {
 
         {activeTab === 'orders' && (
           <div className="max-w-5xl">
+
+            {/* ── ORDER STATS ── */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+              {[
+                { label: 'Total Orders',  value: orderStats.total,      color: 'text-[#1B5FA8]',  bg: 'bg-[#1B5FA8]/5 border-[#1B5FA8]/20'   },
+                { label: 'Pending',       value: orderStats.pending,     color: 'text-yellow-600', bg: 'bg-yellow-50 border-yellow-200'         },
+                { label: 'In Progress',   value: orderStats.inProgress,  color: 'text-purple-600', bg: 'bg-purple-50 border-purple-200'         },
+                { label: 'Complete',      value: orderStats.complete,    color: 'text-green-600',  bg: 'bg-green-50 border-green-200'           },
+                { label: 'Total Revenue', value: `$${orderStats.revenue}`, color: 'text-[#C9943A]', bg: 'bg-[#C9943A]/5 border-[#C9943A]/20'  },
+              ].map(s => (
+                <div key={s.label} className={`rounded-xl border p-4 ${s.bg}`}>
+                  <p className="text-xs text-gray-500 mb-1">{s.label}</p>
+                  <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* ── ORDER LIST VIEW ── */}
             {orderView === 'list' && (
               <>
-                <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
-                  <h2 className="text-xl font-bold text-gray-900">All Orders</h2>
-                  <div className="flex flex-wrap gap-2">
-                    {['all', 'awaiting_brief', 'brief_received', 'in_progress', 'review', 'complete', 'cancelled'].map(s => (
-                      <button key={s} onClick={() => setStatusFilter(s)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
-                          statusFilter === s ? 'bg-[#1B5FA8] text-white border-[#1B5FA8]' : 'bg-white text-gray-500 border-gray-200 hover:border-[#1B5FA8]/40'
-                        }`}>
-                        {s === 'all' ? 'All' : s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                      </button>
-                    ))}
-                  </div>
+                <div className="flex flex-wrap items-center gap-3 mb-4">
+                  {/* Search */}
+                  <input value={orderSearch} onChange={e => setOrderSearch(e.target.value)}
+                    className="flex-1 min-w-48 border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B5FA8]/20 focus:border-[#1B5FA8]"
+                    placeholder="Search by project ID or email…" />
+                  {/* Sort */}
+                  <select value={orderSort} onChange={e => setOrderSort(e.target.value)}
+                    className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none bg-white text-gray-600">
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="amount_high">Amount High → Low</option>
+                    <option value="amount_low">Amount Low → High</option>
+                  </select>
+                </div>
+
+                {/* Status filters */}
+                <div className="flex flex-wrap gap-2 mb-5">
+                  {['all','awaiting_brief','brief_received','in_progress','review','complete','cancelled'].map(s => (
+                    <button key={s} onClick={() => setStatusFilter(s)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                        statusFilter === s ? 'bg-[#1B5FA8] text-white border-[#1B5FA8]' : 'bg-white text-gray-500 border-gray-200 hover:border-[#1B5FA8]/40'
+                      }`}>
+                      {s === 'all' ? 'All' : s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                    </button>
+                  ))}
                 </div>
 
                 {ordersLoading ? (
                   <div className="text-center py-12 text-gray-400 text-sm">Loading orders…</div>
-                ) : orders.filter(o => statusFilter === 'all' || o.status === statusFilter).length === 0 ? (
-                  <div className="text-center py-12 bg-white border border-gray-200 rounded-xl">
-                    <div className="text-4xl mb-3">📋</div>
-                    <p className="font-semibold text-gray-700 mb-1">No orders found</p>
-                    <p className="text-sm text-gray-400">Orders will appear here when clients place them</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {orders.filter(o => statusFilter === 'all' || o.status === statusFilter).map(order => {
-                      const STATUS_CONFIG = {
-                        awaiting_brief:  { label: 'Awaiting Brief',  color: 'bg-yellow-100 text-yellow-700 border-yellow-200',  icon: '📋' },
-                        brief_received:  { label: 'Brief Received',  color: 'bg-blue-100 text-blue-700 border-blue-200',        icon: '📨' },
-                        in_progress:     { label: 'In Progress',     color: 'bg-purple-100 text-purple-700 border-purple-200',  icon: '⚡' },
-                        review:          { label: 'Under Review',    color: 'bg-orange-100 text-orange-700 border-orange-200',  icon: '👀' },
-                        complete:        { label: 'Complete',        color: 'bg-green-100 text-green-700 border-green-200',     icon: '✅' },
-                        cancelled:       { label: 'Cancelled',       color: 'bg-red-100 text-red-700 border-red-200',           icon: '❌' },
-                      }
-                      const st = STATUS_CONFIG[order.status] || STATUS_CONFIG.awaiting_brief
-                      return (
-                        <div key={order.id} onClick={() => openOrderDetail(order)}
-                          className="bg-white border border-gray-200 hover:border-[#1B5FA8]/40 rounded-xl p-5 cursor-pointer transition-all hover:shadow-sm">
-                          <div className="flex items-start justify-between gap-4 flex-wrap">
-                            <div>
-                              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                <span className="text-xs font-bold text-gray-400 font-mono">{order.project_id}</span>
-                                <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${st.color}`}>{st.icon} {st.label}</span>
+                ) : (() => {
+                  const STATUS_CONFIG = {
+                    awaiting_brief:  { label: 'Awaiting Brief', color: 'bg-yellow-100 text-yellow-700 border-yellow-200', icon: '📋' },
+                    brief_received:  { label: 'Brief Received', color: 'bg-blue-100 text-blue-700 border-blue-200',       icon: '📨' },
+                    in_progress:     { label: 'In Progress',    color: 'bg-purple-100 text-purple-700 border-purple-200', icon: '⚡' },
+                    review:          { label: 'Under Review',   color: 'bg-orange-100 text-orange-700 border-orange-200', icon: '👀' },
+                    complete:        { label: 'Complete',       color: 'bg-green-100 text-green-700 border-green-200',    icon: '✅' },
+                    cancelled:       { label: 'Cancelled',      color: 'bg-red-100 text-red-700 border-red-200',          icon: '❌' },
+                  }
+                  const filtered = orders
+                    .filter(o => statusFilter === 'all' || o.status === statusFilter)
+                    .filter(o => !orderSearch || o.project_id?.toLowerCase().includes(orderSearch.toLowerCase()) || o.user_email?.toLowerCase().includes(orderSearch.toLowerCase()))
+                    .sort((a, b) => {
+                      if (orderSort === 'newest')      return new Date(b.created_at) - new Date(a.created_at)
+                      if (orderSort === 'oldest')      return new Date(a.created_at) - new Date(b.created_at)
+                      if (orderSort === 'amount_high') return Number(b.total_amount) - Number(a.total_amount)
+                      if (orderSort === 'amount_low')  return Number(a.total_amount) - Number(b.total_amount)
+                      return 0
+                    })
+                  return filtered.length === 0 ? (
+                    <div className="text-center py-12 bg-white border border-gray-200 rounded-xl">
+                      <div className="text-4xl mb-3">📋</div>
+                      <p className="font-semibold text-gray-700 mb-1">No orders found</p>
+                      <p className="text-sm text-gray-400">Try adjusting your filters or search</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {filtered.map(order => {
+                        const st = STATUS_CONFIG[order.status] || STATUS_CONFIG.awaiting_brief
+                        return (
+                          <div key={order.id} onClick={() => openOrderDetail(order)}
+                            className="bg-white border border-gray-200 hover:border-[#1B5FA8]/40 rounded-xl p-5 cursor-pointer transition-all hover:shadow-sm">
+                            <div className="flex items-start justify-between gap-4 flex-wrap">
+                              <div>
+                                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                  <span className="text-xs font-bold text-gray-400 font-mono">{order.project_id}</span>
+                                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${st.color}`}>{st.icon} {st.label}</span>
+                                </div>
+                                <p className="font-semibold text-gray-900 text-sm">{order.service}</p>
+                                <p className="text-xs text-gray-400 mt-0.5">{order.user_email}</p>
+                                <p className="text-xs text-gray-400 line-clamp-1 mt-0.5">{order.description}</p>
                               </div>
-                              <p className="font-semibold text-gray-900 text-sm">{order.service}</p>
-                              <p className="text-xs text-gray-400 mt-0.5">{order.user_email}</p>
-                              <p className="text-xs text-gray-400 line-clamp-1 mt-0.5">{order.description}</p>
-                            </div>
-                            <div className="text-right shrink-0">
-                              <p className="font-bold text-gray-900">${order.total_amount}</p>
-                              <p className="text-xs text-[#0D9488] font-semibold">Paid: ${order.paid_amount || 0}</p>
-                              <p className="text-xs text-gray-400 mt-0.5">{new Date(order.created_at).toLocaleDateString()}</p>
+                              <div className="text-right shrink-0">
+                                <p className="font-bold text-gray-900">${order.total_amount}</p>
+                                <p className="text-xs text-[#0D9488] font-semibold">Paid: ${order.paid_amount || 0}</p>
+                                <p className="text-xs text-gray-400 mt-0.5">{new Date(order.created_at).toLocaleDateString()}</p>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
+                        )
+                      })}
+                    </div>
+                  )
+                })()}
               </>
             )}
 
+            {/* ── ORDER DETAIL VIEW ── */}
             {orderView === 'detail' && selectedOrder && (() => {
               const STATUS_CONFIG = {
-                awaiting_brief:  { label: 'Awaiting Brief',  color: 'bg-yellow-100 text-yellow-700 border-yellow-200',  icon: '📋' },
-                brief_received:  { label: 'Brief Received',  color: 'bg-blue-100 text-blue-700 border-blue-200',        icon: '📨' },
-                in_progress:     { label: 'In Progress',     color: 'bg-purple-100 text-purple-700 border-purple-200',  icon: '⚡' },
-                review:          { label: 'Under Review',    color: 'bg-orange-100 text-orange-700 border-orange-200',  icon: '👀' },
-                complete:        { label: 'Complete',        color: 'bg-green-100 text-green-700 border-green-200',     icon: '✅' },
-                cancelled:       { label: 'Cancelled',       color: 'bg-red-100 text-red-700 border-red-200',           icon: '❌' },
+                awaiting_brief:  { label: 'Awaiting Brief', color: 'bg-yellow-100 text-yellow-700 border-yellow-200', icon: '📋' },
+                brief_received:  { label: 'Brief Received', color: 'bg-blue-100 text-blue-700 border-blue-200',       icon: '📨' },
+                in_progress:     { label: 'In Progress',    color: 'bg-purple-100 text-purple-700 border-purple-200', icon: '⚡' },
+                review:          { label: 'Under Review',   color: 'bg-orange-100 text-orange-700 border-orange-200', icon: '👀' },
+                complete:        { label: 'Complete',       color: 'bg-green-100 text-green-700 border-green-200',    icon: '✅' },
+                cancelled:       { label: 'Cancelled',      color: 'bg-red-100 text-red-700 border-red-200',          icon: '❌' },
               }
               const st = STATUS_CONFIG[selectedOrder.status] || STATUS_CONFIG.awaiting_brief
               return (
                 <div>
                   {/* Header */}
-                  <div className="flex items-center gap-3 mb-5">
-                    <button onClick={() => { setOrderView('list'); setSelectedOrder(null) }}
-                      className="text-gray-400 hover:text-gray-600 transition-colors">←</button>
+                  <div className="flex items-start gap-3 mb-5 flex-wrap">
+                    <button onClick={() => { setOrderView('list'); setSelectedOrder(null); setEditingOrder(null); setEditingBatch(null) }}
+                      className="text-gray-400 hover:text-gray-600 transition-colors mt-1">←</button>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h2 className="text-lg font-bold text-gray-900">{selectedOrder.service}</h2>
                         <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${st.color}`}>{st.icon} {st.label}</span>
                       </div>
                       <p className="text-xs text-gray-400 font-mono">{selectedOrder.project_id} · {selectedOrder.user_email}</p>
+                      <p className="text-xs text-gray-400">{new Date(selectedOrder.created_at).toLocaleDateString()}</p>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <button onClick={() => setEditingOrder({ ...selectedOrder })}
+                        className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-500 hover:border-[#1B5FA8] hover:text-[#1B5FA8] transition-colors">
+                        ✏️ Edit
+                      </button>
+                      <button onClick={() => deleteOrder(selectedOrder.id)}
+                        className="px-3 py-1.5 rounded-lg border border-red-200 text-xs font-semibold text-red-400 hover:bg-red-50 transition-colors">
+                        🗑️ Delete
+                      </button>
                     </div>
                   </div>
+
+                  {/* Edit order modal */}
+                  {editingOrder && (
+                    <div className="bg-[#1B5FA8]/5 border border-[#1B5FA8]/20 rounded-xl p-5 mb-4">
+                      <p className="text-xs font-bold text-[#1B5FA8] uppercase tracking-widest mb-3">Edit Order</p>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Service</label>
+                          <input value={editingOrder.service} onChange={e => setEditingOrder(p => ({ ...p, service: e.target.value }))}
+                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1B5FA8]" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Description</label>
+                          <textarea value={editingOrder.description} onChange={e => setEditingOrder(p => ({ ...p, description: e.target.value }))}
+                            rows={3} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1B5FA8] resize-none" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Total Amount ($)</label>
+                          <input type="number" value={editingOrder.total_amount} onChange={e => setEditingOrder(p => ({ ...p, total_amount: e.target.value }))}
+                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1B5FA8]" />
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={saveOrderEdit} className="px-4 py-2 bg-[#1B5FA8] text-white rounded-lg text-xs font-bold hover:bg-[#1B5FA8]/90 transition-colors">Save Changes</button>
+                          <button onClick={() => setEditingOrder(null)} className="px-4 py-2 border border-gray-200 text-gray-500 rounded-lg text-xs font-semibold hover:border-gray-400 transition-colors">Cancel</button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Status updater */}
                   <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
@@ -1241,7 +1422,7 @@ function AdminPanelInner() {
                       {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
                         <button key={key} onClick={() => updateOrderStatus(selectedOrder.id, key)}
                           className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
-                            selectedOrder.status === key ? `${cfg.color} border-current` : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400'
+                            selectedOrder.status === key ? `${cfg.color}` : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400'
                           }`}>
                           {cfg.icon} {cfg.label}
                         </button>
@@ -1259,24 +1440,79 @@ function AdminPanelInner() {
                   <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
                     <div className="flex items-center justify-between mb-4">
                       <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Milestones / Batches</p>
-                      <p className="text-sm font-bold text-gray-700">Paid: ${selectedOrder.paid_amount || 0} / ${selectedOrder.total_amount}</p>
+                      <div className="flex items-center gap-3">
+                        <p className="text-sm font-bold text-gray-700">Paid: ${selectedOrder.paid_amount || 0} / ${selectedOrder.total_amount}</p>
+                        <button onClick={() => setAddingBatch(true)}
+                          className="px-3 py-1.5 rounded-lg bg-[#1B5FA8] text-white text-xs font-bold hover:bg-[#1B5FA8]/90 transition-colors">
+                          + Add Batch
+                        </button>
+                      </div>
                     </div>
+
+                    {/* Add batch form */}
+                    {addingBatch && (
+                      <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-4">
+                        <p className="text-xs font-bold text-gray-500 mb-3">New Batch</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                          <input value={newBatchForm.description} onChange={e => setNewBatchForm(p => ({ ...p, description: e.target.value }))}
+                            className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1B5FA8]"
+                            placeholder="Batch description" />
+                          <input type="number" value={newBatchForm.amount} onChange={e => setNewBatchForm(p => ({ ...p, amount: e.target.value }))}
+                            className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1B5FA8]"
+                            placeholder="Amount ($)" />
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={addAdminBatch} className="px-4 py-2 bg-[#1B5FA8] text-white rounded-lg text-xs font-bold hover:bg-[#1B5FA8]/90 transition-colors">Add</button>
+                          <button onClick={() => { setAddingBatch(false); setNewBatchForm({ description: '', amount: '' }) }}
+                            className="px-4 py-2 border border-gray-200 text-gray-500 rounded-lg text-xs font-semibold hover:border-gray-400 transition-colors">Cancel</button>
+                        </div>
+                      </div>
+                    )}
+
                     {orderBatches.length === 0 ? (
-                      <p className="text-sm text-gray-400 text-center py-4">No batches</p>
+                      <p className="text-sm text-gray-400 text-center py-4">No batches yet</p>
                     ) : (
                       <div className="space-y-3">
                         {orderBatches.map(batch => (
                           <div key={batch.id} className="p-4 bg-gray-50 rounded-xl">
-                            <div className="flex items-start justify-between gap-4 flex-wrap mb-3">
-                              <div>
-                                <p className="text-xs font-bold text-gray-500 mb-0.5">Batch {batch.batch_number}</p>
-                                <p className="text-sm text-gray-700 font-medium">{batch.description}</p>
+                            {editingBatch?.id === batch.id ? (
+                              <div className="space-y-2 mb-3">
+                                <input value={editingBatch.description} onChange={e => setEditingBatch(p => ({ ...p, description: e.target.value }))}
+                                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1B5FA8]" />
+                                <input type="number" value={editingBatch.amount} onChange={e => setEditingBatch(p => ({ ...p, amount: e.target.value }))}
+                                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#1B5FA8]" />
+                                <div className="flex gap-2">
+                                  <button onClick={saveBatchEdit} className="px-3 py-1.5 bg-[#1B5FA8] text-white rounded-lg text-xs font-bold hover:bg-[#1B5FA8]/90">Save</button>
+                                  <button onClick={() => setEditingBatch(null)} className="px-3 py-1.5 border border-gray-200 text-gray-500 rounded-lg text-xs font-semibold">Cancel</button>
+                                </div>
                               </div>
-                              <p className="font-bold text-gray-900">${batch.amount}</p>
-                            </div>
+                            ) : (
+                              <div className="flex items-start justify-between gap-4 mb-3">
+                                <div>
+                                  <p className="text-xs font-bold text-gray-500 mb-0.5">Batch {batch.batch_number}</p>
+                                  <p className="text-sm text-gray-700 font-medium">{batch.description}</p>
+                                  {batch.deliverable_url && (
+                                    <a href={batch.deliverable_url} target="_blank" rel="noreferrer"
+                                      className="text-xs text-[#1B5FA8] hover:underline mt-1 inline-block truncate max-w-xs">
+                                      📥 {batch.deliverable_url}
+                                    </a>
+                                  )}
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <p className="font-bold text-gray-900">${batch.amount}</p>
+                                  <div className="flex gap-1 mt-1">
+                                    <button onClick={() => setEditingBatch({ ...batch })}
+                                      className="text-xs text-gray-400 hover:text-[#1B5FA8] transition-colors">✏️</button>
+                                    <button onClick={() => deleteBatch(batch.id)}
+                                      className="text-xs text-gray-400 hover:text-red-500 transition-colors">🗑️</button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
                             <div className="flex flex-wrap gap-2">
-                              {/* Work status */}
-                              {['pending', 'in_progress', 'delivered', 'approved'].map(s => (
+                              {/* Work status buttons */}
+                              {['pending','in_progress','delivered','approved'].map(s => (
                                 <button key={s} onClick={() => updateBatchWorkStatus(batch.id, s)}
                                   className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${
                                     batch.work_status === s ? 'bg-[#1B5FA8] text-white border-[#1B5FA8]' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400'
@@ -1284,25 +1520,26 @@ function AdminPanelInner() {
                                   {s.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
                                 </button>
                               ))}
-                              {/* Payment */}
-                              <button onClick={() => updateBatchPayment(batch.id, batch.payment_status === 'paid' ? 'unpaid' : 'paid')}
+                              {/* Payment status */}
+                              <button onClick={() => updateBatchPayment(batch.id, batch.payment_status === 'paid' ? 'unpaid' : batch.payment_status === 'unpaid' ? 'paid' : 'refunded')}
                                 className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${
-                                  batch.payment_status === 'paid' ? 'bg-green-100 text-green-700 border-green-300' : 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                                  batch.payment_status === 'paid'     ? 'bg-green-100 text-green-700 border-green-300' :
+                                  batch.payment_status === 'refunded' ? 'bg-red-100 text-red-500 border-red-200' :
+                                  'bg-yellow-50 text-yellow-700 border-yellow-200'
                                 }`}>
-                                {batch.payment_status === 'paid' ? '✓ Paid' : 'Mark Paid'}
+                                {batch.payment_status === 'paid' ? '✓ Paid' : batch.payment_status === 'refunded' ? '↩ Refunded' : 'Mark Paid'}
                               </button>
                               {/* Deliverable */}
                               <button onClick={() => addDeliverableLink(batch.id)}
                                 className="px-2.5 py-1 rounded-lg text-xs font-semibold border bg-white text-gray-500 border-gray-200 hover:border-[#0D9488] hover:text-[#0D9488] transition-colors">
                                 📥 {batch.deliverable_url ? 'Update Link' : 'Add Link'}
                               </button>
+                              {/* Payment request */}
+                              <button onClick={() => sendPaymentRequest(batch)}
+                                className="px-2.5 py-1 rounded-lg text-xs font-semibold border bg-[#C9943A]/10 text-[#C9943A] border-[#C9943A]/30 hover:bg-[#C9943A]/20 transition-colors">
+                                💳 Request Payment
+                              </button>
                             </div>
-                            {batch.deliverable_url && (
-                              <a href={batch.deliverable_url} target="_blank" rel="noreferrer"
-                                className="text-xs text-[#1B5FA8] hover:underline mt-2 inline-block">
-                                {batch.deliverable_url}
-                              </a>
-                            )}
                           </div>
                         ))}
                       </div>
@@ -1315,32 +1552,46 @@ function AdminPanelInner() {
                     {orderMessages.length === 0 ? (
                       <p className="text-sm text-gray-400 text-center py-4">No messages yet</p>
                     ) : (
-                      <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
+                      <div className="space-y-3 mb-4 max-h-80 overflow-y-auto">
                         {orderMessages.map(msg => (
-                          <div key={msg.id} className={`flex ${msg.sender_role === 'admin' ? 'justify-end' : 'justify-start'}`}>
-                            <div className={`max-w-xs px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
-                              msg.sender_role === 'admin'
-                                ? 'bg-[#C9943A] text-white rounded-br-sm'
-                                : 'bg-gray-100 text-gray-700 rounded-bl-sm'
+                          <div key={msg.id} className={`flex items-end gap-2 ${msg.sender_role !== 'user' ? 'justify-end' : 'justify-start'}`}>
+                            <div className={`relative max-w-sm px-4 py-2.5 rounded-2xl text-sm leading-relaxed group ${
+                              msg.sender_role === 'admin_internal' ? 'bg-gray-100 border-2 border-dashed border-gray-300 text-gray-600 rounded-br-sm' :
+                              msg.sender_role === 'admin'          ? 'bg-[#C9943A] text-white rounded-br-sm' :
+                              'bg-gray-100 text-gray-700 rounded-bl-sm'
                             }`}>
-                              <p>{msg.message}</p>
-                              <p className={`text-[10px] mt-1 ${msg.sender_role === 'admin' ? 'text-white/60' : 'text-gray-400'}`}>
-                                {msg.sender_role === 'user' ? 'Client · ' : 'You · '}{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              {msg.sender_role === 'admin_internal' && (
+                                <p className="text-[10px] font-bold text-gray-400 mb-1">🔒 Internal Note (not visible to client)</p>
+                              )}
+                              <p className="whitespace-pre-line">{msg.message}</p>
+                              <p className={`text-[10px] mt-1 ${msg.sender_role !== 'user' ? 'text-white/60' : 'text-gray-400'} ${msg.sender_role === 'admin_internal' ? '!text-gray-400' : ''}`}>
+                                {msg.sender_role === 'user' ? 'Client · ' : msg.sender_role === 'admin_internal' ? 'Internal · ' : 'You · '}
+                                {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </p>
+                              <button onClick={() => deleteMessage(msg.id)}
+                                className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-[10px] hidden group-hover:flex items-center justify-center">
+                                ×
+                              </button>
                             </div>
                           </div>
                         ))}
                       </div>
                     )}
-                    <div className="flex gap-2">
-                      <input value={adminReply} onChange={e => setAdminReply(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendAdminReply()}
-                        className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9943A]/20 focus:border-[#C9943A]"
-                        placeholder="Reply to client…" />
-                      <button onClick={sendAdminReply} disabled={sendingReply || !adminReply.trim()}
-                        className="px-4 py-2.5 bg-[#C9943A] hover:bg-[#C9943A]/90 disabled:opacity-40 text-white rounded-xl text-sm font-semibold transition-colors">
-                        Send
-                      </button>
+                    <div className="space-y-2">
+                      <textarea value={adminReply} onChange={e => setAdminReply(e.target.value)}
+                        rows={2} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9943A]/20 focus:border-[#C9943A] resize-none"
+                        placeholder="Type a message to client…" />
+                      <div className="flex gap-2">
+                        <button onClick={() => sendAdminReply(false)} disabled={sendingReply || !adminReply.trim()}
+                          className="flex-1 py-2.5 bg-[#C9943A] hover:bg-[#C9943A]/90 disabled:opacity-40 text-white rounded-xl text-sm font-semibold transition-colors">
+                          Send to Client
+                        </button>
+                        <button onClick={() => sendAdminReply(true)} disabled={sendingReply || !adminReply.trim()}
+                          className="px-4 py-2.5 border-2 border-dashed border-gray-300 hover:border-gray-400 disabled:opacity-40 text-gray-500 rounded-xl text-sm font-semibold transition-colors"
+                          title="Internal note — not visible to client">
+                          🔒 Internal Note
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1349,7 +1600,7 @@ function AdminPanelInner() {
           </div>
         )}
 
-        {activeTab === 'settings' && (
+                {activeTab === 'settings' && (
           <div className="max-w-xl">
             <h2 className="text-xl font-bold text-gray-900 mb-5">Site Settings</h2>
             <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4 shadow-sm">
