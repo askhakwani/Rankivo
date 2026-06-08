@@ -409,6 +409,26 @@ export default function KeywordResearchPage() {
             </div>
           )}
 
+          {/* ── How It Works ── */}
+          <div className="mt-10 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h2 className="text-base font-bold text-[#1B5FA8] mb-6">How the Keyword Research Tool Works</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              {[
+                { step: '1', icon: '🌱', title: 'Enter Seed Keywords', desc: 'Type one or more broad keywords separated by commas. These are your starting points — the tool expands them into dozens of related ideas.' },
+                { step: '2', icon: '📊', title: 'Get Full Keyword Data', desc: 'Instantly see search volume, CPC, difficulty, competition level and search intent for every keyword — grouped and sortable.' },
+                { step: '3', icon: '🎯', title: 'Filter and Export', desc: 'Use tabs to filter by questions, buying intent or low competition. Select the best keywords and export to CSV in one click.' },
+              ].map(({ step, icon, title, desc }) => (
+                <div key={step} className="flex flex-col items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-[#1B5FA8] text-white text-sm font-bold flex items-center justify-center shrink-0">{step}</div>
+                  <div>
+                    <p className="text-sm font-bold text-gray-800 mb-1">{icon} {title}</p>
+                    <p className="text-sm text-gray-500">{desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* ── Tips ── */}
           <div className="mt-6 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <h2 className="text-base font-bold text-[#1B5FA8] mb-4">💡 Tips for Better Keyword Research</h2>
