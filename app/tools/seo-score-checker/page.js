@@ -532,6 +532,66 @@ export default function SEOScoreCheckerPage() {
             </div>
           )}
 
+          {/* ── How It Works ── */}
+          <div className="mt-10 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h2 className="text-base font-bold text-[#1B5FA8] mb-6">How the SEO Score Checker Works</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              {[
+                { step: '1', icon: '📝', title: 'Paste Your Content', desc: 'Enter your article or page content, target keyword and optional meta tags. You can also fetch content directly from a URL.' },
+                { step: '2', icon: '📊', title: 'Get Your SEO Score', desc: 'The tool analyses 10 on-page SEO factors — keyword placement, density, readability, content length, meta tags and more.' },
+                { step: '3', icon: '✅', title: 'Apply the Fixes', desc: 'Review your score breakdown and actionable suggestions, then update your content to push your score higher.' },
+              ].map(({ step, icon, title, desc }) => (
+                <div key={step} className="flex flex-col items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-[#1B5FA8] text-white text-sm font-bold flex items-center justify-center shrink-0">{step}</div>
+                  <div>
+                    <p className="text-sm font-bold text-gray-800 mb-1">{icon} {title}</p>
+                    <p className="text-sm text-gray-500">{desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Tips ── */}
+          <div className="mt-6 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h2 className="text-base font-bold text-[#1B5FA8] mb-4">💡 Tips for a Higher SEO Score</h2>
+            <ul className="space-y-3">
+              {[
+                'Place your primary keyword in the first 100 words of your article — this signals relevance to Google early.',
+                'Aim for keyword density of 1–2%. Too low and your content may not rank; too high and you risk a keyword stuffing penalty.',
+                'Use your target keyword in at least one H2 or H3 heading to reinforce topical relevance.',
+                'Write at least 800 words for competitive keywords. Longer, well-structured content consistently outperforms thin pages.',
+                'Always add at least one internal link to a related page on your site — it helps Google crawl and understand your site structure.',
+                'Keep your meta title under 60 characters and meta description under 160 for clean SERP display.',
+              ].map((tip, i) => (
+                <li key={i} className="flex gap-3 text-sm text-gray-600">
+                  <span className="text-[#0D9488] font-bold shrink-0">✓</span>
+                  {tip}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* ── FAQs ── */}
+          <div className="mt-6 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h2 className="text-base font-bold text-[#1B5FA8] mb-4">❓ Frequently Asked Questions</h2>
+            <div className="space-y-4">
+              {[
+                { q: 'What is an SEO score?', a: 'An SEO score measures how well your content is optimised for search engines across key on-page factors like keyword usage, content length, meta tags and readability. A score of 80+ is considered strong.' },
+                { q: 'Is this SEO score checker free?', a: 'Yes — the core score check is free for all users. Pro users unlock advanced suggestions, secondary keyword tracking and the AI content improvement feature.' },
+                { q: 'What factors does the score check?', a: 'We analyse 10 factors: keyword in title, keyword in first paragraph, keyword in headings, keyword density, word count, meta title length, meta description length, readability, internal links and content structure.' },
+                { q: 'What is a good SEO score?', a: '80 and above is strong and ready to publish. 60–79 is fair but has clear room for improvement. Below 60 means the content needs significant SEO work before it can compete.' },
+                { q: 'Can I check a live URL instead of pasting content?', a: 'Yes — enter your page URL and click Fetch to automatically pull in the content, meta title and meta description from that page.' },
+                { q: 'How is readability scored?', a: 'Readability is assessed based on sentence length, paragraph structure and use of subheadings. Content that is easy to scan and digest tends to perform better in search results.' },
+              ].map((faq, i) => (
+                <div key={i}>
+                  <p className="text-sm font-semibold text-gray-800 mb-1">{faq.q}</p>
+                  <p className="text-sm text-gray-500">{faq.a}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
         </div>
       </main>
 

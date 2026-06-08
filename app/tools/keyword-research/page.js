@@ -409,6 +409,45 @@ export default function KeywordResearchPage() {
             </div>
           )}
 
+          {/* ── Tips ── */}
+          <div className="mt-6 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h2 className="text-base font-bold text-[#1B5FA8] mb-4">💡 Tips for Better Keyword Research</h2>
+            <ul className="space-y-3">
+              {[
+                'Start with 2–3 broad seed keywords and let the tool expand them into long-tail variations.',
+                'Target keywords with Low competition and decent volume — these are your quickest wins.',
+                'Use the Questions tab to find keywords that map directly to blog post titles.',
+                'Check the Buying Intent tab for keywords that signal purchase readiness — ideal for product or service pages.',
+                'Group keywords into clusters and create one pillar page per cluster for maximum topical authority.',
+              ].map((tip, i) => (
+                <li key={i} className="flex gap-3 text-sm text-gray-600">
+                  <span className="text-[#0D9488] font-bold shrink-0">✓</span>
+                  {tip}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* ── FAQs ── */}
+          <div className="mt-6 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h2 className="text-base font-bold text-[#1B5FA8] mb-4">❓ Frequently Asked Questions</h2>
+            <div className="space-y-4">
+              {[
+                { q: 'Is this keyword research tool free?', a: 'Yes — you can run keyword searches free as a guest. Sign up for a free account to unlock more searches per day.' },
+                { q: 'How accurate is the search volume data?', a: 'Volume, CPC and difficulty are AI-estimated based on real search patterns. Use them as directional signals rather than exact figures.' },
+                { q: 'What is keyword difficulty?', a: 'Keyword difficulty (0–100) estimates how hard it is to rank on the first page. Aim for under 40 if your site is new.' },
+                { q: 'What does search intent mean?', a: 'Search intent tells you why someone searches a keyword — Informational (research), Commercial (comparing), Transactional (ready to buy), or Navigational (looking for a specific site).' },
+                { q: 'Can I export my keywords?', a: 'Yes — click Export CSV to download all keywords, or select specific ones and export only those.' },
+                { q: 'How many seed keywords can I enter?', a: 'You can enter multiple seeds separated by commas. The tool generates related keywords for each one.' },
+              ].map((faq, i) => (
+                <div key={i}>
+                  <p className="text-sm font-semibold text-gray-800 mb-1">{faq.q}</p>
+                  <p className="text-sm text-gray-500">{faq.a}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
         </div>
       </main>
 

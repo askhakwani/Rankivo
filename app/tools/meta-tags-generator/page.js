@@ -273,6 +273,65 @@ export default function MetaTagsGeneratorPage() {
             </div>
           )}
 
+          {/* ── How It Works ── */}
+          <div className="mt-10 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h2 className="text-base font-bold text-[#1B5FA8] mb-6">How the Meta Tags Generator Works</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              {[
+                { step: '1', icon: '🎯', title: 'Enter Your Keyword', desc: 'Type your target keyword and page title. Add an optional description hint for more accurate output.' },
+                { step: '2', icon: '⚡', title: 'AI Generates Your Tags', desc: 'Our AI crafts an SEO-optimised title and meta description sized to Google\'s recommended character limits.' },
+                { step: '3', icon: '📋', title: 'Copy and Publish', desc: 'Copy your tags directly and paste them into your CMS, WordPress, or HTML head tag — ready to go.' },
+              ].map(({ step, icon, title, desc }) => (
+                <div key={step} className="flex flex-col items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-[#1B5FA8] text-white text-sm font-bold flex items-center justify-center shrink-0">{step}</div>
+                  <div>
+                    <p className="text-sm font-bold text-gray-800 mb-1">{icon} {title}</p>
+                    <p className="text-sm text-gray-500">{desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Tips ── */}
+          <div className="mt-6 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h2 className="text-base font-bold text-[#1B5FA8] mb-4">💡 Tips for Better Meta Tags</h2>
+            <ul className="space-y-3">
+              {[
+                'Include your primary keyword as close to the start of the SEO title as possible — Google weighs the first words more heavily.',
+                'Keep your meta title between 50–60 characters. Anything longer gets cut off in search results.',
+                'Your meta description should be 140–160 characters and include a clear benefit or call to action.',
+                'Avoid duplicate meta tags across pages — each page needs a unique title and description.',
+                'Use numbers, power words and questions in your title to increase click-through rate (e.g. "7 Ways to…", "How to…", "Best…").',
+              ].map((tip, i) => (
+                <li key={i} className="flex gap-3 text-sm text-gray-600">
+                  <span className="text-[#0D9488] font-bold shrink-0">✓</span>
+                  {tip}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* ── FAQs ── */}
+          <div className="mt-6 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h2 className="text-base font-bold text-[#1B5FA8] mb-4">❓ Frequently Asked Questions</h2>
+            <div className="space-y-4">
+              {[
+                { q: 'What are meta tags and why do they matter?', a: 'Meta tags are HTML elements that tell search engines and social platforms what your page is about. A well-written meta title and description directly influence your click-through rate from Google search results.' },
+                { q: 'Is this meta tags generator free?', a: 'Yes — the core meta title and description generator is completely free. Pro users also get A/B title variations and Open Graph / Twitter card tags.' },
+                { q: 'What is the ideal meta title length?', a: 'Google displays roughly 50–60 characters for page titles. Titles longer than 60 characters get truncated with "…" in search results, so staying within this range is important.' },
+                { q: 'What is the ideal meta description length?', a: 'Meta descriptions should be 140–160 characters. Shorter descriptions miss an opportunity to sell the click; longer ones get cut off by Google.' },
+                { q: 'Do meta descriptions affect SEO rankings?', a: 'Meta descriptions are not a direct ranking factor, but they significantly impact click-through rate — which does affect your rankings indirectly. A compelling description gets more clicks.' },
+                { q: 'What are Open Graph tags?', a: 'Open Graph (OG) tags control how your page appears when shared on social media platforms like Facebook and LinkedIn. They let you set a custom title, description and image for social sharing.' },
+              ].map((faq, i) => (
+                <div key={i}>
+                  <p className="text-sm font-semibold text-gray-800 mb-1">{faq.q}</p>
+                  <p className="text-sm text-gray-500">{faq.a}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
         </div>
       </main>
 

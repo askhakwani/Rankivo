@@ -401,6 +401,27 @@ export default function BlogGeneratorPage() {
                 </div>
               )}
             </div>
+
+            {/* FAQs */}
+            <div className="mt-6 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <h2 className="text-base font-bold text-[#1B5FA8] mb-4">❓ Frequently Asked Questions</h2>
+              <div className="space-y-4">
+                {[
+                  { q: 'Is this AI blog generator free?', a: 'Yes — you get 1 free generation as a guest, or 3 per month with a free account. Paid plans unlock unlimited generations.' },
+                  { q: 'How long are the generated blog posts?', a: 'Short is ~150 words, Medium ~400 words, and Long ~800 words. All include a meta title, meta description and H1 heading.' },
+                  { q: 'Is the generated content SEO optimized?', a: 'Yes. Every post is structured with an H1, subheadings, and keyword placement built in. You can also paste it into the SEO Score Checker for a full breakdown.' },
+                  { q: 'Can I edit the generated content?', a: 'Absolutely. The generated content is a starting point — copy it and edit freely in any editor before publishing.' },
+                  { q: 'What languages are supported?', a: 'The generator supports English, Spanish, French, German, Portuguese, Arabic and Urdu.' },
+                  { q: 'Can I use this content commercially?', a: 'Yes. All content generated is yours to use however you like — on your blog, client sites or anywhere else.' },
+                ].map((faq, i) => (
+                  <div key={i}>
+                    <p className="text-sm font-semibold text-gray-800 mb-1">{faq.q}</p>
+                    <p className="text-sm text-gray-500">{faq.a}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
           </div>
         </div>
       </main>
