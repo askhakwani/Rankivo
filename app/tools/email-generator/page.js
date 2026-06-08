@@ -2,8 +2,10 @@ import PlatformGeneratorPage from '../PlatformGeneratorPage'
 
 export const metadata = {
   title: 'Free AI Email Generator | Rankivo',
-  description: 'Generate professional marketing emails with AI — includes subject line, body and CTA. Free to use.',
+  description: 'Generate professional emails instantly with AI. Write cold outreach, newsletters, follow-ups and more for free.',
+  alternates: { canonical: 'https://www.rankivo.co/tools/email-generator' },
 }
+
 
 export default function EmailGenerator() {
   return (

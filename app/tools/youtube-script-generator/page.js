@@ -2,8 +2,10 @@ import PlatformGeneratorPage from '../PlatformGeneratorPage'
 
 export const metadata = {
   title: 'Free YouTube Script Generator AI | Rankivo',
-  description: 'Generate engaging YouTube video scripts with hooks, intros and CTAs using AI. Free to use.',
+  description: 'Generate full YouTube video scripts with hooks, structure and CTAs using AI. Free to preview — no signup required.',
+  alternates: { canonical: 'https://www.rankivo.co/tools/youtube-script-generator' },
 }
+
 
 export default function YouTubeScriptGenerator() {
   return (

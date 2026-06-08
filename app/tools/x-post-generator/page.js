@@ -1,8 +1,9 @@
 import PlatformGeneratorPage from '../PlatformGeneratorPage'
 
 export const metadata = {
-  title: 'Free X (Twitter) Post Generator AI | Rankivo',
-  description: 'Generate punchy X posts with hooks and CTAs using AI. Get 4 unique variations free — formerly Twitter.',
+  title: 'Free X Post Generator AI | Rankivo',
+  description: 'Generate engaging X (Twitter) posts instantly with AI. Threads, single posts and CTAs — 4 variations free.',
+  alternates: { canonical: 'https://www.rankivo.co/tools/x-post-generator' },
 }
 
 export default function XPostGenerator() {

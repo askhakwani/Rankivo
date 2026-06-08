@@ -3,7 +3,9 @@ import PlatformGeneratorPage from '../PlatformGeneratorPage'
 export const metadata = {
   title: 'Free AI Ad Copy Generator | Rankivo',
   description: 'Generate high-converting ad copy for Google, Facebook and Instagram ads using AI. Get 4 variations free.',
+  alternates: { canonical: 'https://www.rankivo.co/tools/ad-copy-generator' },
 }
+
 
 export default function AdCopyGenerator() {
   return (

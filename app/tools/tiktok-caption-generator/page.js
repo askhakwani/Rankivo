@@ -2,8 +2,10 @@ import PlatformGeneratorPage from '../PlatformGeneratorPage'
 
 export const metadata = {
   title: 'Free TikTok Caption Generator AI | Rankivo',
-  description: 'Generate viral TikTok captions with hooks, hashtags and CTAs using AI. Get 4 unique variations free.',
+  description: 'Generate scroll-stopping TikTok captions with hashtags and CTAs using AI. 4 unique variations free.',
+  alternates: { canonical: 'https://www.rankivo.co/tools/tiktok-caption-generator' },
 }
+
 
 export default function TikTokCaptionGenerator() {
   return (

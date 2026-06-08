@@ -2,8 +2,10 @@ import PlatformGeneratorPage from '../PlatformGeneratorPage'
 
 export const metadata = {
   title: 'Free LinkedIn Post Generator AI | Rankivo',
-  description: 'Generate professional LinkedIn posts with AI. Get 4 unique variations with hooks, insights and CTAs — free.',
+  description: 'Generate professional LinkedIn posts instantly with AI. Thought leadership, announcements and engagement posts — free to preview.',
+  alternates: { canonical: 'https://www.rankivo.co/tools/linkedin-post-generator' },
 }
+
 
 export default function LinkedInPostGenerator() {
   return (

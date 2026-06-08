@@ -3,7 +3,9 @@ import PlatformGeneratorPage from '../PlatformGeneratorPage'
 export const metadata = {
   title: 'Free Instagram Caption Generator AI | Rankivo',
   description: 'Generate 4 unique Instagram captions instantly with AI. Include hashtags, CTAs and links. Free to use — no signup required to preview.',
+  alternates: { canonical: 'https://www.rankivo.co/tools/instagram-caption-generator' },
 }
+
 
 export default function InstagramCaptionGenerator() {
   return (
