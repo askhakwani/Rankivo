@@ -403,7 +403,7 @@ export default function BlogGeneratorPage() {
             </div>
 
             {/* How It Works */}
-            <div className="mt-6 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div className="col-span-full mt-6 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <h2 className="text-base font-bold text-[#1B5FA8] mb-6">How the AI Blog Generator Works</h2>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 {[
@@ -423,7 +423,7 @@ export default function BlogGeneratorPage() {
             </div>
 
             {/* FAQs */}
-            <div className="mt-6 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div className="col-span-full mt-6 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <h2 className="text-base font-bold text-[#1B5FA8] mb-4">❓ Frequently Asked Questions</h2>
               <div className="space-y-4">
                 {[
