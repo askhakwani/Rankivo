@@ -51,7 +51,7 @@ function compressImageFile(file, maxSizeKB = 1800, maxWidth = 1600) {
   })
 }
 
-function RichTextEditor({ value, onChange, placeholder = 'Write your content here...' }) {
+function RichTextEditor({ value, onChange, placeholder = 'Write your content here...', postTitle = '' }) {
   const [EditorComponent, setEditorComponent] = useState(null)
   const [showImageModal, setShowImageModal] = useState(false)
   const [imageUrl, setImageUrl] = useState('')
@@ -125,7 +125,8 @@ function RichTextEditor({ value, onChange, placeholder = 'Write your content her
       const { error } = await supabaseRef.current.storage.from('blog-images').upload(path, compressed, { upsert: true, contentType: 'image/jpeg' })
       if (error) throw error
       const { data: { publicUrl } } = supabaseRef.current.storage.from('blog-images').getPublicUrl(path)
-      insertImage(publicUrl, imageAlt)
+      const autoAlt = imageAlt || postTitle || ''
+      insertImage(publicUrl, autoAlt)
     } catch (err) { alert('Upload failed: ' + err.message) }
     setImageUploading(false)
   }, [insertImage, imageAlt])
@@ -231,7 +232,7 @@ function RichTextEditor({ value, onChange, placeholder = 'Write your content her
             <h3 className="font-bold text-gray-900 mb-4">Insert Image</h3>
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">Alt text (optional)</label>
-              <input type="text" value={imageAlt} onChange={e => setImageAlt(e.target.value)} placeholder="Describe the image..." className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#0D9488]" />
+              <input type="text" value={imageAlt} onChange={e => setImageAlt(e.target.value)} placeholder={postTitle ? `Auto: "${postTitle}" — or type to override` : "Describe the image..."} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#0D9488]" />
             </div>
             <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center mb-4 hover:border-[#0D9488]/50 cursor-pointer transition-colors" onClick={() => fileInputRef.current?.click()}>
               {imageUploading ? <p className="text-sm text-[#0D9488]">Compressing & uploading...</p> : (
@@ -1039,7 +1040,7 @@ function AdminPanelInner() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
-                  <RichTextEditor value={blogForm.content} onChange={content => setBlogForm(prev => ({ ...prev, content }))} placeholder="Write your blog post content here..." />
+                  <RichTextEditor value={blogForm.content} onChange={content => setBlogForm(prev => ({ ...prev, content }))} placeholder="Write your blog post content here..." postTitle={blogForm.title} />
                 </div>
                 <div className="border-t border-gray-100 pt-4">
                   <h4 className="text-sm font-semibold text-gray-700 mb-3">SEO / Meta</h4>
