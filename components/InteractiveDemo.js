@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 
 // ─── Processing Steps ─────────────────────────────────────────────────────────
@@ -371,15 +371,36 @@ function ResultPanel({ keyword }) {
   )
 }
 
+// ─── Auto-demo keywords ───────────────────────────────────────────────────────
+const AUTO_KEYWORDS = ['fitness blog', 'saas pricing', 'ecommerce SEO', 'content marketing']
+
 // ─── Main Export ──────────────────────────────────────────────────────────────
 
 export default function InteractiveDemo() {
   const [keyword, setKeyword]  = useState('')
-  const [phase, setPhase]      = useState('idle')   // idle | loading | result
+  const [phase, setPhase]      = useState('idle')   // idle | typing | loading | result
   const [currentStep, setStep] = useState(0)
+  const [autoRan, setAutoRan]  = useState(false)
 
-  async function handleGenerate() {
-    if (!keyword.trim() || phase === 'loading') return
+  // Auto-run once on mount: typewriter → generate
+  useEffect(() => {
+    if (autoRan) return
+    setAutoRan(true)
+    const demo = AUTO_KEYWORDS[0]
+    let i = 0
+    setPhase('typing')
+    const typer = setInterval(() => {
+      i++
+      setKeyword(demo.slice(0, i))
+      if (i >= demo.length) {
+        clearInterval(typer)
+        setTimeout(() => runGenerate(demo), 600)
+      }
+    }, 60)
+    return () => clearInterval(typer)
+  }, [])
+
+  async function runGenerate(kw) {
     setPhase('loading')
     setStep(0)
     for (let i = 0; i < STEPS.length; i++) {
@@ -387,6 +408,11 @@ export default function InteractiveDemo() {
       await sleep(STEP_DELAYS[i])
     }
     setPhase('result')
+  }
+
+  async function handleGenerate() {
+    if (!keyword.trim() || phase === 'loading') return
+    await runGenerate(keyword)
   }
 
   function handleReset() {
