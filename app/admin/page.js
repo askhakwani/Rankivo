@@ -341,11 +341,14 @@ function AdminPanelInner() {
 
   const [posts, setPosts] = useState([])
   const [postsLoading, setPostsLoading] = useState(false)
-  const [blogForm, setBlogForm] = useState({ id: null, title: '', slug: '', excerpt: '', content: '', featured_image: '', meta_title: '', meta_description: '', published: false, author_id: '', scheduled_at: null })
+  const [blogForm, setBlogForm] = useState({ id: null, title: '', slug: '', excerpt: '', content: '', featured_image: '', meta_title: '', meta_description: '', published: false, author_id: '', scheduled_at: null, category: '' })
   const [blogView, setBlogView] = useState('list')
   const [blogMsg, setBlogMsg] = useState('')
   const [blogSaving, setBlogSaving] = useState(false)
   const [showScheduleModal, setShowScheduleModal] = useState(false)
+  const [selectedPosts, setSelectedPosts] = useState([])
+  const [bulkCategory, setBulkCategory] = useState('')
+  const [bulkSaving, setBulkSaving] = useState(false)
 
   const [pages, setPages] = useState([])
   const [pagesLoading, setPagesLoading] = useState(false)
@@ -635,6 +638,16 @@ function AdminPanelInner() {
     await supabase.from('blog_posts').delete().eq('id', id); loadPosts()
   }
 
+  async function bulkAssignCategory() {
+    if (!bulkCategory || selectedPosts.length === 0) return
+    setBulkSaving(true)
+    await supabase.from('blog_posts').update({ category: bulkCategory }).in('id', selectedPosts)
+    setSelectedPosts([])
+    setBulkCategory('')
+    setBulkSaving(false)
+    loadPosts()
+  }
+
   async function togglePublish(post) {
     await supabase.from('blog_posts').update({ published: !post.published, scheduled_at: null }).eq('id', post.id); loadPosts()
   }
@@ -833,10 +846,37 @@ function AdminPanelInner() {
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
+                      {/* Bulk action bar */}
+                      {selectedPosts.length > 0 && (
+                        <div className="flex items-center gap-3 px-4 py-3 bg-[#1B5FA8]/5 border-b border-[#1B5FA8]/20">
+                          <span className="text-sm font-semibold text-[#1B5FA8]">{selectedPosts.length} selected</span>
+                          <select value={bulkCategory} onChange={e => setBulkCategory(e.target.value)}
+                            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:border-[#1B5FA8] bg-white">
+                            <option value="">— Assign category —</option>
+                            <option value="Keyword Research">Keyword Research</option>
+                            <option value="SEO Strategy">SEO Strategy</option>
+                            <option value="Content Writing">Content Writing</option>
+                            <option value="SEO Tools">SEO Tools</option>
+                            <option value="Social Media">Social Media</option>
+                          </select>
+                          <button onClick={bulkAssignCategory} disabled={!bulkCategory || bulkSaving}
+                            className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 disabled:opacity-40 text-white px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors">
+                            {bulkSaving ? 'Saving…' : 'Apply'}
+                          </button>
+                          <button onClick={() => setSelectedPosts([])} className="text-sm text-gray-400 hover:text-gray-600 ml-auto">Clear selection</button>
+                        </div>
+                      )}
                       <table className="w-full text-sm">
                         <thead className="bg-gray-50 border-b border-gray-200">
                           <tr>
+                            <th className="px-4 py-3">
+                              <input type="checkbox"
+                                checked={selectedPosts.length === posts.length && posts.length > 0}
+                                onChange={e => setSelectedPosts(e.target.checked ? posts.map(p => p.id) : [])}
+                                className="rounded border-gray-300 text-[#1B5FA8]" />
+                            </th>
                             <th className="text-left px-4 py-3 text-gray-500 font-medium">Title</th>
+                            <th className="text-left px-4 py-3 text-gray-500 font-medium">Category</th>
                             <th className="text-left px-4 py-3 text-gray-500 font-medium">Author</th>
                             <th className="text-left px-4 py-3 text-gray-500 font-medium">Status</th>
                             <th className="text-left px-4 py-3 text-gray-500 font-medium">Date</th>
@@ -852,11 +892,22 @@ function AdminPanelInner() {
                             const isScheduled = post.scheduled_at && !post.published
                             return (
                               <tr key={post.id} className="hover:bg-gray-50/70 transition-colors">
+                                <td className="px-4 py-3">
+                                  <input type="checkbox"
+                                    checked={selectedPosts.includes(post.id)}
+                                    onChange={e => setSelectedPosts(prev => e.target.checked ? [...prev, post.id] : prev.filter(id => id !== post.id))}
+                                    className="rounded border-gray-300 text-[#1B5FA8]" />
+                                </td>
                                 <td className="px-4 py-3 max-w-[220px]">
                                   <div className="flex items-start gap-1.5">
                                     {isTrending && <span title="Trending">🔥</span>}
                                     <p className="font-medium text-gray-900 leading-snug line-clamp-2">{post.title}</p>
                                   </div>
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  {post.category
+                                    ? <span className="text-xs px-2 py-0.5 rounded-full bg-[#1B5FA8]/10 text-[#1B5FA8] font-medium">{post.category}</span>
+                                    : <span className="text-xs text-gray-300 italic">None</span>}
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap">
                                   {author ? (
@@ -920,6 +971,18 @@ function AdminPanelInner() {
                   <input type="text" value={blogForm.excerpt} placeholder="Short description shown on blog listing..."
                     onChange={e => setBlogForm(prev => ({ ...prev, excerpt: e.target.value }))}
                     className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                  <select value={blogForm.category || ''} onChange={e => setBlogForm(prev => ({ ...prev, category: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm bg-white">
+                    <option value="">— Select a category —</option>
+                    <option value="Keyword Research">Keyword Research</option>
+                    <option value="SEO Strategy">SEO Strategy</option>
+                    <option value="Content Writing">Content Writing</option>
+                    <option value="SEO Tools">SEO Tools</option>
+                    <option value="Social Media">Social Media</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Author</label>
