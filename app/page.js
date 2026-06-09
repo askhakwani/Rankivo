@@ -2,10 +2,11 @@ import Link from 'next/link'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import InteractiveDemo from '../components/InteractiveDemo'
+import { StatsCounter, PlatformScrollStrip, TestimonialCarousel } from '../components/HomepageWidgets'
 
 export const metadata = {
-  title: 'RANKIVO — Write Less. Rank More. Grow Faster.',
-  description: 'Rankivo is the AI platform that writes SEO-optimized content for your blog, social media, ads and more — then helps you rank for it. One tool. Total content + SEO.',
+  title: 'RANKIVO — AI Content Tools + Human Writing Services',
+  description: 'Rankivo combines AI-powered SEO content tools with professional human writers — so you can rank faster, publish more, and grow without limits.',
 }
 
 export default function Home() {
@@ -16,15 +17,6 @@ export default function Home() {
     { title: 'Human-Polished Output',          desc: 'Want that extra edge? Our professional editors take your AI draft from good to undeniably great.',                                           icon: '◐', color: 'blue' },
     { title: 'Built Around Your Audience',     desc: 'Set your tone, niche and target reader once. Every piece Rankivo writes is tailored — not templated.',                                      icon: '◎', color: 'teal' },
     { title: 'Your Content. Always There.',    desc: "Full history of everything you've generated. Access, copy, remix and reuse any time.",                                                      icon: '◆', color: 'gold' },
-  ]
-
-  const testimonials = [
-    { name: 'Sarah M.',  role: 'Social Media Manager',    text: 'RANKIVO cut my content creation time from 3 hours to 15 minutes. The SEO optimization is genuinely impressive.',       stars: 5 },
-    { name: 'Ahmed K.',  role: 'E-commerce Owner',         text: 'I was spending $500/month on content writers. Now I generate 10x more content for a fraction of the cost.',           stars: 5 },
-    { name: 'Priya R.',  role: 'Digital Marketing Agency', text: "The multi-language support is a game changer for our international clients. Best AI content tool we've tried.",      stars: 5 },
-    { name: 'James T.',  role: 'Blogger',                  text: 'My blog traffic doubled in 2 months after switching to RANKIVO for SEO content. The meta descriptions are spot-on.',  stars: 5 },
-    { name: 'Fatima A.', role: 'Startup Founder',          text: 'As a non-native English speaker, RANKIVO helps me create professional content that sounds native. Life-changing.',    stars: 5 },
-    { name: 'Carlos D.', role: 'YouTube Creator',          text: 'The YouTube script generator is incredible. My video watch time increased 40% after using RANKIVO scripts.',          stars: 5 },
   ]
 
   const colorMap = {
@@ -42,18 +34,19 @@ export default function Home() {
         <div className="max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 bg-[#0D9488]/10 border border-[#0D9488]/30 text-[#0D9488] text-sm px-4 py-2 rounded-full mb-6 font-semibold">
             <span className="w-2 h-2 rounded-full bg-[#0D9488] animate-pulse" />
-            AI Content + SEO — Together, Finally
+            AI Tools + Human Writers — Together, Finally
           </div>
           <h1 className="text-4xl md:text-5xl font-bold leading-tight mb-6 text-gray-900">
             Write Less. Rank More.<br />
             <span className="text-[#1B5FA8]">Grow Without Limits.</span>
           </h1>
           <p className="text-lg md:text-xl text-gray-500 mb-4 max-w-2xl mx-auto leading-relaxed">
-            Rankivo is the AI platform that creates <strong className="text-gray-700 font-semibold">SEO-optimized content</strong> for
-            your blog, social media, ads and more — then gives you the keyword strategy to rank for it.
+            Rankivo combines <strong className="text-gray-700 font-semibold">AI content tools</strong> with{' '}
+            <strong className="text-gray-700 font-semibold">professional human writers</strong> — so every post
+            you publish is SEO-optimized and ready to rank.
           </p>
           <p className="text-base text-gray-400 mb-10 max-w-xl mx-auto">
-            One tool for freelancers, founders, marketers and agencies who are done wasting time.
+            One platform for freelancers, founders, marketers and agencies who are done wasting time.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/auth?mode=signup" className="w-full sm:w-auto bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-8 py-4 rounded-xl font-bold text-lg transition-colors shadow-lg shadow-[#1B5FA8]/20 text-center">
@@ -66,6 +59,9 @@ export default function Home() {
           <p className="text-gray-400 text-sm mt-4">3 free posts per month. No credit card. No catch.</p>
         </div>
       </section>
+
+      {/* ── Platform Scroll Strip ─────────────────────────────────────────────── */}
+      <PlatformScrollStrip />
 
       {/* ── Interactive Demo ─────────────────────────────────────────────────── */}
       <InteractiveDemo />
@@ -86,44 +82,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Stats ────────────────────────────────────────────────────────────── */}
-      <section className="py-12 border-b border-gray-200 bg-gray-50">
-        <div className="max-w-4xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-          {[
-            { value: '8+',   label: 'Platforms Supported',  color: 'text-[#1B5FA8]' },
-            { value: '6',    label: 'Languages',             color: 'text-[#0D9488]' },
-            { value: '10x',  label: 'Faster Than Manual',   color: 'text-[#C9943A]' },
-            { value: '100%', label: 'SEO-Optimized Output', color: 'text-[#1B5FA8]' },
-          ].map((s) => (
-            <div key={s.label}>
-              <p className={`text-3xl font-bold ${s.color}`}>{s.value}</p>
-              <p className="text-gray-500 text-sm mt-1">{s.label}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── Features ─────────────────────────────────────────────────────────── */}
-      <section id="features" className="py-20 px-6 bg-white">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-3 text-gray-900">Everything to Create, Rank and Scale</h2>
-          <p className="text-gray-500 text-center mb-12 max-w-xl mx-auto">
-            Rankivo combines an AI content engine with an SEO strategy layer — so every post you publish has a real shot at ranking.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {features.map((f) => {
-              const s = colorMap[f.color]
-              return (
-                <div key={f.title} className={`bg-white border border-gray-200 rounded-xl p-6 ${s.border} transition-colors shadow-sm`}>
-                  <div className={`${s.icon} text-lg w-10 h-10 rounded-lg flex items-center justify-center mb-4`}>{f.icon}</div>
-                  <h3 className="font-semibold text-gray-900 mb-2">{f.title}</h3>
-                  <p className="text-gray-500 text-sm leading-relaxed">{f.desc}</p>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </section>
+      {/* ── Stats Counter (animated) ──────────────────────────────────────────── */}
+      <StatsCounter />
 
       {/* ── Human Writing Services ───────────────────────────────────────────── */}
       <section className="py-20 px-6 bg-gray-50">
@@ -188,6 +148,28 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── Features ─────────────────────────────────────────────────────────── */}
+      <section id="features" className="py-20 px-6 bg-white">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-3 text-gray-900">Everything to Create, Rank and Scale</h2>
+          <p className="text-gray-500 text-center mb-12 max-w-xl mx-auto">
+            Rankivo combines an AI content engine with an SEO strategy layer — so every post you publish has a real shot at ranking.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {features.map((f) => {
+              const s = colorMap[f.color]
+              return (
+                <div key={f.title} className={`bg-white border border-gray-200 rounded-xl p-6 ${s.border} transition-colors shadow-sm`}>
+                  <div className={`${s.icon} text-lg w-10 h-10 rounded-lg flex items-center justify-center mb-4`}>{f.icon}</div>
+                  <h3 className="font-semibold text-gray-900 mb-2">{f.title}</h3>
+                  <p className="text-gray-500 text-sm leading-relaxed">{f.desc}</p>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+
       {/* ── How It Works ─────────────────────────────────────────────────────── */}
       <section className="py-20 px-6 bg-gray-50">
         <div className="max-w-4xl mx-auto text-center">
@@ -231,14 +213,14 @@ export default function Home() {
                 cta: 'Get Started Free', href: '/auth?mode=signup', style: 'border-gray-200',
               },
               {
-                name: 'Pro', price: '$9', period: 'per month', posts: '50 posts/month', popular: true,
+                name: 'Starter', price: '$9', period: 'per month', posts: '50 posts/month', popular: true,
                 features: ['All platforms', '6 languages', 'Full SEO tools', 'Priority generation', 'Email support'],
-                cta: 'Start Pro Plan', href: '/upgrade', style: 'border-[#1B5FA8]',
+                cta: 'Start Starter Plan', href: '/upgrade', style: 'border-[#1B5FA8]',
               },
               {
-                name: 'Premium', price: '$29', period: 'per month', posts: '300 posts/month',
+                name: 'Pro', price: '$29', period: 'per month', posts: '300 posts/month',
                 features: ['All platforms', '6 languages', 'Full SEO tools', 'Priority generation', 'Priority support', 'API access'],
-                cta: 'Start Premium', href: '/upgrade', style: 'border-[#0D9488]/50',
+                cta: 'Start Pro Plan', href: '/upgrade', style: 'border-[#0D9488]/50',
               },
             ].map((p) => (
               <div key={p.name} className={`rounded-xl p-6 border-2 relative shadow-sm bg-white ${p.style}`}>
@@ -271,34 +253,13 @@ export default function Home() {
           </div>
           <p className="text-center text-sm text-gray-400 mt-6">
             Running an agency?{' '}
-            <Link href="/upgrade" className="text-[#C9943A] hover:underline font-medium">See the unlimited Agency plan →</Link>
+            <Link href="/upgrade" className="text-[#C9943A] hover:underline font-medium">See the unlimited Agency plan ($79/mo) →</Link>
           </p>
         </div>
       </section>
 
-      {/* ── Testimonials ─────────────────────────────────────────────────────── */}
-      <section className="py-20 px-6 bg-gray-50">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-3 text-gray-900">Real People. Real Results.</h2>
-          <p className="text-gray-500 text-center mb-12">
-            Marketers, founders, bloggers and agencies — all growing faster with Rankivo.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {testimonials.map((t) => (
-              <div key={t.name} className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-                <div className="flex gap-0.5 mb-3">
-                  {[...Array(t.stars)].map((_, i) => <span key={i} className="text-[#C9943A]">★</span>)}
-                </div>
-                <p className="text-gray-600 text-sm leading-relaxed mb-4">"{t.text}"</p>
-                <div>
-                  <p className="font-semibold text-gray-900 text-sm">{t.name}</p>
-                  <p className="text-gray-400 text-xs">{t.role}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* ── Testimonials (carousel) ───────────────────────────────────────────── */}
+      <TestimonialCarousel />
 
       {/* ── Final CTA ────────────────────────────────────────────────────────── */}
       <section className="py-20 px-6 text-center bg-gradient-to-br from-[#1B5FA8]/5 to-[#0D9488]/5">
