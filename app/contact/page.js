@@ -16,10 +16,21 @@ export default function Contact() {
       return
     }
     setSending(true)
-    // Log to console — replace with email service when ready
-    console.log('Contact form submission:', form)
-    await new Promise(r => setTimeout(r, 800))
-    setSent(true)
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setSent(true)
+      } else {
+        setError('Something went wrong. Please email us directly at support@rankivo.co')
+      }
+    } catch {
+      setError('Something went wrong. Please email us directly at support@rankivo.co')
+    }
     setSending(false)
   }
 
