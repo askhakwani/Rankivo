@@ -267,8 +267,8 @@ function RichTextEditor({ value, onChange, placeholder = 'Write your content her
   )
 }
 
-function ScheduleModal({ onConfirm, onClose }) {
-  const [scheduledAt, setScheduledAt] = useState('')
+function ScheduleModal({ onConfirm, onClose, initialValue }) {
+  const [scheduledAt, setScheduledAt] = useState(() => initialValue ? new Date(initialValue).toISOString().slice(0, 16) : '')
   const minDate = new Date(Date.now() + 60000).toISOString().slice(0, 16)
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={onClose}>
@@ -883,7 +883,7 @@ function AdminPanelInner() {
                             <th className="text-left px-4 py-3 text-gray-500 font-medium">Date</th>
                             <th className="text-left px-4 py-3 text-gray-500 font-medium">Views</th>
                             <th className="text-left px-4 py-3 text-gray-500 font-medium">URL</th>
-                            <th className="text-left px-4 py-3 text-gray-500 font-medium">Actions</th>
+                            <th className="text-left px-4 py-3 text-gray-500 font-medium sticky right-0 bg-gray-50 z-10 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)]">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
@@ -892,7 +892,7 @@ function AdminPanelInner() {
                             const isTrending = (post.views || 0) >= TRENDING_THRESHOLD
                             const isScheduled = post.scheduled_at && !post.published
                             return (
-                              <tr key={post.id} className="hover:bg-gray-50/70 transition-colors">
+                              <tr key={post.id} className="group hover:bg-gray-50/70 transition-colors">
                                 <td className="px-4 py-3">
                                   <input type="checkbox"
                                     checked={selectedPosts.includes(post.id)}
@@ -932,7 +932,7 @@ function AdminPanelInner() {
                                     ? <a href={`/blog/${post.slug}`} target="_blank" rel="noopener noreferrer" className="text-xs text-[#1B5FA8] hover:underline flex items-center gap-1 whitespace-nowrap">/blog/{post.slug} <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg></a>
                                     : <span className="text-xs text-gray-400">/blog/{post.slug}</span>}
                                 </td>
-                                <td className="px-4 py-3">
+                                <td className="px-4 py-3 sticky right-0 bg-white group-hover:bg-gray-50 z-10 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)]">
                                   <div className="flex items-center gap-1.5 whitespace-nowrap">
                                     <button onClick={() => togglePublish(post)} className={`text-xs px-2.5 py-1 rounded-lg border font-medium transition-colors ${post.published ? 'border-gray-200 text-gray-600 hover:bg-gray-50' : 'border-[#0D9488]/40 text-[#0D9488] hover:bg-[#0D9488]/5'}`}>{post.published ? 'Unpublish' : 'Publish'}</button>
                                     <button onClick={() => editBlogPost(post)} className="text-xs px-2.5 py-1 rounded-lg border border-[#1B5FA8]/40 text-[#1B5FA8] hover:bg-[#1B5FA8]/5 transition-colors font-medium">Edit</button>
@@ -1059,6 +1059,16 @@ function AdminPanelInner() {
                     </div>
                   </div>
                 </div>
+                {blogForm.published && (
+                  <div className="flex items-center gap-2 bg-[#0D9488]/5 border border-[#0D9488]/20 rounded-lg px-4 py-2.5">
+                    <span className="text-base">📅</span>
+                    <label className="text-sm text-gray-600 font-medium">Published Date</label>
+                    <input type="datetime-local"
+                      value={blogForm.created_at ? new Date(blogForm.created_at).toISOString().slice(0, 16) : ''}
+                      onChange={e => setBlogForm(prev => ({ ...prev, created_at: e.target.value ? new Date(e.target.value).toISOString() : prev.created_at }))}
+                      className="border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm text-gray-800 focus:outline-none focus:border-[#0D9488]" />
+                  </div>
+                )}
                 {blogForm.scheduled_at && (
                   <div className="flex items-center gap-2 bg-[#C9943A]/5 border border-[#C9943A]/20 rounded-lg px-4 py-2.5">
                     <span className="text-base">🕐</span>
@@ -1076,7 +1086,7 @@ function AdminPanelInner() {
                 </div>
               </div>
             )}
-            {showScheduleModal && <ScheduleModal onConfirm={dt => { setShowScheduleModal(false); saveBlogPost({ published: false, scheduled_at: dt }) }} onClose={() => setShowScheduleModal(false)} />}
+            {showScheduleModal && <ScheduleModal initialValue={blogForm.scheduled_at} onConfirm={dt => { setShowScheduleModal(false); saveBlogPost({ published: false, scheduled_at: dt }) }} onClose={() => setShowScheduleModal(false)} />}
           </div>
         )}
 
