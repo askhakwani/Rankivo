@@ -731,7 +731,7 @@ function AdminPanelInner() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-        <div className="flex flex-wrap gap-2 mb-6">
+        <div className="flex flex-wrap gap-2 mb-6 sticky top-[60px] z-10 bg-gray-50 py-2 -mx-1 px-1">
           {TABS.map(t => (
             <button key={t.id} onClick={() => setActiveTab(t.id)}
               className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${activeTab === t.id ? 'bg-[#1B5FA8] text-white border-[#1B5FA8]' : 'bg-white border-gray-200 text-gray-600 hover:border-[#1B5FA8]/40'}`}>
@@ -867,7 +867,7 @@ function AdminPanelInner() {
                           <button onClick={() => setSelectedPosts([])} className="text-sm text-gray-400 hover:text-gray-600 ml-auto">Clear selection</button>
                         </div>
                       )}
-                      <table className="w-full text-sm">
+                      <table className="w-full text-sm min-w-[1100px]">
                         <thead className="bg-gray-50 border-b border-gray-200">
                           <tr>
                             <th className="px-4 py-3">
@@ -899,7 +899,7 @@ function AdminPanelInner() {
                                     onChange={e => setSelectedPosts(prev => e.target.checked ? [...prev, post.id] : prev.filter(id => id !== post.id))}
                                     className="rounded border-gray-300 text-[#1B5FA8]" />
                                 </td>
-                                <td className="px-4 py-3 max-w-[220px]">
+                                <td className="px-4 py-3 max-w-[220px] min-w-[180px]">
                                   <div className="flex items-start gap-1.5">
                                     {isTrending && <span title="Trending">🔥</span>}
                                     <p className="font-medium text-gray-900 leading-snug line-clamp-2">{post.title}</p>
