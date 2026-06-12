@@ -50,6 +50,26 @@ export default function Sidebar({ activeTab, setActiveTab, user, profile, isAdmi
           </ul>
         </div>
 
+        {isAdmin && (
+          <div>
+            <p className="text-xs text-[#C9943A] font-medium mb-2 px-1 uppercase tracking-wider">Admin</p>
+            <ul className="space-y-1">
+              <li onClick={() => router.push('/admin')}
+                className="px-3 py-2 rounded-lg cursor-pointer text-sm text-[#C9943A] hover:bg-[#C9943A]/10 border border-[#C9943A]/20 flex items-center gap-2 font-medium">
+                <span>🛡️</span> Admin Panel
+              </li>
+              <li onClick={() => router.push('/admin?tab=blog')}
+                className="px-3 py-2 rounded-lg cursor-pointer text-sm text-[#C9943A] hover:bg-[#C9943A]/10 flex items-center gap-2">
+                <span>✍️</span> Manage Blog
+              </li>
+              <li onClick={() => router.push('/admin?tab=pages')}
+                className="px-3 py-2 rounded-lg cursor-pointer text-sm text-[#C9943A] hover:bg-[#C9943A]/10 flex items-center gap-2">
+                <span>📄</span> Manage Pages
+              </li>
+            </ul>
+          </div>
+        )}
+
         <div>
           <p className="text-xs text-gray-400 font-medium mb-2 px-1 uppercase tracking-wider">Dashboard Tools</p>
           <ul className="space-y-1">
@@ -87,25 +107,6 @@ export default function Sidebar({ activeTab, setActiveTab, user, profile, isAdmi
           </ul>
         </div>
 
-        {isAdmin && (
-          <div>
-            <p className="text-xs text-[#C9943A] font-medium mb-2 px-1 uppercase tracking-wider">Admin</p>
-            <ul className="space-y-1">
-              <li onClick={() => router.push('/admin')}
-                className="px-3 py-2 rounded-lg cursor-pointer text-sm text-[#C9943A] hover:bg-[#C9943A]/10 border border-[#C9943A]/20 flex items-center gap-2 font-medium">
-                <span>🛡️</span> Admin Panel
-              </li>
-              <li onClick={() => router.push('/admin?tab=blog')}
-                className="px-3 py-2 rounded-lg cursor-pointer text-sm text-[#C9943A] hover:bg-[#C9943A]/10 flex items-center gap-2">
-                <span>✍️</span> Manage Blog
-              </li>
-              <li onClick={() => router.push('/admin?tab=pages')}
-                className="px-3 py-2 rounded-lg cursor-pointer text-sm text-[#C9943A] hover:bg-[#C9943A]/10 flex items-center gap-2">
-                <span>📄</span> Manage Pages
-              </li>
-            </ul>
-          </div>
-        )}
 
         <div>
           <p className="text-xs text-gray-400 font-medium mb-2 px-1 uppercase tracking-wider">Account</p>
