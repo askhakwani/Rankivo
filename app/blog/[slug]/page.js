@@ -125,8 +125,8 @@ export default async function BlogPost({ params }) {
 
           {/* Featured image */}
           {post.featured_image && (
-            <div className="rounded-xl overflow-hidden mb-8 aspect-video">
-              <img src={post.featured_image} alt={post.title} className="w-full h-full object-cover" />
+            <div className="rounded-xl overflow-hidden mb-8 aspect-video bg-gray-50">
+              <img src={post.featured_image} alt={post.title} className="w-full h-full object-contain" />
             </div>
           )}
 
