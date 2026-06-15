@@ -97,7 +97,7 @@ function BlogClientInner({ posts, categories }) {
                 <div className="md:flex">
                   <div className="md:w-1/2 h-64 md:h-auto overflow-hidden bg-gradient-to-br from-[#1B5FA8]/10 to-[#0D9488]/10 relative">
                     {hero.featured_image ? (
-                      <img src={hero.featured_image} alt={hero.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      <img src={hero.featured_image} alt={hero.title} className="w-full h-full object-contain bg-gray-50 group-hover:scale-105 transition-transform duration-500" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center min-h-[260px]">
                         <span className="text-6xl text-[#1B5FA8]/20">✦</span>
@@ -143,7 +143,7 @@ function BlogClientInner({ posts, categories }) {
                         className="group bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md hover:border-[#1B5FA8]/30 hover:-translate-y-0.5 transition-all duration-300 flex flex-col">
                         <div className="h-44 overflow-hidden bg-gradient-to-br from-[#1B5FA8]/10 to-[#0D9488]/10 relative shrink-0">
                           {post.featured_image ? (
-                            <img src={post.featured_image} alt={post.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                            <img src={post.featured_image} alt={post.title} className="w-full h-full object-contain bg-gray-50 group-hover:scale-105 transition-transform duration-500" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center"><span className="text-4xl text-[#1B5FA8]/20">✦</span></div>
                           )}
