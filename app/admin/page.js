@@ -268,8 +268,13 @@ function RichTextEditor({ value, onChange, placeholder = 'Write your content her
 }
 
 function ScheduleModal({ onConfirm, onClose, initialValue }) {
-  const [scheduledAt, setScheduledAt] = useState(() => initialValue ? new Date(initialValue).toISOString().slice(0, 16) : '')
-  const minDate = new Date(Date.now() + 60000).toISOString().slice(0, 16)
+  const toLocalInputValue = (d) => {
+    const date = new Date(d)
+    const offsetMs = date.getTimezoneOffset() * 60000
+    return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16)
+  }
+  const [scheduledAt, setScheduledAt] = useState(() => initialValue ? toLocalInputValue(initialValue) : '')
+  const minDate = toLocalInputValue(Date.now() + 60000)
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm mx-4" onClick={e => e.stopPropagation()}>
@@ -1086,7 +1091,7 @@ function AdminPanelInner() {
                 </div>
               </div>
             )}
-            {showScheduleModal && <ScheduleModal initialValue={blogForm.scheduled_at} onConfirm={dt => { setShowScheduleModal(false); saveBlogPost({ published: false, scheduled_at: dt }) }} onClose={() => setShowScheduleModal(false)} />}
+            {showScheduleModal && <ScheduleModal initialValue={blogForm.scheduled_at} onConfirm={dt => { setShowScheduleModal(false); saveBlogPost({ published: false, scheduled_at: new Date(dt).toISOString() }) }} onClose={() => setShowScheduleModal(false)} />}
           </div>
         )}
 
