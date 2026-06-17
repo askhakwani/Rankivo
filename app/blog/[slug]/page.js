@@ -108,14 +108,14 @@ export default async function BlogPost({ params }) {
                 <div>
                   <p className="text-sm font-semibold text-gray-800">{author.name}</p>
                   <p className="text-xs text-gray-400">
-                    {author.title} · {new Date(post.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                    {author.title} · {new Date(post.scheduled_at || post.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                   </p>
                 </div>
               </div>
             )}
             {!author && (
               <p className="text-sm text-gray-400">
-                {new Date(post.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                {new Date(post.scheduled_at || post.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
               </p>
             )}
           </div>

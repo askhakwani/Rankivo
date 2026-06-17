@@ -109,7 +109,7 @@ function BlogClientInner({ posts, categories }) {
                     )}
                   </div>
                   <div className="md:w-1/2 p-8 flex flex-col justify-center">
-                    <p className="text-xs text-gray-400 mb-3">{new Date(hero.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+                    <p className="text-xs text-gray-400 mb-3">{new Date(hero.scheduled_at || hero.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
                     <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3 group-hover:text-[#1B5FA8] transition-colors leading-snug">{hero.title}</h2>
                     {hero.excerpt && <p className="text-gray-500 leading-relaxed mb-6 line-clamp-3">{hero.excerpt}</p>}
                     {hero.author_id && AUTHORS[hero.author_id] && (
@@ -155,7 +155,7 @@ function BlogClientInner({ posts, categories }) {
                           )}
                         </div>
                         <div className="p-5 flex flex-col flex-1">
-                          <p className="text-xs text-gray-400 mb-2">{new Date(post.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+                          <p className="text-xs text-gray-400 mb-2">{new Date(post.scheduled_at || post.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
                           <h2 className="font-bold text-gray-900 mb-2 group-hover:text-[#1B5FA8] transition-colors leading-snug line-clamp-2">{post.title}</h2>
                           {post.excerpt && <p className="text-sm text-gray-500 leading-relaxed line-clamp-2 mb-4">{post.excerpt}</p>}
                           <div className="mt-auto flex items-center justify-between pt-4 border-t border-gray-100">
