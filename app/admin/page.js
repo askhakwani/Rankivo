@@ -6,13 +6,14 @@ import { useRouter, useSearchParams } from 'next/navigation'
 const ADMIN_EMAIL = 'askhakwani@gmail.com'
 
 const TABS = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'orders',   label: '📦 Orders' },
-  { id: 'users',    label: 'Users' },
-  { id: 'blog',     label: 'Blog Posts' },
-  { id: 'authors',  label: 'Authors' },
-  { id: 'pages',    label: 'Pages / CMS' },
-  { id: 'settings', label: 'Site Settings' },
+  { id: 'overview',    label: 'Overview' },
+  { id: 'orders',      label: '📦 Orders' },
+  { id: 'users',       label: 'Users' },
+  { id: 'blog',        label: 'Blog Posts' },
+  { id: 'authors',     label: 'Authors' },
+  { id: 'categories',  label: 'Categories' },
+  { id: 'pages',       label: 'Pages / CMS' },
+  { id: 'settings',    label: 'Site Settings' },
 ]
 
 const TRENDING_THRESHOLD = 100
@@ -372,6 +373,14 @@ function AdminPanelInner() {
   const [authorMsg, setAuthorMsg] = useState('')
   const [authorSaving, setAuthorSaving] = useState(false)
 
+  // Categories
+  const [categories, setCategories]           = useState([])
+  const [categoriesLoading, setCategoriesLoading] = useState(false)
+  const [categoryView, setCategoryView]       = useState('list')
+  const [categoryForm, setCategoryForm]       = useState({ id: null, name: '', slug: '' })
+  const [categoryMsg, setCategoryMsg]         = useState('')
+  const [categorySaving, setCategorySaving]   = useState(false)
+
   // Orders
   const [orders, setOrders]               = useState([])
   const [ordersLoading, setOrdersLoading] = useState(false)
@@ -399,9 +408,10 @@ function AdminPanelInner() {
 
   useEffect(() => {
     if (activeTab === 'users') loadUsers()
-    if (activeTab === 'blog') { loadPosts(); loadAuthors() }
+    if (activeTab === 'blog') { loadPosts(); loadAuthors(); loadCategories() }
     if (activeTab === 'pages') loadPages()
     if (activeTab === 'authors') loadAuthors()
+    if (activeTab === 'categories') loadCategories()
     if (activeTab === 'orders') loadOrders()
   }, [activeTab])
 
@@ -440,6 +450,49 @@ function AdminPanelInner() {
     setAuthors(data || [])
     if (data && data.length > 0) setBlogForm(prev => ({ ...prev, author_id: prev.author_id || data[0].slug }))
     setAuthorsLoading(false)
+  }
+
+  async function loadCategories() {
+    setCategoriesLoading(true)
+    const { data } = await supabase.from('categories').select('*').order('name', { ascending: true })
+    setCategories(data || [])
+    setCategoriesLoading(false)
+  }
+
+  function newCategory() {
+    setCategoryForm({ id: null, name: '', slug: '' })
+    setCategoryMsg('')
+    setCategoryView('form')
+  }
+
+  function editCategory(cat) {
+    setCategoryForm({ id: cat.id, name: cat.name, slug: cat.slug })
+    setCategoryMsg('')
+    setCategoryView('form')
+  }
+
+  async function saveCategory() {
+    if (!categoryForm.name.trim()) { setCategoryMsg('Name is required.'); return }
+    setCategorySaving(true); setCategoryMsg('')
+    const slug = categoryForm.slug.trim() || slugify(categoryForm.name)
+    const payload = { name: categoryForm.name.trim(), slug }
+    let error
+    if (categoryForm.id) {
+      const { error: e } = await supabase.from('categories').update(payload).eq('id', categoryForm.id); error = e
+    } else {
+      const { error: e } = await supabase.from('categories').insert({ ...payload, created_at: new Date().toISOString() }); error = e
+    }
+    if (error) { setCategoryMsg('Error: ' + (error.message.includes('unique') ? 'A category with that name or slug already exists.' : error.message)); setCategorySaving(false); return }
+    setCategoryMsg(categoryForm.id ? 'Category updated!' : 'Category created!')
+    setCategorySaving(false)
+    loadCategories()
+    setTimeout(() => setCategoryView('list'), 700)
+  }
+
+  async function deleteCategory(id) {
+    if (!confirm('Delete this category? Any posts using it will show "None".')) return
+    await supabase.from('categories').delete().eq('id', id)
+    loadCategories()
   }
 
   async function loadOrders() {
@@ -859,11 +912,9 @@ function AdminPanelInner() {
                           <select value={bulkCategory} onChange={e => setBulkCategory(e.target.value)}
                             className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:border-[#1B5FA8] bg-white">
                             <option value="">— Assign category —</option>
-                            <option value="Keyword Research">Keyword Research</option>
-                            <option value="SEO Strategy">SEO Strategy</option>
-                            <option value="Content Writing">Content Writing</option>
-                            <option value="SEO Tools">SEO Tools</option>
-                            <option value="Social Media">Social Media</option>
+                            {categories.map(cat => (
+                              <option key={cat.id} value={cat.name}>{cat.name}</option>
+                            ))}
                           </select>
                           <button onClick={bulkAssignCategory} disabled={!bulkCategory || bulkSaving}
                             className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 disabled:opacity-40 text-white px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors">
@@ -980,15 +1031,19 @@ function AdminPanelInner() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                  <select value={blogForm.category || ''} onChange={e => setBlogForm(prev => ({ ...prev, category: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm bg-white">
-                    <option value="">— Select a category —</option>
-                    <option value="Keyword Research">Keyword Research</option>
-                    <option value="SEO Strategy">SEO Strategy</option>
-                    <option value="Content Writing">Content Writing</option>
-                    <option value="SEO Tools">SEO Tools</option>
-                    <option value="Social Media">Social Media</option>
-                  </select>
+                  <div className="flex gap-2">
+                    <select value={blogForm.category || ''} onChange={e => setBlogForm(prev => ({ ...prev, category: e.target.value }))}
+                      className="flex-1 border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm bg-white">
+                      <option value="">— Select a category —</option>
+                      {categories.map(cat => (
+                        <option key={cat.id} value={cat.name}>{cat.name}</option>
+                      ))}
+                    </select>
+                    <button type="button" onClick={() => setActiveTab('categories')}
+                      className="px-3 py-2 text-xs border border-gray-200 rounded-lg text-gray-500 hover:border-[#1B5FA8]/40 hover:text-[#1B5FA8] transition-colors whitespace-nowrap">
+                      + Manage
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Author</label>
@@ -1224,6 +1279,74 @@ function AdminPanelInner() {
                     {authorSaving ? 'Saving...' : authorForm.id ? 'Update Author' : 'Create Author'}
                   </button>
                   <button onClick={() => setAuthorView('list')} className="bg-gray-100 hover:bg-gray-200 text-gray-600 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors">Cancel</button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'categories' && (
+          <div className="max-w-2xl">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Categories</h2>
+                <p className="text-sm text-gray-500 mt-0.5">Manage blog post categories</p>
+              </div>
+              {categoryView === 'list' && <button onClick={newCategory} className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">+ New Category</button>}
+              {categoryView === 'form' && <button onClick={() => setCategoryView('list')} className="text-sm text-gray-500 hover:text-gray-800 border border-gray-200 px-3 py-1.5 rounded-lg">← Back to Categories</button>}
+            </div>
+
+            {categoryView === 'list' && (
+              categoriesLoading ? <div className="text-center py-10 text-gray-400">Loading categories...</div> : (
+                <div className="space-y-3">
+                  {categories.length === 0 && (
+                    <div className="bg-white border border-dashed border-gray-300 rounded-xl p-10 text-center">
+                      <p className="font-semibold text-gray-700 mb-1">No categories yet</p>
+                      <p className="text-sm text-gray-400 mb-4">Create your first blog category.</p>
+                      <button onClick={newCategory} className="bg-[#1B5FA8] text-white px-5 py-2 rounded-lg text-sm font-semibold">Create First Category</button>
+                    </div>
+                  )}
+                  {categories.map(cat => (
+                    <div key={cat.id} className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-4 hover:border-[#1B5FA8]/30 transition-colors">
+                      <div className="w-9 h-9 rounded-lg bg-[#1B5FA8]/10 flex items-center justify-center text-[#1B5FA8] font-bold text-sm shrink-0">
+                        {cat.name.charAt(0)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-900">{cat.name}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">Slug: {cat.slug}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button onClick={() => editCategory(cat)} className="text-xs px-3 py-1.5 rounded-lg border border-[#1B5FA8]/40 text-[#1B5FA8] hover:bg-[#1B5FA8]/5 transition-colors font-medium">Edit</button>
+                        <button onClick={() => deleteCategory(cat.id)} className="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-400 hover:bg-red-50 transition-colors font-medium">Delete</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            )}
+
+            {categoryView === 'form' && (
+              <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4 shadow-sm">
+                <h3 className="font-bold text-gray-900">{categoryForm.id ? 'Edit Category' : 'New Category'}</h3>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                  <input type="text" value={categoryForm.name} placeholder="e.g. Ecommerce SEO"
+                    onChange={e => setCategoryForm(prev => ({ ...prev, name: e.target.value, slug: prev.slug || slugify(e.target.value) }))}
+                    className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Slug (auto-generated)</label>
+                  <input type="text" value={categoryForm.slug} placeholder="e.g. ecommerce-seo"
+                    onChange={e => setCategoryForm(prev => ({ ...prev, slug: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-gray-800 focus:outline-none focus:border-[#0D9488] text-sm font-mono" />
+                  <p className="text-xs text-gray-400 mt-1">Used in URLs and filters. Auto-generated from name — only edit if needed.</p>
+                </div>
+                {categoryMsg && <p className={`text-sm font-medium ${categoryMsg.startsWith('Error') ? 'text-red-500' : 'text-[#0D9488]'}`}>{categoryMsg}</p>}
+                <div className="flex gap-3">
+                  <button onClick={saveCategory} disabled={categorySaving} className="bg-[#1B5FA8] hover:bg-[#1B5FA8]/90 text-white px-6 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-50 transition-colors">
+                    {categorySaving ? 'Saving...' : categoryForm.id ? 'Update Category' : 'Create Category'}
+                  </button>
+                  <button onClick={() => setCategoryView('list')} className="bg-gray-100 hover:bg-gray-200 text-gray-600 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors">Cancel</button>
                 </div>
               </div>
             )}
