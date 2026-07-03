@@ -23,9 +23,28 @@ async function getPosts() {
   }
 }
 
-export const metadata = {
-  title: 'Blog — Content & SEO Insights | RANKIVO',
-  description: 'Tips, guides and strategies on keyword research, SEO, and content writing from the RANKIVO team.',
+export async function generateMetadata({ searchParams }) {
+  const params = await searchParams
+  const category = params?.category
+
+  if (category) {
+    return {
+      title: 'Blog Content & SEO Insights | RANKIVO',
+      description: 'Tips, guides and strategies on keyword research, SEO, and content writing from the RANKIVO team.',
+      robots: {
+        index: false,
+        follow: true,
+      },
+      alternates: {
+        canonical: '/blog',
+      },
+    }
+  }
+
+  return {
+    title: 'Blog Content & SEO Insights | RANKIVO',
+    description: 'Tips, guides and strategies on keyword research, SEO, and content writing from the RANKIVO team.',
+  }
 }
 
 export const revalidate = 60
@@ -64,3 +83,5 @@ export default async function Blog() {
     </div>
   )
 }
+
+
