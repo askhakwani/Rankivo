@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 // Regenerate the sitemap at most once per hour instead of only at build time.
 // This ensures newly published blog posts show up without needing a redeploy.
 export const revalidate = 3600
+export const fetchCache = 'force-no-store'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
