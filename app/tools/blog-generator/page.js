@@ -43,17 +43,27 @@ function TagInput({ value, onChange, placeholder }) {
   )
 }
 
+function renderInline(text, keyPrefix) {
+  // Turns **bold** into real bold text instead of showing the asterisks
+  const parts = text.split(/\*\*(.+?)\*\*/g)
+  return parts.map((part, i) =>
+    i % 2 === 1
+      ? <strong key={`${keyPrefix}-${i}`} className="font-semibold text-gray-900">{part}</strong>
+      : <span key={`${keyPrefix}-${i}`}>{part}</span>
+  )
+}
+
 function FormattedContent({ content }) {
   if (!content) return null
   return (
     <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed">
       {content.split('\n').map((line, i) => {
-        if (line.startsWith('### ')) return <h3 key={i} className="text-base font-bold text-gray-800 mt-4 mb-1">{line.replace('### ', '')}</h3>
-        if (line.startsWith('## '))  return <h2 key={i} className="text-lg font-bold text-[#1B5FA8] mt-5 mb-2">{line.replace('## ', '')}</h2>
-        if (line.startsWith('# '))   return <h1 key={i} className="text-xl font-bold text-[#1B5FA8] mt-4 mb-2">{line.replace('# ', '')}</h1>
-        if (line.startsWith('- '))   return <li key={i} className="ml-4 text-sm text-gray-700">{line.replace('- ', '')}</li>
+        if (line.startsWith('### ')) return <h3 key={i} className="text-base font-bold text-gray-800 mt-4 mb-1">{renderInline(line.replace('### ', ''), i)}</h3>
+        if (line.startsWith('## '))  return <h2 key={i} className="text-lg font-bold text-[#1B5FA8] mt-5 mb-2">{renderInline(line.replace('## ', ''), i)}</h2>
+        if (line.startsWith('# '))   return <h1 key={i} className="text-xl font-bold text-[#1B5FA8] mt-4 mb-2">{renderInline(line.replace('# ', ''), i)}</h1>
+        if (line.startsWith('- '))   return <li key={i} className="ml-4 text-sm text-gray-700">{renderInline(line.replace('- ', ''), i)}</li>
         if (line.trim() === '')       return <br key={i} />
-        return <p key={i} className="text-sm text-gray-700 mb-2">{line}</p>
+        return <p key={i} className="text-sm text-gray-700 mb-2">{renderInline(line, i)}</p>
       })}
     </div>
   )

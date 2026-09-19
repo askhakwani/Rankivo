@@ -498,7 +498,7 @@ export async function POST(request) {
         if (!content.includes('## ')) issues.push('MISSING ## headings')
         if (!content.includes('\n- ')) issues.push('MISSING bullet points')
         if (Math.abs(v - wordCount) > 40) issues.push(`WRONG word count: got ${v}, need ${wordCount}`)
-        const retryPrompt = `Fix:\n${issues.join('\n')}\n\nReturn complete corrected content.\n\nPrevious:\n${content}`
+        const retryPrompt = `The blog post below is supposed to be about: "${topic}"\n\nFix these problems:\n${issues.join('\n')}\n\nKeep the same topic (${topic}) — do not change the subject. Return the complete corrected content.\n\nPrevious:\n${content}`
         rawText = await callGroq(retryPrompt, isBlog)
       }
 
