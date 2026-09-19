@@ -363,7 +363,7 @@ async function callGroq(prompt, isBlog) {
 
   const completion = await groq.chat.completions.create({
     messages,
-    model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+    model: 'openai/gpt-oss-120b',
     temperature: 0.7,
     max_tokens: 3000,
   })
