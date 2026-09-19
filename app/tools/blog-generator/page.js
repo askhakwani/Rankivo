@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Navbar from '../../../components/Navbar'
 import Footer from '../../../components/Footer'
+import { createClient } from '../../../lib/supabase'
 
 const TONES = ['Professional', 'Casual', 'Friendly', 'Authoritative', 'Conversational', 'Humorous']
 const LENGTHS = [
@@ -76,6 +77,10 @@ function FormattedContent({ content }) {
 
 export default function BlogGeneratorPage() {
   const router = useRouter()
+  const supabase = createClient()
+
+  const [user, setUser] = useState(null)
+  const [authChecked, setAuthChecked] = useState(false)
 
   const [form, setForm] = useState({
     topic: '', keywords: [], tone: 'Professional', audience: '',
@@ -89,7 +94,15 @@ export default function BlogGeneratorPage() {
   const [copied,    setCopied]    = useState(false)
   const [activeTab, setActiveTab] = useState('content')
 
-  // Restore result after login redirect
+  // Check auth state once on load — everything below depends on knowing this first
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data?.user || null)
+      setAuthChecked(true)
+    })
+  }, [])
+
+  // Restore result after login/signup redirect (unlocking a preview)
   useEffect(() => {
     const saved = sessionStorage.getItem('rankivo_restore_blog')
     if (saved) {
@@ -98,13 +111,23 @@ export default function BlogGeneratorPage() {
         if (data.result) { setResult(data.result); setIsPreview(false) }
         if (data.form) setForm(data.form)
         sessionStorage.removeItem('rankivo_restore_blog')
+        // They now have a real saved copy — the old guest draft is stale, drop it
+        sessionStorage.removeItem('rankivo_guest_blog_draft')
       } catch (e) { /* ignore */ }
     }
   }, [])
 
-  // Restore a guest's most recent draft if they refresh the page
+  // Restore a guest's most recent draft if they refresh the page — but ONLY for guests.
+  // A logged-in visit should never resurface an old guest draft (e.g. after logging out
+  // and back in, or generating fresh while signed in).
   useEffect(() => {
-    if (result) return // don't overwrite an active result
+    if (!authChecked) return   // wait until we know who's viewing
+    if (result) return          // don't overwrite an active result
+    if (user) {
+      // Logged in: clear any leftover guest draft so it can never resurface later
+      sessionStorage.removeItem('rankivo_guest_blog_draft')
+      return
+    }
     const draft = sessionStorage.getItem('rankivo_guest_blog_draft')
     if (draft) {
       try {
@@ -115,7 +138,7 @@ export default function BlogGeneratorPage() {
         if (data.form) setForm(data.form)
       } catch (e) { /* ignore */ }
     }
-  }, [])
+  }, [authChecked, user])
 
   function updateForm(field, value) { setForm(prev => ({ ...prev, [field]: value })) }
 
@@ -160,10 +183,8 @@ export default function BlogGeneratorPage() {
       setActiveTab('content')
 
       if (!data.isGuest) {
-        const { createClient } = await import('../../../lib/supabase')
-        const supabase = createClient()
-        const { data: userData } = await supabase.auth.getUser()
-        await saveToHistory(data, userData?.user || null, supabase)
+        await saveToHistory(data, user, supabase)
+        sessionStorage.removeItem('rankivo_guest_blog_draft')
       } else {
         sessionStorage.setItem('rankivo_guest_blog_draft', JSON.stringify({ result: data.content, form, fullWordCount: data.fullWordCount || 0 }))
       }
