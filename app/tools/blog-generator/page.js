@@ -57,7 +57,12 @@ function FormattedContent({ content }) {
   if (!content) return null
   return (
     <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed">
-      {content.split('\n').map((line, i) => {
+      {content.split('\n').map((rawLine, i) => {
+        // Some model outputs wrap an entire heading line in **bold** on top of ##/### —
+        // unwrap that first so the heading check below still catches it
+        const fullyBoldMatch = rawLine.trim().match(/^\*\*(.+)\*\*$/)
+        const line = fullyBoldMatch ? fullyBoldMatch[1] : rawLine
+
         if (line.startsWith('### ')) return <h3 key={i} className="text-base font-bold text-gray-800 mt-4 mb-1">{renderInline(line.replace('### ', ''), i)}</h3>
         if (line.startsWith('## '))  return <h2 key={i} className="text-lg font-bold text-[#1B5FA8] mt-5 mb-2">{renderInline(line.replace('## ', ''), i)}</h2>
         if (line.startsWith('# '))   return <h1 key={i} className="text-xl font-bold text-[#1B5FA8] mt-4 mb-2">{renderInline(line.replace('# ', ''), i)}</h1>
@@ -76,9 +81,10 @@ export default function BlogGeneratorPage() {
     topic: '', keywords: [], tone: 'Professional', audience: '',
     cta: 'None', length: 'Long', language: 'English', link: '',
   })
-  const [result,    setResult]    = useState(null)
-  const [isPreview, setIsPreview] = useState(false)
-  const [loading,   setLoading]   = useState(false)
+  const [result,      setResult]      = useState(null)
+  const [isPreview,   setIsPreview]   = useState(false)
+  const [fullWordCount, setFullWordCount] = useState(0)
+  const [loading,     setLoading]     = useState(false)
   const [error,     setError]     = useState('')
   const [copied,    setCopied]    = useState(false)
   const [activeTab, setActiveTab] = useState('content')
@@ -105,6 +111,7 @@ export default function BlogGeneratorPage() {
         const data = JSON.parse(draft)
         setResult(data.result)
         setIsPreview(true)
+        setFullWordCount(data.fullWordCount || 0)
         if (data.form) setForm(data.form)
       } catch (e) { /* ignore */ }
     }
@@ -139,7 +146,7 @@ export default function BlogGeneratorPage() {
 
   async function handleGenerate() {
     if (!form.topic.trim()) return
-    setLoading(true); setError(''); setResult(null); setIsPreview(false)
+    setLoading(true); setError(''); setResult(null); setIsPreview(false); setFullWordCount(0)
     try {
       const res = await fetch('/api/generate', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -149,6 +156,7 @@ export default function BlogGeneratorPage() {
       if (data.error) { setError(data.error); return }
       setResult(data.content)
       setIsPreview(data.isPreview || false)
+      setFullWordCount(data.fullWordCount || 0)
       setActiveTab('content')
 
       if (!data.isGuest) {
@@ -157,7 +165,7 @@ export default function BlogGeneratorPage() {
         const { data: userData } = await supabase.auth.getUser()
         await saveToHistory(data, userData?.user || null, supabase)
       } else {
-        sessionStorage.setItem('rankivo_guest_blog_draft', JSON.stringify({ result: data.content, form }))
+        sessionStorage.setItem('rankivo_guest_blog_draft', JSON.stringify({ result: data.content, form, fullWordCount: data.fullWordCount || 0 }))
       }
     } catch { setError('Something went wrong. Please try again.') }
     finally { setLoading(false) }
@@ -175,7 +183,9 @@ export default function BlogGeneratorPage() {
     setCopied(true); setTimeout(() => setCopied(false), 2000)
   }
 
-  const wordCount = result?.content ? result.content.trim().split(/\s+/).filter(Boolean).length : 0
+  // Show the real full article length, not just however much text is visible
+  // (a guest sees a truncated preview, but should still see the true word count)
+  const wordCount = fullWordCount || (result?.content ? result.content.trim().split(/\s+/).filter(Boolean).length : 0)
 
   return (
     <>

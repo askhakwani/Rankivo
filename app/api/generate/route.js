@@ -19,7 +19,7 @@ function isValid(content, wordCount) {
   // Falling short of the promised word count is the real problem — overshooting is fine.
   // Only trigger a retry if it's meaningfully under target, or absurdly over (runaway output).
   const minWords = Math.round(wordCount * 0.9)
-  const maxWords = Math.round(wordCount * 2.5)
+  const maxWords = Math.round(wordCount * 1.6)
   const wordMatch = words >= minWords && words <= maxWords
   return wordMatch && hasHeadings && hasBullets && hasLineBreaks
 }
@@ -40,13 +40,12 @@ function parseVariations(raw) {
   return blocks.map(block => block.replace(/^\d+\.\s*/, '').trim()).filter(Boolean)
 }
 
-// Builds a per-section word-count plan whose numbers intentionally sum to MORE than
-// the customer-facing target (the AI reliably undershoots a single overall number,
-// but hits section-level quotas much more reliably — and the cushion means even a
-// partial shortfall still clears the real target).
+// Builds a per-section word-count plan. NOTE: no artificial inflation here — testing showed
+// the model reliably writes ~13-19% MORE than whatever section quotas it's given (it explains
+// things a bit more than asked, consistently, regardless of tier). So quotas are set to the
+// real target itself; that natural overshoot is what provides the safety cushion.
 function buildSectionPlan(wordCount) {
-  const INFLATION = 1.7
-  const total = Math.round(wordCount * INFLATION)
+  const total = wordCount
 
   if (wordCount <= 200) {
     return [
@@ -488,7 +487,7 @@ export async function POST(request) {
         if (!content.includes('## ')) issues.push('MISSING ## headings')
         if (!content.includes('\n- ')) issues.push('MISSING bullet points')
         const minWords = Math.round(wordCount * 0.9)
-        const maxWords = Math.round(wordCount * 2.5)
+        const maxWords = Math.round(wordCount * 1.6)
         if (v < minWords) issues.push(`TOO SHORT: got ${v} words, need at least ${wordCount}`)
         if (v > maxWords) issues.push(`TOO LONG: got ${v} words, need around ${wordCount}`)
         const wordsNeeded = wordCount - v
@@ -536,6 +535,10 @@ export async function POST(request) {
       return Response.json({
         isGuest,
         isPreview: isGuest,
+        // Always the TRUE full article word count, even when the visible text is a
+        // truncated guest preview — showing the preview's own word count made the
+        // tool look like it under-delivers when a guest hadn't unlocked it yet.
+        fullWordCount: countWords(content),
         content: { metaTitle, metaDescription, titles: h1 ? [h1] : [], content: returnContent }
       })
     }
