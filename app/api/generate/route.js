@@ -36,7 +36,17 @@ function getPreviewContent(content) {
 }
 
 function parseVariations(raw) {
-  const blocks = raw.split(/\n---\n/).map(b => b.trim()).filter(Boolean)
+  // Primary: split on the '---' separator, tolerant of whitespace differences
+  // around it (models don't always match the exact "\n---\n" pattern literally).
+  let blocks = raw.split(/\n\s*-{3,}\s*\n/).map(b => b.trim()).filter(Boolean)
+
+  // Fallback: if the model skipped the separator entirely and just numbered the
+  // variations (1. 2. 3. 4.), split at the start of each numbered item instead.
+  if (blocks.length <= 1) {
+    const numberedSplit = raw.split(/\n(?=\d+\.\s)/).map(b => b.trim()).filter(Boolean)
+    if (numberedSplit.length > 1) blocks = numberedSplit
+  }
+
   return blocks.map(block => block.replace(/^\d+\.\s*/, '').trim()).filter(Boolean)
 }
 

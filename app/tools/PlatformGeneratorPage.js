@@ -48,14 +48,18 @@ function TagInput({ value, onChange, placeholder }) {
   )
 }
 
+// Strip markdown bold/italic markers, keeping the underlying text
+function stripMarkdown(text) {
+  return text.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1')
+}
+
 // Renders formatted content for single-output platforms (Email, YouTube)
 function FormattedContent({ text }) {
   if (!text) return null
   return (
     <div className="space-y-2">
       {text.split('\n').map((line, i) => {
-        // Strip markdown bold/italic
-        const clean = line.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1')
+        const clean = stripMarkdown(line)
         if (clean.trim() === '') return <div key={i} className="h-2" />
         // Section headers (INTRO, OUTRO, HOOK etc)
         if (/^[A-Z][A-Z\s]+:?$/.test(clean.trim())) {
@@ -86,7 +90,7 @@ function VariationCard({ index, text, isBlurred, isGuest, onCopy, copied, onUnlo
       {/* Content — blurred for locked variations */}
       <div className={`px-4 py-4 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed ${isBlurred ? 'select-none' : ''}`}
         style={isBlurred ? { filter: 'blur(5px)', userSelect: 'none', pointerEvents: 'none' } : {}}>
-        {text}
+        {stripMarkdown(text)}
       </div>
 
       {/* Blur overlay */}
@@ -209,12 +213,12 @@ export default function PlatformGeneratorPage({ config }) {
   }
 
   function copyVariation(text, index) {
-    navigator.clipboard.writeText(text)
+    navigator.clipboard.writeText(stripMarkdown(text))
     setCopied(index); setTimeout(() => setCopied(null), 2000)
   }
 
   function copySingle() {
-    navigator.clipboard.writeText(singleResult)
+    navigator.clipboard.writeText(stripMarkdown(singleResult))
     setCopiedSingle(true); setTimeout(() => setCopiedSingle(false), 2000)
   }
 
