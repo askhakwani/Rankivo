@@ -16,7 +16,11 @@ function isValid(content, wordCount) {
   const hasHeadings = content.includes('## ')
   const hasBullets = content.includes('\n- ')
   const hasLineBreaks = content.includes('\n')
-  const wordMatch = Math.abs(words - wordCount) <= 40
+  // Falling short of the promised word count is the real problem — overshooting is fine.
+  // Only trigger a retry if it's meaningfully under target, or absurdly over (runaway output).
+  const minWords = Math.round(wordCount * 0.9)
+  const maxWords = Math.round(wordCount * 2.5)
+  const wordMatch = words >= minWords && words <= maxWords
   return wordMatch && hasHeadings && hasBullets && hasLineBreaks
 }
 
@@ -36,82 +40,66 @@ function parseVariations(raw) {
   return blocks.map(block => block.replace(/^\d+\.\s*/, '').trim()).filter(Boolean)
 }
 
+// Builds a per-section word-count plan whose numbers intentionally sum to MORE than
+// the customer-facing target (the AI reliably undershoots a single overall number,
+// but hits section-level quotas much more reliably — and the cushion means even a
+// partial shortfall still clears the real target).
+function buildSectionPlan(wordCount) {
+  const INFLATION = 1.7
+  const total = Math.round(wordCount * INFLATION)
+
+  if (wordCount <= 200) {
+    return [
+      { heading: '## Introduction', words: Math.round(total * 0.28), note: 'Introduce the topic in an engaging, relevant way.' },
+      { heading: '## Key Points', bullets: 3, bulletWords: Math.round(total * 0.48 / 3), note: 'Each bullet a full, detailed sentence explaining one point.' },
+      { heading: '## Conclusion', words: Math.round(total * 0.24), note: 'Wrap up the key takeaway.' },
+    ]
+  }
+  if (wordCount <= 500) {
+    return [
+      { heading: '## Introduction', words: Math.round(total * 0.12), note: 'Introduce the topic and why it matters.' },
+      { heading: '## Why It Matters', words: Math.round(total * 0.16), note: 'Explain the importance and real-world impact.' },
+      { heading: '## Key Benefits', bullets: 4, bulletWords: Math.round(total * 0.32 / 4), note: 'Each bullet a full sentence with explanation.' },
+      { heading: '## How It Works', words: Math.round(total * 0.24), note: 'Explain the process or mechanism clearly.' },
+      { heading: '## Conclusion', words: Math.round(total * 0.16), note: 'Summarize the main message.' },
+    ]
+  }
+  return [
+    { heading: '## Introduction', words: Math.round(total * 0.09), note: 'A strong hook, introduce the topic, preview what the article covers.' },
+    { heading: '## Background', words: Math.round(total * 0.09), note: 'Provide context, history, or foundational information.' },
+    { heading: '## Key Benefits', bullets: 4, bulletWords: Math.round(total * 0.14 / 4), note: 'Each bullet a full explanation including why it matters.' },
+    { heading: '## How It Works', words: Math.round(total * 0.10), note: 'Explain the mechanics, process, or methodology.',
+      subsection: { heading: '### Step by Step', bullets: 4, bulletWords: Math.round(total * 0.08 / 4), note: 'Each step: what to do and why.' } },
+    { heading: '## Real World Applications', words: Math.round(total * 0.12), note: 'Concrete examples of how this plays out in real life or business.' },
+    { heading: '## Challenges to Consider', words: Math.round(total * 0.10), note: 'Honestly discuss common pitfalls, limitations, or things to watch for.' },
+    { heading: '## Best Practices', bullets: 4, bulletWords: Math.round(total * 0.14 / 4), note: 'Each bullet actionable advice.' },
+    { heading: '## Conclusion', words: Math.round(total * 0.14), note: 'Summarize key takeaways, reinforce the main message, forward-looking close.' },
+  ]
+}
+
+function renderSectionPlan(plan) {
+  return plan.map(s => {
+    let text = `\n${s.heading}\n`
+    text += s.bullets
+      ? `Write ${s.bullets} bullet points. ${s.note} Each bullet should be about ${s.bulletWords} words.`
+      : `${s.note} Write approximately ${s.words} words for this section.`
+    if (s.subsection) {
+      text += `\n\n${s.subsection.heading}\n`
+      text += `Write ${s.subsection.bullets} bullet points. ${s.subsection.note} Each bullet should be about ${s.subsection.bulletWords} words.`
+    }
+    return text
+  }).join('\n')
+}
+
 function buildBlogPrompt(topic, tone, language, keywords, audience, cta, wordCount, link) {
   const kwText = keywords?.length ? `Use these SEO keywords naturally: ${keywords.join(', ')}.` : ''
   const audText = audience ? `Target audience: ${audience}.` : ''
   const ctaText = cta && cta !== 'None' ? `End with a "${cta}" call to action.` : ''
   const linkText = link ? `Include this link naturally near the end of the article: ${link}` : ''
 
-  let structure = ''
-  if (wordCount <= 200) {
-    structure = `
-## Introduction
-Write 2-3 sentences introducing the topic. Make it engaging and relevant.
-
-## Key Points
-- Write a full sentence explaining point 1 with detail
-- Write a full sentence explaining point 2 with detail
-- Write a full sentence explaining point 3 with detail
-
-## Conclusion
-Write 2 sentences wrapping up the key takeaway.`
-  } else if (wordCount <= 500) {
-    structure = `
-## Introduction
-Write a compelling 3-4 sentence paragraph introducing the topic and why it matters.
-
-## Why It Matters
-Write a 3-4 sentence paragraph explaining the importance and real-world impact.
-
-## Key Benefits
-- Write a full sentence describing benefit 1 with explanation
-- Write a full sentence describing benefit 2 with explanation
-- Write a full sentence describing benefit 3 with explanation
-- Write a full sentence describing benefit 4 with explanation
-
-## How It Works
-Write a 3-4 sentence paragraph explaining the process or mechanism clearly.
-
-## Conclusion
-Write a 2-3 sentence closing paragraph summarizing the main message.`
-  } else {
-    structure = `
-## Introduction
-Write a strong 4-5 sentence opening paragraph that hooks the reader, introduces the topic, and previews what the article will cover.
-
-## Background
-Write a 4-5 sentence paragraph providing context, history, or foundational information the reader needs to understand the topic.
-
-## Key Benefits
-- Write a complete 2-sentence explanation of benefit 1, including why it matters
-- Write a complete 2-sentence explanation of benefit 2, including why it matters
-- Write a complete 2-sentence explanation of benefit 3, including why it matters
-- Write a complete 2-sentence explanation of benefit 4, including why it matters
-
-## How It Works
-Write a detailed 5-6 sentence paragraph explaining the mechanics, process, or methodology in clear terms.
-
-### Step by Step
-- Write a full sentence describing step 1 with what to do and why
-- Write a full sentence describing step 2 with what to do and why
-- Write a full sentence describing step 3 with what to do and why
-- Write a full sentence describing step 4 with what to do and why
-
-## Real World Applications
-Write a 4-5 sentence paragraph with concrete examples of how this topic plays out in real life or business scenarios.
-
-## Challenges to Consider
-Write a 4-5 sentence paragraph honestly discussing common pitfalls, limitations, or things readers should watch out for.
-
-## Best Practices
-- Write a complete sentence describing best practice 1 with actionable advice
-- Write a complete sentence describing best practice 2 with actionable advice
-- Write a complete sentence describing best practice 3 with actionable advice
-- Write a complete sentence describing best practice 4 with actionable advice
-
-## Conclusion
-Write a strong 4-5 sentence closing paragraph that summarizes the key takeaways, reinforces the main message, and ends with a forward-looking statement or call to action.`
-  }
+  const plan = buildSectionPlan(wordCount)
+  const structure = renderSectionPlan(plan)
+  const planTotal = plan.reduce((sum, s) => sum + (s.bullets ? s.bulletWords * s.bullets : s.words) + (s.subsection ? s.subsection.bulletWords * s.subsection.bullets : 0), 0)
 
   return `You are an expert blog writer. Fill in the template below with rich, detailed content about: ${topic}
 
@@ -121,15 +109,16 @@ ${kwText}
 ${audText}
 ${ctaText}
 ${linkText}
-Target word count: EXACTLY ${wordCount} words for the blog body.
+The finished article must be AT LEAST ${wordCount} words. Follow the per-section word counts below closely — they add up to roughly ${planTotal} words, which is intentional, so the finished piece comfortably clears the ${wordCount}-word minimum even if a section or two runs a little short.
 
 RULES:
 - Keep every ## and ### heading exactly as shown
 - Replace ALL placeholder text with real, detailed content
+- Hit or exceed the word count given for EACH section below — never fall noticeably short of a section's number
 - Each bullet = FULL SENTENCE or TWO, not a short phrase
 - Each paragraph = MULTIPLE SENTENCES
 - Add blank lines before/after headings and between sections
-- Write until EXACTLY ${wordCount} words
+- Longer than the numbers below is fine. Shorter is not.
 
 OUTPUT THIS EXACT FORMAT:
 META_TITLE: (SEO title under 60 chars)
@@ -365,7 +354,8 @@ async function callGroq(prompt, isBlog) {
     messages,
     model: 'openai/gpt-oss-120b',
     temperature: 0.7,
-    max_tokens: 3000,
+    max_tokens: 6000,
+    reasoning_effort: 'medium',
   })
   return completion.choices[0]?.message?.content || ''
 }
@@ -488,7 +478,7 @@ export async function POST(request) {
     let content = ''
     let variations = []
 
-    for (let attempt = 0; attempt < 3; attempt++) {
+    for (let attempt = 0; attempt < 4; attempt++) {
       if (attempt === 0) {
         rawText = await callGroq(prompt, isBlog)
       } else {
@@ -497,8 +487,15 @@ export async function POST(request) {
         const issues = []
         if (!content.includes('## ')) issues.push('MISSING ## headings')
         if (!content.includes('\n- ')) issues.push('MISSING bullet points')
-        if (Math.abs(v - wordCount) > 40) issues.push(`WRONG word count: got ${v}, need ${wordCount}`)
-        const retryPrompt = `The blog post below is supposed to be about: "${topic}"\n\nFix these problems:\n${issues.join('\n')}\n\nKeep the same topic (${topic}) — do not change the subject. Return the complete corrected content.\n\nPrevious:\n${content}`
+        const minWords = Math.round(wordCount * 0.9)
+        const maxWords = Math.round(wordCount * 2.5)
+        if (v < minWords) issues.push(`TOO SHORT: got ${v} words, need at least ${wordCount}`)
+        if (v > maxWords) issues.push(`TOO LONG: got ${v} words, need around ${wordCount}`)
+        const wordsNeeded = wordCount - v
+        const lengthInstruction = wordsNeeded > 0
+          ? `The article is too SHORT. It currently has ${v} words but needs ${wordCount}. You MUST add approximately ${wordsNeeded} more words. Expand every section with more detail, examples, and explanation — do not just repeat what's already there, and do not shorten or remove any existing section.`
+          : `The article is too LONG. It currently has ${v} words but needs ${wordCount}. Trim it down by approximately ${Math.abs(wordsNeeded)} words while keeping all sections and headings.`
+        const retryPrompt = `The blog post below is supposed to be about: "${topic}"\n\nFix these problems:\n${issues.join('\n')}\n${lengthInstruction}\n\nKeep the same topic (${topic}) — do not change the subject. Return the complete corrected article at the full target length.\n\nPrevious:\n${content}`
         rawText = await callGroq(retryPrompt, isBlog)
       }
 

@@ -96,7 +96,46 @@ export default function BlogGeneratorPage() {
     }
   }, [])
 
+  // Restore a guest's most recent draft if they refresh the page
+  useEffect(() => {
+    if (result) return // don't overwrite an active result
+    const draft = sessionStorage.getItem('rankivo_guest_blog_draft')
+    if (draft) {
+      try {
+        const data = JSON.parse(draft)
+        setResult(data.result)
+        setIsPreview(true)
+        if (data.form) setForm(data.form)
+      } catch (e) { /* ignore */ }
+    }
+  }, [])
+
   function updateForm(field, value) { setForm(prev => ({ ...prev, [field]: value })) }
+
+  async function saveToHistory(data, user, supabase) {
+    if (!user) return
+    try {
+      const contentText = data.content?.content || ''
+      await supabase.from('content_history').insert({
+        user_id: user.id,
+        platform: 'Blog',
+        content: contentText,
+        keywords: form.keywords.filter(k => k.trim()),
+        hashtags: contentText?.match(/#\w+/g) || [],
+        meta_title: data.content?.metaTitle || null,
+        meta_description: data.content?.metaDescription || null,
+        h1: data.content?.titles?.[0] || null,
+        word_count: contentText.trim().split(/\s+/).filter(Boolean).length,
+        content_length: form.length,
+        language: form.language,
+        tone: form.tone,
+        audience: form.audience,
+        cta: form.cta,
+      })
+    } catch (e) {
+      console.error('History save failed:', e)
+    }
+  }
 
   async function handleGenerate() {
     if (!form.topic.trim()) return
@@ -111,6 +150,15 @@ export default function BlogGeneratorPage() {
       setResult(data.content)
       setIsPreview(data.isPreview || false)
       setActiveTab('content')
+
+      if (!data.isGuest) {
+        const { createClient } = await import('../../../lib/supabase')
+        const supabase = createClient()
+        const { data: userData } = await supabase.auth.getUser()
+        await saveToHistory(data, userData?.user || null, supabase)
+      } else {
+        sessionStorage.setItem('rankivo_guest_blog_draft', JSON.stringify({ result: data.content, form }))
+      }
     } catch { setError('Something went wrong. Please try again.') }
     finally { setLoading(false) }
   }
