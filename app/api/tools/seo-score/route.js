@@ -1,7 +1,5 @@
-import Groq from 'groq-sdk'
 import { createClient } from '../../../../lib/supabase'
-
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
+import { generateWithFallback } from '../../../../lib/groq-helper'
 
 export async function POST(request) {
   try {
@@ -87,11 +85,12 @@ Return ONLY valid JSON, no markdown:
   "summary": "string (1 sentence overall assessment)"
 }`
 
-    const completion = await groq.chat.completions.create({
+    const completion = await generateWithFallback({
       messages: [{ role: 'user', content: prompt }],
-      model: 'llama-3.1-8b-instant',
+      model: 'openai/gpt-oss-20b',
       temperature: 0.1,
-      max_tokens: 800,
+      max_tokens: 1500,
+      response_format: { type: 'json_object' },
     })
 
     let text = completion.choices[0]?.message?.content || ''
@@ -100,7 +99,16 @@ Return ONLY valid JSON, no markdown:
     const jsonEnd   = text.lastIndexOf('}')
     text = text.substring(jsonStart, jsonEnd + 1)
 
-    const aiResult = JSON.parse(text)
+    let aiResult
+    try {
+      aiResult = JSON.parse(text)
+    } catch (parseError) {
+      console.error('SEO score JSON parse failed. Raw text:', text)
+      return Response.json(
+        { error: 'Scoring failed: the AI response was incomplete. Please try again.' },
+        { status: 500 }
+      )
+    }
 
     // Merge AI scores with server-side deterministic scores
     const scores = {

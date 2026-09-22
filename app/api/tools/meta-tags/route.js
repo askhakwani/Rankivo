@@ -1,7 +1,5 @@
-import Groq from 'groq-sdk'
 import { createClient } from '../../../../lib/supabase'
-
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
+import { generateWithFallback } from '../../../../lib/groq-helper'
 
 export async function POST(request) {
   try {
@@ -55,11 +53,12 @@ Return ONLY valid JSON, no markdown, no explanation:
   "twitterDescription": "string"` : ''}
 }`
 
-    const completion = await groq.chat.completions.create({
+    const completion = await generateWithFallback({
       messages: [{ role: 'user', content: prompt }],
-      model: 'llama-3.1-8b-instant',
+      model: 'openai/gpt-oss-20b',
       temperature: 0.4,
-      max_tokens: 600,
+      max_tokens: 1200,
+      response_format: { type: 'json_object' },
     })
 
     let text = completion.choices[0]?.message?.content || ''
@@ -68,7 +67,16 @@ Return ONLY valid JSON, no markdown, no explanation:
     const jsonEnd   = text.lastIndexOf('}')
     text = text.substring(jsonStart, jsonEnd + 1)
 
-    const result = JSON.parse(text)
+    let result
+    try {
+      result = JSON.parse(text)
+    } catch (parseError) {
+      console.error('Meta tags JSON parse failed. Raw text:', text)
+      return Response.json(
+        { error: 'Generation failed: the AI response was incomplete. Please try again.' },
+        { status: 500 }
+      )
+    }
 
     // Always recalculate lengths server-side — don't trust AI counts
     result.seoTitleLength          = result.seoTitle?.length          || 0
