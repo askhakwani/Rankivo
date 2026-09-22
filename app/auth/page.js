@@ -56,10 +56,10 @@ function AuthForm() {
     if (mode === 'signup') {
       if (!fullName.trim()) { setError('Please enter your full name.'); setLoading(false); return }
       const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { phone: phone, full_name: fullName, country: country } }
-      })
+  email,
+  password,
+  options: { data: { phone: phone, full_name: fullName, country: country, city: city, state: state, zip: zip } }
+})
       if (error) { setError(error.message); setLoading(false); return }
       setMessage('Account created! Please check your email to verify your account, then you\'ll be redirected to your dashboard.')
     }
@@ -136,9 +136,9 @@ function AuthForm() {
                 <div>
                   <label className="block text-sm text-gray-600 mb-1">Country</label>
                   <select
-                    value={country}
-                    onChange={e => setCountry(e.target.value)}
-                    className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-teal-500">
+  value={country}
+  onChange={e => setCountry(e.target.value)}
+  className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-gray-800 focus:outline-none focus:border-teal-500">
                     <option value="">Select your country</option>
                     <option>Pakistan</option>
                     <option>United States</option>
