@@ -3,6 +3,15 @@ import { useState, useEffect, Suspense } from 'react'
 import { createClient } from '../../lib/supabase'
 import { useRouter, useSearchParams } from 'next/navigation'
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+
+// Only allow simple internal paths (letters, numbers, - _ /).
+// Prevents "//dashboard" (from redirect=/dashboard) and open redirects like "//evil.com".
+function safeRedirect(value) {
+  const path = (value || '').replace(/^\/+/, '')
+  return /^[a-zA-Z0-9\-_/]+$/.test(path) ? path : 'dashboard'
+}
+
 function AuthForm() {
   const [mode, setMode] = useState('login')
   const [email, setEmail] = useState('')
@@ -16,6 +25,7 @@ function AuthForm() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState({})
 
   const supabase = createClient()
   const router = useRouter()
@@ -27,49 +37,82 @@ function AuthForm() {
     if (m === 'forgot') setMode('forgot')
   }, [searchParams])
 
-  const redirectTo = searchParams.get('redirect') || 'dashboard'
+  const redirectTo = safeRedirect(searchParams.get('redirect'))
   const activated = searchParams.get('activated') || ''
+  const activatedQuery = activated ? '?activated=' + encodeURIComponent(activated) : ''
 
   // After email verification, Supabase returns the user to this page with a session
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
       if (session?.user) {
-        window.location.href = `/${redirectTo}${activated ? '?activated=' + activated : ''}`
+        window.location.href = `/${redirectTo}${activatedQuery}`
       }
     })
     return () => subscription.unsubscribe()
   }, [redirectTo, activated])
 
+  function switchMode(newMode) {
+    setMode(newMode)
+    setError('')
+    setMessage('')
+    setFieldErrors({})
+  }
+
+  function validate() {
+    const errs = {}
+    const cleanEmail = email.trim()
+    if (!cleanEmail) errs.email = 'Please enter your email address.'
+    else if (!EMAIL_REGEX.test(cleanEmail)) errs.email = 'Please enter a valid email address, like you@example.com.'
+
+    if (mode === 'login' && !password) errs.password = 'Please enter your password.'
+    if (mode === 'signup') {
+      if (!fullName.trim()) errs.fullName = 'Please enter your full name.'
+      if (!password) errs.password = 'Please choose a password.'
+      else if (password.length < 8) errs.password = 'Password must be at least 8 characters.'
+    }
+    return errs
+  }
+
+  function friendlyAuthError(msg = '') {
+    const m = msg.toLowerCase()
+    if (m.includes('invalid login credentials')) return 'Incorrect email or password.'
+    if (m.includes('email not confirmed')) return 'Please verify your email first. Check your inbox for the verification link.'
+    if (m.includes('rate limit') || m.includes('too many')) return 'Too many attempts. Please wait a few minutes and try again.'
+    return msg || 'Something went wrong. Please try again.'
+  }
+
   async function handleSubmit() {
     setError('')
     setMessage('')
-    if (!email.trim()) { setError('Please enter your email.'); return }
-    if (mode !== 'forgot' && !password.trim()) { setError('Please enter your password.'); return }
+    const errs = validate()
+    setFieldErrors(errs)
+    if (Object.keys(errs).length > 0) return
+
+    const cleanEmail = email.trim()
     setLoading(true)
 
     if (mode === 'login') {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) { setError(error.message); setLoading(false); return }
-      window.location.href = `/${redirectTo}${activated ? '?activated=' + activated : ''}`
+      const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password })
+      if (error) { setError(friendlyAuthError(error.message)); setLoading(false); return }
+      window.location.href = `/${redirectTo}${activatedQuery}`
     }
 
     if (mode === 'signup') {
-      if (!fullName.trim()) { setError('Please enter your full name.'); setLoading(false); return }
-      const { data, error } = await supabase.auth.signUp({
-  email,
-  password,
-  options: { data: { phone: phone, full_name: fullName, country: country, city: city, state: state, zip: zip } }
-})
-      if (error) { setError(error.message); setLoading(false); return }
-      setMessage('Account created! Please check your email to verify your account, then you\'ll be redirected to your dashboard.')
+      const { error } = await supabase.auth.signUp({
+        email: cleanEmail,
+        password,
+        options: { data: { phone: phone, full_name: fullName, country: country, city: city, state: state, zip: zip } }
+      })
+      if (error) { setError(friendlyAuthError(error.message)); setLoading(false); return }
+      setMessage(`Almost there! We've sent a verification link to ${cleanEmail}. Check your inbox (and spam folder), then click the link to activate your account. If you already have an account with this email, log in instead or reset your password.`)
     }
 
     if (mode === 'forgot') {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
         redirectTo: `${window.location.origin}/reset-password`
       })
-      if (error) { setError(error.message); setLoading(false); return }
-      setMessage('Password reset link sent! Please check your email.')
+      if (error) { setError(friendlyAuthError(error.message)); setLoading(false); return }
+      setMessage('If an account exists for that email, a password reset link is on its way. Check your inbox and spam folder.')
     }
 
     setLoading(false)
@@ -118,6 +161,7 @@ function AuthForm() {
                 placeholder="you@example.com"
                 className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#0D9488]"
               />
+              {fieldErrors.email && <p className="text-red-600 text-xs mt-1">{fieldErrors.email}</p>}
             </div>
 
             {mode === 'signup' && (
@@ -132,6 +176,7 @@ function AuthForm() {
                     placeholder="Your full name"
                     className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#0D9488]"
                   />
+              {fieldErrors.fullName && <p className="text-red-600 text-xs mt-1">{fieldErrors.fullName}</p>}
                 </div>
                                <div>
                   <label className="block text-sm text-gray-600 mb-1">Country</label>
@@ -396,15 +441,16 @@ function AuthForm() {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Enter your password"
+                  placeholder={mode === 'signup' ? 'At least 8 characters' : 'Enter your password'}
                   className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#0D9488]"
                 />
+              {fieldErrors.password && <p className="text-red-600 text-xs mt-1">{fieldErrors.password}</p>}
               </div>
             )}
 
             {mode === 'login' && (
               <div className="text-right">
-                <button onClick={() => setMode('forgot')} className="text-[#0D9488] text-sm hover:text-[#0D9488]/80 transition-colors">
+                <button onClick={() => switchMode('forgot')} className="text-[#0D9488] text-sm hover:text-[#0D9488]/80 transition-colors">
                   Forgot password?
                 </button>
               </div>
@@ -420,9 +466,9 @@ function AuthForm() {
 
           <div className="mt-6 text-center text-sm text-gray-400">
             {mode === 'login' ? (
-              <p>No account? <button onClick={() => setMode('signup')} className="text-[#1B5FA8] hover:text-[#1B5FA8]/80">Sign up free</button></p>
+              <p>No account? <button onClick={() => switchMode('signup')} className="text-[#1B5FA8] hover:text-[#1B5FA8]/80">Sign up free</button></p>
             ) : (
-              <p>Already have an account? <button onClick={() => setMode('login')} className="text-[#1B5FA8] hover:text-[#1B5FA8]/80">Login</button></p>
+              <p>Already have an account? <button onClick={() => switchMode('login')} className="text-[#1B5FA8] hover:text-[#1B5FA8]/80">Login</button></p>
             )}
           </div>
         </div>
