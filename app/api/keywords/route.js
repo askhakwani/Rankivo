@@ -44,8 +44,11 @@ export async function POST(request) {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
+    if (!seeds || seeds.length === 0) return Response.json({ error: 'No keywords provided' }, { status: 400 })
+
     let plan = 'free'
     let usage = null
+    let chargeAction = null // 'search' | 'credit' -- charged only AFTER the AI call succeeds
 
     if (user) {
       usage = await getUserUsage(user.id)
@@ -56,7 +59,7 @@ export async function POST(request) {
 
       if (searchesToday >= planLimits.searchesPerDay) {
         if (credits > 0) {
-          await deductCredit(user.id)
+          chargeAction = 'credit'
         } else {
           return Response.json({
             error: 'LIMIT_REACHED',
@@ -68,24 +71,22 @@ export async function POST(request) {
           }, { status: 403 })
         }
       } else {
-        await incrementSearch(user.id)
+        chargeAction = 'search'
       }
     }
-
-    if (!seeds || seeds.length === 0) return Response.json({ error: 'No keywords provided' }, { status: 400 })
 
     const maxKeywords = PLANS[plan].keywordsPerSearch
     const seedList = seeds.map(s => s.trim()).filter(Boolean).join(', ')
 
     const prompt = `You are a keyword research expert. For the seed keyword(s): "${seedList}"${url ? ` and website: ${url}` : ''}, generate exactly 30 related keywords in this JSON format only, no explanation:
-{"keywords":["kw1","kw2","kw3","kw4","kw5","kw6","kw7","kw8"],"questions":["how to kw1","what is kw2","why use kw3","when to kw4","which kw5 is best","how does kw6 work","what are kw7 benefits","how to choose kw8"],"buying":["best kw1","buy kw2","top kw3","kw4 price","kw5 review","kw6 deal","kw7 vs kw8","cheap kw1"],"longtail":["kw1 for beginners","how to kw2 fast","kw3 step by step","kw4 complete guide","kw5 tips and tricks","kw6 for small business","kw7 without experience","kw8 in 2025"]}
+{"keywords":["kw1","kw2","kw3","kw4","kw5","kw6","kw7","kw8"],"questions":["how to kw1","what is kw2","why use kw3","when to kw4","which kw5 is best","how does kw6 work","what are kw7 benefits","how to choose kw8"],"buying":["best kw1","buy kw2","top kw3","kw4 price","kw5 review","kw6 deal","kw7 vs kw8","cheap kw1"],"longtail":["kw1 for beginners","how to kw2 fast","kw3 step by step","kw4 complete guide","kw5 tips and tricks","kw6 for small business","kw7 without experience","kw8 in 2026"]}
 Return only valid JSON. No markdown. No explanation.`
 
     const completion = await generateWithFallback({
       messages: [{ role: 'user', content: prompt }],
       model: 'openai/gpt-oss-20b',
       temperature: 0,
-      max_tokens: 2500,
+      max_tokens: 4000,
       response_format: { type: 'json_object' },
     })
 
@@ -105,6 +106,10 @@ Return only valid JSON. No markdown. No explanation.`
         { status: 500 }
       )
     }
+
+    // AI call succeeded and JSON parsed -- now charge the user
+    if (user && chargeAction === 'credit') await deductCredit(user.id)
+    else if (user && chargeAction === 'search') await incrementSearch(user.id)
 
     const allKeywords = [
       ...(parsed.keywords || []),
