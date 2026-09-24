@@ -1,9 +1,7 @@
-import Groq from 'groq-sdk'
 import { createClient } from '../../../lib/supabase'
 import { PLANS } from '../../../lib/plans'
 import { getUserUsage, incrementSearch, deductCredit } from '../../../lib/usageTracker'
-
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
+import { generateWithFallback } from '../../../lib/groq-helper'
 
 function detectIntent(keyword) {
   const kw = keyword.toLowerCase()
@@ -83,11 +81,12 @@ export async function POST(request) {
 {"keywords":["kw1","kw2","kw3","kw4","kw5","kw6","kw7","kw8"],"questions":["how to kw1","what is kw2","why use kw3","when to kw4","which kw5 is best","how does kw6 work","what are kw7 benefits","how to choose kw8"],"buying":["best kw1","buy kw2","top kw3","kw4 price","kw5 review","kw6 deal","kw7 vs kw8","cheap kw1"],"longtail":["kw1 for beginners","how to kw2 fast","kw3 step by step","kw4 complete guide","kw5 tips and tricks","kw6 for small business","kw7 without experience","kw8 in 2025"]}
 Return only valid JSON. No markdown. No explanation.`
 
-    const completion = await groq.chat.completions.create({
+    const completion = await generateWithFallback({
       messages: [{ role: 'user', content: prompt }],
       model: 'openai/gpt-oss-20b',
       temperature: 0,
-      max_tokens: 2000,
+      max_tokens: 2500,
+      response_format: { type: 'json_object' },
     })
 
     let text = completion.choices[0]?.message?.content || ''
@@ -95,7 +94,17 @@ Return only valid JSON. No markdown. No explanation.`
     const jsonStart = text.indexOf('{')
     const jsonEnd = text.lastIndexOf('}')
     text = text.substring(jsonStart, jsonEnd + 1)
-    const parsed = JSON.parse(text)
+
+    let parsed
+    try {
+      parsed = JSON.parse(text)
+    } catch (parseError) {
+      console.error('Keyword research JSON parse failed. Raw text:', text)
+      return Response.json(
+        { error: 'Failed: the AI response was incomplete. Please try again.' },
+        { status: 500 }
+      )
+    }
 
     const allKeywords = [
       ...(parsed.keywords || []),
