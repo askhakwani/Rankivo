@@ -164,15 +164,17 @@ export function TestimonialCarousel() {
           })}
         </div>
         <div className="flex items-center justify-center gap-4">
-          <button onClick={prev} className="w-9 h-9 rounded-full border-2 border-gray-200 hover:border-[#1B5FA8] text-gray-400 hover:text-[#1B5FA8] transition-colors flex items-center justify-center font-bold text-lg">‹</button>
+          <button onClick={prev} aria-label="Previous testimonial" className="w-9 h-9 rounded-full border-2 border-gray-200 hover:border-[#1B5FA8] text-gray-400 hover:text-[#1B5FA8] transition-colors flex items-center justify-center font-bold text-lg">‹</button>
           <div className="flex gap-2">
-            {TESTIMONIALS.map((_, i) => (
+            {TESTIMONIALS.map((t, i) => (
               <button key={i} onClick={() => setActive(i)}
+                aria-label={`Show testimonial from ${t.name}`}
+                aria-current={i === active ? 'true' : undefined}
                 className={`h-2 rounded-full transition-all duration-300 ${i === active ? 'bg-[#1B5FA8] w-5' : 'bg-gray-300 w-2'}`}
               />
             ))}
           </div>
-          <button onClick={next} className="w-9 h-9 rounded-full border-2 border-gray-200 hover:border-[#1B5FA8] text-gray-400 hover:text-[#1B5FA8] transition-colors flex items-center justify-center font-bold text-lg">›</button>
+          <button onClick={next} aria-label="Next testimonial" className="w-9 h-9 rounded-full border-2 border-gray-200 hover:border-[#1B5FA8] text-gray-400 hover:text-[#1B5FA8] transition-colors flex items-center justify-center font-bold text-lg">›</button>
         </div>
       </div>
     </section>

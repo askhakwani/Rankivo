@@ -483,7 +483,12 @@ export default function Navbar() {
           </div>
 
           {/* ── Mobile hamburger ── */}
-          <button onClick={() => setMobileOpen(o => !o)} className="md:hidden flex flex-col gap-1.5 p-2">
+          <button
+            onClick={() => setMobileOpen(o => !o)}
+            className="md:hidden flex flex-col gap-1.5 p-2"
+            aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={mobileOpen}
+          >
             <span className={`w-6 h-0.5 bg-gray-600 transition-all duration-200 ${mobileOpen ? 'rotate-45 translate-y-2' : ''}`} />
             <span className={`w-6 h-0.5 bg-gray-600 transition-all duration-200 ${mobileOpen ? 'opacity-0' : ''}`} />
             <span className={`w-6 h-0.5 bg-gray-600 transition-all duration-200 ${mobileOpen ? '-rotate-45 -translate-y-2' : ''}`} />
