@@ -20,6 +20,21 @@ const FAQS = [
   { q: 'How do I contact support?', a: 'You can reach us through the Contact page or email us at support@rankivo.co. We typically respond within 24 hours.' },
 ]
 
+// Structured data for Google's FAQ rich results. Built once, outside the
+// component, since FAQS is a static list (no need to recompute per render).
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: FAQS.map(f => ({
+    "@type": "Question",
+    name: f.q,
+    acceptedAnswer: {
+      "@type": "Answer",
+      text: f.a,
+    },
+  })),
+}
+
 function FAQItem({ q, a }) {
   const [open, setOpen] = useState(false)
   return (
@@ -40,6 +55,10 @@ function FAQItem({ q, a }) {
 export default function FAQ() {
   return (
     <div className="min-h-screen bg-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
       <Navbar />
       <div className="pt-24 pb-20 px-6">
         <div className="max-w-3xl mx-auto">
