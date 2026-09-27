@@ -25,7 +25,7 @@ function ResetForm() {
   async function handleReset() {
     setMsg({ text: '', ok: true })
     if (!password) { setMsg({ text: 'Please enter a new password.', ok: false }); return }
-    if (password.length < 6) { setMsg({ text: 'Password must be at least 6 characters.', ok: false }); return }
+    if (password.length < 8) { setMsg({ text: 'Password must be at least 8 characters.', ok: false }); return }
     if (password !== confirm) { setMsg({ text: 'Passwords do not match.', ok: false }); return }
     setLoading(true)
     const { error } = await supabase.auth.updateUser({ password })
@@ -70,7 +70,7 @@ function ResetForm() {
                   type="password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  placeholder="At least 6 characters"
+                  placeholder="At least 8 characters"
                   className="w-full border border-gray-200 rounded-lg px-4 py-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#0D9488] focus:ring-1 focus:ring-[#0D9488]"
                 />
               </div>
