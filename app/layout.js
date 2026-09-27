@@ -22,7 +22,7 @@ export const metadata = {
   openGraph: {
     title: "RANKIVO — Write Less. Rank More. Grow Faster.",
     description: "Rankivo is the AI platform that writes SEO-optimized content for your blog, social media, ads and more — then helps you rank for it.",
-    url: "https://rankivo.co",
+    url: "https://www.rankivo.co",
     siteName: "RANKIVO",
     images: [
       {
@@ -42,6 +42,24 @@ export const metadata = {
   },
 };
 
+// Site-wide structured data. Kept separate from per-page schema (Article,
+// BreadcrumbList) which each page adds for itself.
+const organizationSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "RANKIVO",
+  url: "https://www.rankivo.co",
+  logo: "https://www.rankivo.co/favicon.ico",
+  description: "AI-powered content and SEO platform for modern marketers.",
+}
+
+const websiteSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "RANKIVO",
+  url: "https://www.rankivo.co",
+}
+
 export default function RootLayout({ children }) {
   return (
     <html
@@ -51,17 +69,11 @@ export default function RootLayout({ children }) {
       <head>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "Organization",
-              name: "RANKIVO",
-              url: "https://rankivo.co",
-              logo: "https://rankivo.co/favicon.ico",
-              description: "AI-powered content and SEO platform for modern marketers.",
-              sameAs: [],
-            }),
-          }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
         />
       </head>
       <body className="min-h-full flex flex-col">
@@ -78,8 +90,16 @@ export default function RootLayout({ children }) {
             gtag('config', 'G-XCZBWXEQ4H');
           `}
         </Script>
+        <Script id="microsoft-clarity" strategy="afterInteractive">
+          {`
+            (function(c,l,a,r,i,t,y){
+                c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+                t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+                y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+            })(window, document, "clarity", "script", "yojffruc4d");
+          `}
+        </Script>
       </body>
     </html>
   );
 }
-
