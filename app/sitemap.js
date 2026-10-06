@@ -30,6 +30,7 @@ export default async function sitemap() {
     { url: 'https://www.rankivo.co/tools/keyword-research',                   lastModified: new Date(), changeFrequency: 'monthly', priority: 0.8 },
     { url: 'https://www.rankivo.co/tools/linkedin-post-generator',            lastModified: new Date(), changeFrequency: 'monthly', priority: 0.8 },
     { url: 'https://www.rankivo.co/tools/meta-tags-generator',                lastModified: new Date(), changeFrequency: 'monthly', priority: 0.8 },
+    { url: 'https://www.rankivo.co/tools/broken-link-checker',        lastModified: new Date(), changeFrequency: 'monthly', priority: 0.8 },
     { url: 'https://www.rankivo.co/tools/seo-score-checker',                  lastModified: new Date(), changeFrequency: 'monthly', priority: 0.8 },
     { url: 'https://www.rankivo.co/tools/tiktok-caption-generator',           lastModified: new Date(), changeFrequency: 'monthly', priority: 0.8 },
     { url: 'https://www.rankivo.co/tools/x-post-generator',                   lastModified: new Date(), changeFrequency: 'monthly', priority: 0.8 },

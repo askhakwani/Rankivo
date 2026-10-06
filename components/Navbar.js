@@ -28,6 +28,13 @@ const SEO_TOOLS = [
     desc: 'Audit and improve your page rankings',
     tag: null,
   },
+  {
+    href: '/tools/broken-link-checker',
+    label: 'Broken Link Checker',
+    icon: '🔗',
+    desc: 'Find dead links on any page',
+    tag: 'New',
+  },
 ]
 
 const CONTENT_GROUPS = [

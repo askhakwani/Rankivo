@@ -1,3 +1,11 @@
+// app/api/tools/fetch-url/route.js
+// PATCHED VERSION: identical behaviour to your current file, except the page is now
+// fetched through lib/url-safety.js. That blocks requests to localhost, private
+// networks and cloud-metadata addresses (SSRF), re-checks every redirect, and caps
+// the download size. Everything else (extraction, entity decoding, limits) is unchanged.
+
+import { fetchWithRedirects, SafeFetchError } from '../../../../lib/url-safety'
+
 export async function POST(request) {
   try {
     const { url } = await request.json()
@@ -15,36 +23,39 @@ export async function POST(request) {
 
     // Fetch the page with a browser-like User-Agent — many sites block
     // requests that don't look like they're coming from a real browser.
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 10000) // 10s timeout
-
     let res
     try {
-      res = await fetch(targetUrl.toString(), {
+      res = await fetchWithRedirects(targetUrl.toString(), {
+        method: 'GET',
+        timeoutMs: 10000,
+        totalMs: 10000,
+        maxBytes: 2_000_000,
         headers: {
           'User-Agent':
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
           Accept: 'text/html,application/xhtml+xml',
         },
-        signal: controller.signal,
       })
     } catch (fetchError) {
-      clearTimeout(timeout)
-      if (fetchError.name === 'AbortError') {
-        return Response.json({ error: 'The page took too long to respond. Try pasting content manually.' }, { status: 504 })
+      if (fetchError instanceof SafeFetchError) {
+        if (fetchError.code === 'TIMEOUT') {
+          return Response.json({ error: 'The page took too long to respond. Try pasting content manually.' }, { status: 504 })
+        }
+        if (fetchError.code === 'BLOCKED' || fetchError.code === 'INVALID_URL') {
+          return Response.json({ error: 'That address cannot be fetched. Enter a public web page URL.' }, { status: 400 })
+        }
       }
       return Response.json({ error: 'Could not reach that URL. Try pasting content manually.' }, { status: 502 })
     }
-    clearTimeout(timeout)
 
-    if (!res.ok) {
+    if (res.status >= 400) {
       return Response.json(
         { error: `That page returned an error (${res.status}). Try pasting content manually.` },
         { status: 502 }
       )
     }
 
-    const html = await res.text()
+    const html = res.body
 
     // ── Extract meta title ──────────────────────────────────────────────
     const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i)

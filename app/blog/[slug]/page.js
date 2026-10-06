@@ -68,6 +68,21 @@ export async function generateMetadata({ params }) {
   return {
     title: post.meta_title || `${post.title} — RANKIVO`,
     description: post.meta_description || post.excerpt || '',
+    // Every post needs its own canonical URL — without this it inherits the
+    // site-wide "/" canonical set in layout.js, which tells Google every
+    // blog post is a duplicate of the homepage.
+    alternates: {
+      canonical: `/blog/${slug}`,
+    },
+    openGraph: post.featured_image
+      ? {
+          title: post.meta_title || post.title,
+          description: post.meta_description || post.excerpt || '',
+          url: `/blog/${slug}`,
+          images: [{ url: post.featured_image }],
+          type: 'article',
+        }
+      : undefined,
   }
 }
 
@@ -80,9 +95,51 @@ export default async function BlogPost({ params }) {
   incrementViews(post.id)
 
   const author = AUTHORS[post.author_id] || null
+  const publishedDate = post.scheduled_at || post.created_at
+  const modifiedDate = post.updated_at || publishedDate
+
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: "https://www.rankivo.co" },
+      { "@type": "ListItem", position: 2, name: "Blog", item: "https://www.rankivo.co/blog" },
+      { "@type": "ListItem", position: 3, name: post.title, item: `https://www.rankivo.co/blog/${slug}` },
+    ],
+  }
+
+  const articleSchema = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: post.title,
+    description: post.meta_description || post.excerpt || '',
+    image: post.featured_image ? [post.featured_image] : undefined,
+    datePublished: new Date(publishedDate).toISOString(),
+    dateModified: new Date(modifiedDate).toISOString(),
+    author: author
+      ? { "@type": "Person", name: author.name }
+      : { "@type": "Organization", name: "RANKIVO" },
+    publisher: {
+      "@type": "Organization",
+      name: "RANKIVO",
+      logo: { "@type": "ImageObject", url: "https://www.rankivo.co/favicon.ico" },
+    },
+    mainEntityOfPage: {
+      "@type": "WebPage",
+      "@id": `https://www.rankivo.co/blog/${slug}`,
+    },
+  }
 
   return (
     <div className="min-h-screen bg-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
+      />
       <Navbar />
       <div className="pt-24 pb-20 px-6">
         <div className="max-w-3xl mx-auto">
