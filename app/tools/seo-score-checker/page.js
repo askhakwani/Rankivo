@@ -290,14 +290,13 @@ export default function SEOScoreCheckerPage() {
                     Blog Content <span className="text-red-400">*</span>
                   </label>
                   <span className={`text-xs font-medium ${
-                    wordCount >= 1500 ? 'text-[#0D9488]' :
-                    wordCount >= 800  ? 'text-[#C9943A]' :
-                    wordCount > 0     ? 'text-red-400'   : 'text-gray-400'
+                    wordCount >= 700 ? 'text-[#0D9488]' :
+                    wordCount >= 300 ? 'text-[#C9943A]' :
+                    wordCount > 0    ? 'text-red-400'   : 'text-gray-400'
                   }`}>
                     {wordCount} words
-                    {wordCount >= 1500 && ' ✓ Great length'}
-                    {wordCount >= 800 && wordCount < 1500 && ' · Good'}
-                    {wordCount >= 300 && wordCount < 800 && ' · Too short for pillar'}
+                    {wordCount >= 700 && ' ✓ Good length'}
+                    {wordCount >= 300 && wordCount < 700 && ' · A bit short'}
                     {wordCount > 0 && wordCount < 300 && ' · Too short'}
                   </span>
                 </div>

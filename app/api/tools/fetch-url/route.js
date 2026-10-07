@@ -156,10 +156,12 @@ function extractArticleText(html, baseUrl) {
 
   const dateLine = /^(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4}$/i
 
+  const backLink = /^\[(?:←|‹|«|back to)[^\]]*\]\([^)]*\)$/i
+
   const lines = t
     .split('\n')
     .map(l => l.replace(/[ \t]+/g, ' ').trim())
-    .filter(l => l && !dateLine.test(l))
+    .filter(l => l && !dateLine.test(l) && !backLink.test(l))
 
   return lines.join('\n\n').trim()
 }
