@@ -186,7 +186,15 @@ export async function POST(request) {
     const titleText = h1?.text || metaTitle || lines[0] || ''
     const keywordInTitle = keywordMatchScore(titleText, keyword)
 
-    const firstParagraph = body.find(p => countWords(p) >= 12) || ''
+    // Skip the subtitle/excerpt line under the title: it just repeats the meta description
+    const md = norm(metaDescription)
+    const isMetaDescription = p => {
+      const np = norm(p)
+      return md.length >= 30 && (np.includes(md.slice(0, 40)) || md.includes(np.slice(0, 40)))
+    }
+    const firstParagraph = body.find(p => countWords(p) >= 12 && !isMetaDescription(p)) || ''
+    const firstSentence = firstParagraph.split(/(?<=[.!?])\s+/)[0] || ''
+    const exactInFirstParagraph = norm(firstParagraph).includes(norm(keyword))
     const keywordInFirstParagraph = keywordMatchScore(firstParagraph, keyword)
 
     const headingHits = subHeadings.filter(h => keywordMatchScore(h.text, keyword) === 10).length
@@ -237,6 +245,8 @@ FACTS ABOUT THE CONTENT:
 - Keyword appears about ${hits} time(s) (${density.toFixed(2)}% density; ideal is ${minDensity}–3%)
 - Average sentence length: ${readability.avgSentence} words; average paragraph length: ${readability.avgParagraph} words
 - First paragraph: "${firstParagraph.slice(0, 300)}"
+- First sentence of the article: "${firstSentence}"
+- Exact keyword phrase in the first paragraph: ${exactInFirstParagraph ? 'YES' : 'NO'}
 
 FACTORS BELOW 10 (these need suggestions): ${weak.join(', ') || 'none'}
 
@@ -244,6 +254,8 @@ CONTENT (a line starting with # is a heading; [text](/path) is an internal link)
 """
 ${content.slice(0, 6000)}
 """
+
+IMPORTANT: base every example on the real sentences and headings shown above. Never claim the keyword appears somewhere if the facts say it does not, and when suggesting a rewrite, rewrite the article's actual first sentence, not an invented one.
 
 ${isPaid ? `Return one specific, actionable suggestion for EACH factor listed above as below 10. Use the exact factor name as the "factor" value.` : `Return only 3 suggestions maximum, for the lowest-scoring factors. Use the exact factor name as the "factor" value.`}
 
