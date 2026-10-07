@@ -1,8 +1,12 @@
 // app/api/tools/fetch-url/route.js
-// PATCHED VERSION: identical behaviour to your current file, except the page is now
-// fetched through lib/url-safety.js. That blocks requests to localhost, private
-// networks and cloud-metadata addresses (SSRF), re-checks every redirect, and caps
-// the download size. Everything else (extraction, entity decoding, limits) is unchanged.
+// UPDATED VERSION (scoring fix):
+//  - reads only the article body (not breadcrumb / menus / related-post boxes)
+//  - keeps headings as lines starting with ## (glued to the text so they add no extra "words")
+//  - keeps links as [anchor text](link); links to your own site become /relative-paths,
+//    so the SEO score tool can detect internal links
+//  - drops standalone date lines
+//  - no longer cuts content at 6000 characters (that would chop 1,000+ word articles)
+// The safe-fetch protection (lib/url-safety.js) is unchanged.
 
 import { fetchWithRedirects, SafeFetchError } from '../../../../lib/url-safety'
 
@@ -21,8 +25,6 @@ export async function POST(request) {
       return Response.json({ error: 'Please enter a valid URL (including https://).' }, { status: 400 })
     }
 
-    // Fetch the page with a browser-like User-Agent — many sites block
-    // requests that don't look like they're coming from a real browser.
     let res
     try {
       res = await fetchWithRedirects(targetUrl.toString(), {
@@ -57,40 +59,18 @@ export async function POST(request) {
 
     const html = res.body
 
-    // ── Extract meta title ──────────────────────────────────────────────
+    // ── Meta title ──────────────────────────────────────────────────────
     const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i)
     const metaTitle = titleMatch ? decodeEntities(titleMatch[1].trim()) : ''
 
-    // ── Extract meta description ────────────────────────────────────────
+    // ── Meta description ────────────────────────────────────────────────
     const descMatch =
       html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']*)["']/i) ||
       html.match(/<meta[^>]+content=["']([^"']*)["'][^>]+name=["']description["']/i)
     const metaDescription = descMatch ? decodeEntities(descMatch[1].trim()) : ''
 
-    // ── Extract visible body content ────────────────────────────────────
-    let bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i)
-    let bodyHtml = bodyMatch ? bodyMatch[1] : html
-
-    // Strip script/style/nav/header/footer blocks before extracting text,
-    // since these usually aren't part of the actual article content.
-    bodyHtml = bodyHtml
-      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-      .replace(/<nav[\s\S]*?<\/nav>/gi, ' ')
-      .replace(/<header[\s\S]*?<\/header>/gi, ' ')
-      .replace(/<footer[\s\S]*?<\/footer>/gi, ' ')
-
-    // Preserve paragraph/heading breaks as newlines before stripping tags,
-    // so the extracted text still reads as separate lines/paragraphs.
-    bodyHtml = bodyHtml.replace(/<\/(p|h1|h2|h3|h4|h5|h6|div|li|br)>/gi, '\n')
-
-    let content = bodyHtml
-      .replace(/<[^>]+>/g, ' ')     // strip remaining tags
-      .replace(/[ \t]+/g, ' ')      // collapse repeated spaces
-      .replace(/\n\s*\n+/g, '\n\n') // collapse repeated blank lines
-      .trim()
-
-    content = decodeEntities(content)
+    // ── Article text ────────────────────────────────────────────────────
+    const content = extractArticleText(html, targetUrl)
 
     if (!content || content.length < 50) {
       return Response.json(
@@ -99,16 +79,109 @@ export async function POST(request) {
       )
     }
 
-    // Cap content length to keep downstream AI calls reasonable
-    content = content.slice(0, 6000)
-
-    return Response.json({ content, metaTitle, metaDescription })
+    return Response.json({ content: content.slice(0, 40000), metaTitle, metaDescription })
 
   } catch (error) {
     console.error('Fetch URL error:', error)
     return Response.json({ error: 'Could not fetch URL. Try pasting content manually.' }, { status: 500 })
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+function extractArticleText(html, baseUrl) {
+  const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i)
+  let scope = bodyMatch ? bodyMatch[1] : html
+
+  // Remove things that are never article text
+  scope = scope
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ')
+    .replace(/<svg[\s\S]*?<\/svg>/gi, ' ')
+
+  // Pick the container: the longest <article>, else <main>, else the whole page
+  let container = ''
+  const articles = [...scope.matchAll(/<article[\s\S]*?<\/article>/gi)].map(m => m[0])
+  if (articles.length) {
+    container = articles.sort((a, b) => b.length - a.length)[0]
+  }
+  if (container.length < 1500) {
+    const mainMatch = scope.match(/<main[\s\S]*?<\/main>/i)
+    if (mainMatch && mainMatch[0].length > container.length) container = mainMatch[0]
+  }
+
+  if (container.length >= 1500) {
+    // Inside an article/main: drop menus, footers, side boxes and forms (keep <header>, it often holds the title)
+    container = container
+      .replace(/<nav[\s\S]*?<\/nav>/gi, ' ')
+      .replace(/<footer[\s\S]*?<\/footer>/gi, ' ')
+      .replace(/<aside[\s\S]*?<\/aside>/gi, ' ')
+      .replace(/<form[\s\S]*?<\/form>/gi, ' ')
+  } else {
+    // No article/main found: use the whole page minus site menus
+    container = scope
+      .replace(/<nav[\s\S]*?<\/nav>/gi, ' ')
+      .replace(/<header[\s\S]*?<\/header>/gi, ' ')
+      .replace(/<footer[\s\S]*?<\/footer>/gi, ' ')
+      .replace(/<aside[\s\S]*?<\/aside>/gi, ' ')
+      .replace(/<form[\s\S]*?<\/form>/gi, ' ')
+  }
+
+  // Start at the first <h1> — everything before it (breadcrumb, category tag) is not article text
+  const h1Index = container.search(/<h1[\s>]/i)
+  if (h1Index > 0) container = container.slice(h1Index)
+
+  // Headings -> "##Heading text" (marker glued to the text so it doesn't count as an extra word)
+  let t = container.replace(/<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/gi, (_, level, inner) => {
+    const text = stripTags(inner)
+    return text ? `\n\n${'#'.repeat(Number(level))}${text}\n\n` : '\n'
+  })
+
+  // Links -> [anchor text](link). Own-site links become /relative-paths.
+  t = t.replace(/<a\s[^>]*?href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, (_, href, inner) => {
+    const text = stripTags(inner)
+    if (!text) return ''
+    const link = normalizeHref(href, baseUrl)
+    return link ? `[${text}](${link})` : text
+  })
+
+  // Paragraph / list / line breaks
+  t = t
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|li|ul|ol|tr|blockquote|section|figure|table)>/gi, '\n')
+
+  // Remove remaining tags, clean up lines
+  t = decodeEntities(t.replace(/<[^>]+>/g, ' '))
+
+  const dateLine = /^(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4}$/i
+
+  const lines = t
+    .split('\n')
+    .map(l => l.replace(/[ \t]+/g, ' ').trim())
+    .filter(l => l && !dateLine.test(l))
+
+  return lines.join('\n\n').trim()
+}
+
+function stripTags(str) {
+  return decodeEntities(str.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim()
+}
+
+function normalizeHref(href, baseUrl) {
+  const h = decodeEntities(href.trim())
+  if (!h || h.startsWith('#') || /^(mailto:|tel:|javascript:)/i.test(h)) return null
+  try {
+    const u = new URL(h, baseUrl)
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null
+    const sameSite = u.hostname.replace(/^www\./, '') === baseUrl.hostname.replace(/^www\./, '')
+    const out = sameSite ? (u.pathname + u.search) || '/' : u.toString()
+    return out.replace(/\s/g, '%20').replace(/\)/g, '%29')
+  } catch {
+    return null
+  }
+}
+
 function decodeEntities(str) {
   return str
     .replace(/&nbsp;/g, ' ')
@@ -121,8 +194,6 @@ function decodeEntities(str) {
     .replace(/&lsquo;/g, '\u2018')
     .replace(/&mdash;/g, '\u2014')
     .replace(/&ndash;/g, '\u2013')
-    // Numeric decimal entities, e.g. &#39;
     .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)))
-    // Numeric hex entities, e.g. &#x27;
     .replace(/&#x([0-9a-fA-F]+);/g, (_, code) => String.fromCharCode(parseInt(code, 16)))
 }
