@@ -3,7 +3,7 @@
 //  - ALL 10 scores are now calculated by code, so the same page + keyword always gives the same score
 //  - the AI only writes the suggestions and the one-line summary (it can no longer change a score)
 //  - if the AI fails, you still get the full score (with no suggestions) instead of an error
-//  - plan check (pro / premium / agency) is unchanged
+
 
 import { createClient } from '../../../../lib/supabase'
 import { generateWithFallback } from '../../../../lib/groq-helper'
@@ -159,7 +159,7 @@ export async function POST(request) {
       plan = profile?.plan || 'free'
     }
 
-    const isPaid = plan === 'pro' || plan === 'premium' || plan === 'agency'
+    const isPaid = plan === 'pro' || plan === 'starter' || plan === 'agency'
 
     const content = normalizeContent(rawContent)
     const { lines, headings, body } = analyse(content)
