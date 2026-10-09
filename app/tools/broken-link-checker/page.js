@@ -32,7 +32,8 @@ const SCOPES = [
 ]
 
 const BATCH_SIZE = 10      // links per request to /check
-const PARALLEL_BATCHES = 2 // requests running at the same time
+const PARALLEL_BATCHES = 3 // requests running at the same time
+const MAX_PAGES_UI = 25    // hard cap in the box; each plan has its own (lower) limit on the server
 
 const FAQS = [
   {
@@ -49,7 +50,7 @@ const FAQS = [
   },
   {
     q: 'Does this tool scan my whole website?',
-    a: 'No. It checks one page at a time: every link on the URL you enter. To check your whole site, run it on each important page, starting with your most visited ones.',
+    a: 'No. It checks the pages you enter, not your whole site. Free users scan one page at a time, and paid plans can scan several pages in one go. Start with your most visited pages.',
   },
   {
     q: 'Does it check images, scripts and CSS files?',
@@ -78,6 +79,26 @@ function hostOf(u) {
   try { return new URL(u).hostname.replace(/^www\./, '') } catch { return 'page' }
 }
 
+function parseUrls(text) {
+  const seen = new Set()
+  const out = []
+  String(text).split(/\r?\n/).forEach(line => {
+    const s = line.trim()
+    if (s && !seen.has(s)) { seen.add(s); out.push(s) }
+  })
+  return out
+}
+
+function pageLabel(p) {
+  if (p.error) return `${p.input} (failed)`
+  let path = p.pageUrl
+  try {
+    const u = new URL(p.pageUrl)
+    path = u.hostname.replace(/^www\./, '') + (u.pathname !== '/' ? u.pathname : '')
+  } catch {}
+  return `${path.length > 60 ? path.slice(0, 57) + '…' : path} (${p.links.length} links)`
+}
+
 function redirectLabel(r) {
   if (r.status !== 'redirect' && !(r.hops > 0)) return ''
   const kind = r.redirectType === 'permanent' ? 'Permanent' : 'Temporary'
@@ -87,12 +108,14 @@ function redirectLabel(r) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function BrokenLinkCheckerPage() {
-  const [url, setUrl]         = useState('')
+  const [url, setUrl]         = useState('')     // one URL, or one per line in bulk mode
+  const [bulkMode, setBulkMode] = useState(false)
   const [phase, setPhase]     = useState('idle') // idle | scanning | checking | done
   const [error, setError]     = useState('')
-  const [meta, setMeta]       = useState(null)   // { pageUrl, title, found, limit, truncated, tier }
-  const [links, setLinks]     = useState([])
-  const [results, setResults] = useState({})     // url -> check result
+  const [pages, setPages]     = useState([])     // scanned pages: { key, input, pageUrl, title, found, limit, truncated, tier, links, error? }
+  const [activeKey, setActiveKey] = useState('p0') // 'all' or a page key
+  const [bulk, setBulk]       = useState({ index: 0, total: 0 })
+  const [results, setResults] = useState({})     // url -> check result (shared across pages)
   const [tab, setTab]         = useState('all')
   const [scope, setScope]     = useState('all')
   const [mode, setMode]       = useState('own')  // own | other (whose page is being checked)
@@ -100,6 +123,14 @@ export default function BrokenLinkCheckerPage() {
   const cancelRef = useRef(false)
 
   const busy = phase === 'scanning' || phase === 'checking'
+
+  // Links shown right now: one page, or every page combined
+  const activePage = pages.find(p => p.key === activeKey) || null
+  const meta = activePage
+  const links = useMemo(() => {
+    const source = activeKey === 'all' ? pages : (activePage ? [activePage] : [])
+    return source.flatMap(p => p.links.map(l => ({ ...l, sourceUrl: p.pageUrl })))
+  }, [pages, activeKey, activePage])
 
   // Merge link info with check results, worst problems first
   const rows = useMemo(() => {
@@ -117,7 +148,7 @@ export default function BrokenLinkCheckerPage() {
     return c
   }, [rows])
 
-  const checkedCount = Object.keys(results).length
+  const checkedCount = rows.filter(r => r.status !== 'pending').length
 
   const visibleRows = rows.filter(r => {
     const tabOk = TABS.find(t => t.id === tab).match(r)
@@ -167,38 +198,70 @@ export default function BrokenLinkCheckerPage() {
   }
 
   async function handleScan() {
-    const input = url.trim()
-    if (!input || busy) return
+    const urls = parseUrls(url)
+    if (!urls.length || busy) return
+    if (urls.length > MAX_PAGES_UI) {
+      setError(`Enter up to ${MAX_PAGES_UI} URLs at a time.`)
+      return
+    }
 
     cancelRef.current = false
     setError('')
-    setMeta(null)
-    setLinks([])
+    setPages([])
     setResults({})
     setTab('all')
     setScope('all')
+    setActiveKey(urls.length > 1 ? 'all' : 'p0')
+    setBulk({ index: 0, total: urls.length })
     setPhase('scanning')
 
+    const queued = new Set() // each unique link is checked once per batch
+
     try {
-      const res = await fetch('/api/tools/broken-links/extract', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: input }),
-      })
-      const data = await res.json()
-      if (!res.ok || data.error) {
-        setError(data.error || 'Could not scan that page.')
-        setPhase('idle')
-        return
+      for (let i = 0; i < urls.length; i++) {
+        if (cancelRef.current) break
+        setBulk({ index: i + 1, total: urls.length })
+        setPhase('scanning')
+        const key = 'p' + i
+
+        let res, data
+        try {
+          res = await fetch('/api/tools/broken-links/extract', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: urls[i], batchSize: urls.length }),
+          })
+          data = await res.json()
+        } catch {
+          if (urls.length === 1) {
+            setError('Something went wrong. Check your connection and try again.')
+            setPhase('idle')
+            return
+          }
+          setPages(prev => [...prev, { key, input: urls[i], pageUrl: urls[i], title: '', links: [], error: 'Could not scan that page.' }])
+          continue
+        }
+
+        if (!res.ok || data.error) {
+          const msg = data.error || 'Could not scan that page.'
+          // Plan or rate limits stop the whole batch; other errors only skip this page
+          if (urls.length === 1 || res.status === 429 || res.status === 403) {
+            setError(msg)
+            setPhase(i === 0 ? 'idle' : 'done')
+            return
+          }
+          setPages(prev => [...prev, { key, input: urls[i], pageUrl: urls[i], title: '', links: [], error: msg }])
+          continue
+        }
+
+        setPages(prev => [...prev, { ...data, key, input: urls[i] }])
+        const fresh = data.links.filter(l => !queued.has(l.url))
+        fresh.forEach(l => queued.add(l.url))
+        if (fresh.length > 0) {
+          setPhase('checking')
+          await runChecks(fresh)
+        }
       }
-      setMeta(data)
-      setLinks(data.links)
-      if (data.links.length === 0) {
-        setPhase('done')
-        return
-      }
-      setPhase('checking')
-      await runChecks(data.links)
       setPhase('done')
     } catch {
       setError('Something went wrong. Check your connection and try again.')
@@ -212,7 +275,7 @@ export default function BrokenLinkCheckerPage() {
 
   // ── Export helpers ──────────────────────────────────────────────────────────
   async function copyBroken() {
-    const text = rows.filter(r => r.status === 'broken').map(r => r.url).join('\n')
+    const text = [...new Set(rows.filter(r => r.status === 'broken').map(r => r.url))].join('\n')
     if (!text) return
     try {
       await navigator.clipboard.writeText(text)
@@ -224,8 +287,9 @@ export default function BrokenLinkCheckerPage() {
   }
 
   function exportCsv() {
-    const header = ['URL', 'Anchor text', 'Status', 'Status code', 'Type', 'Redirect type', 'Redirects to', 'Rel', 'Times on page', 'Note']
+    const header = ['Source page', 'URL', 'Anchor text', 'Status', 'Status code', 'Type', 'Redirect type', 'Redirects to', 'Rel', 'Times on page', 'Note']
     const lines = rows.map(r => [
+      r.sourceUrl,
       r.url,
       r.anchor,
       STATUS[r.status].label,
@@ -242,14 +306,18 @@ export default function BrokenLinkCheckerPage() {
     const href = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = href
-    a.download = `broken-links-${hostOf(meta?.pageUrl || url)}.csv`
+    a.download = activeKey === 'all' && pages.length > 1
+      ? `broken-links-${pages.length}-pages.csv`
+      : `broken-links-${hostOf(meta?.pageUrl || url)}.csv`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(href)
   }
 
-  const showResults = meta && (phase === 'checking' || phase === 'done')
+  const showResults = pages.length > 0 && phase !== 'idle'
+  const truncPages = activeKey === 'all' ? pages.filter(p => p.truncated) : (meta?.truncated ? [meta] : [])
+  const planTier = pages.find(p => p.tier)?.tier
   const progress = links.length ? Math.round((checkedCount / links.length) * 100) : 0
   const hasIssues = counts.broken + counts.redirect + counts.unverified + counts.errors > 0
 
@@ -275,20 +343,45 @@ export default function BrokenLinkCheckerPage() {
 
           {/* ── Input ── */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
-            <label htmlFor="blc-url" className="block text-sm font-medium text-gray-700 mb-1.5">
-              Page URL
-            </label>
-            <div className="flex gap-2">
-              <input
-                id="blc-url"
-                value={url}
-                onChange={e => setUrl(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') handleScan() }}
-                placeholder="https://yoursite.com/your-page"
-                inputMode="url"
-                autoComplete="off"
-                className="flex-1 min-w-0 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D9488] text-gray-800"
-              />
+            <div className="flex items-center justify-between mb-1.5">
+              <label htmlFor="blc-url" className="block text-sm font-medium text-gray-700">
+                {bulkMode ? 'Page URLs (one per line)' : 'Page URL'}
+              </label>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  if (bulkMode) setUrl(u => u.split(/\r?\n/)[0] || '')
+                  setBulkMode(b => !b)
+                }}
+                className="text-xs font-semibold text-[#1B5FA8] hover:underline disabled:opacity-50"
+              >
+                {bulkMode ? 'Scan a single page' : 'Scan several pages'}
+              </button>
+            </div>
+            <div className="flex gap-2 items-start">
+              {bulkMode ? (
+                <textarea
+                  id="blc-url"
+                  rows={5}
+                  value={url}
+                  onChange={e => setUrl(e.target.value)}
+                  placeholder={'https://yoursite.com/resources\nhttps://yoursite.com/links'}
+                  autoComplete="off"
+                  className="flex-1 min-w-0 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D9488] text-gray-800"
+                />
+              ) : (
+                <input
+                  id="blc-url"
+                  value={url}
+                  onChange={e => setUrl(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleScan() }}
+                  placeholder="https://yoursite.com/your-page"
+                  inputMode="url"
+                  autoComplete="off"
+                  className="flex-1 min-w-0 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0D9488] text-gray-800"
+                />
+              )}
               {busy ? (
                 <button
                   onClick={handleStop}
@@ -307,7 +400,14 @@ export default function BrokenLinkCheckerPage() {
               )}
             </div>
             <p className="text-xs text-gray-400 mt-2">
-              Checks every link on one page. Enter a page address, not a file.
+              {bulkMode ? (
+                <>
+                  Bulk scan: up to 3 pages on Starter, 10 on Pro and 25 on Agency. A link that appears on several pages is checked once.{' '}
+                  <Link href="/upgrade" className="text-[#1B5FA8] font-semibold hover:underline">See plans</Link>
+                </>
+              ) : (
+                'Checks every link on one page. Enter a page address, not a file.'
+              )}
             </p>
 
             {error && (
@@ -317,7 +417,9 @@ export default function BrokenLinkCheckerPage() {
             )}
 
             {phase === 'scanning' && (
-              <p className="mt-4 text-sm text-gray-500">Scanning the page for links…</p>
+              <p className="mt-4 text-sm text-gray-500">
+                {bulk.total > 1 ? `Scanning page ${bulk.index} of ${bulk.total} for links…` : 'Scanning the page for links…'}
+              </p>
             )}
           </div>
 
@@ -327,8 +429,37 @@ export default function BrokenLinkCheckerPage() {
 
               {/* Page info + progress */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                {meta.title && <p className="text-sm font-semibold text-gray-800 mb-0.5 break-words">{meta.title}</p>}
-                <p className="text-xs text-gray-400 break-all mb-4">{meta.pageUrl}</p>
+                {pages.length > 1 && (
+                  <div className="mb-4">
+                    <label htmlFor="blc-page" className="block text-xs font-medium text-gray-500 mb-1">Showing results for</label>
+                    <select
+                      id="blc-page"
+                      value={activeKey}
+                      onChange={e => setActiveKey(e.target.value)}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#0D9488]"
+                    >
+                      <option value="all">All pages combined ({pages.filter(p => !p.error).length} scanned)</option>
+                      {pages.map(p => (
+                        <option key={p.key} value={p.key}>{pageLabel(p)}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {meta ? (
+                  <>
+                    {meta.title && <p className="text-sm font-semibold text-gray-800 mb-0.5 break-words">{meta.title}</p>}
+                    <p className="text-xs text-gray-400 break-all mb-4">{meta.pageUrl}</p>
+                  </>
+                ) : (
+                  <p className="text-sm font-semibold text-gray-800 mb-4">
+                    {pages.filter(p => !p.error).length} of {bulk.total} pages scanned
+                  </p>
+                )}
+
+                {pages.filter(p => p.error).map(p => (
+                  <p key={p.key} className="text-xs text-red-600 mb-2 break-words">{p.input}: {p.error}</p>
+                ))}
 
                 {links.length > 0 && (
                   <>
@@ -350,10 +481,12 @@ export default function BrokenLinkCheckerPage() {
                   </>
                 )}
 
-                {meta.truncated && (
+                {truncPages.length > 0 && (
                   <div className="mt-4 bg-[#C9943A]/10 border border-[#C9943A]/20 text-sm text-gray-700 rounded-xl px-4 py-3">
-                    This page has {meta.found} unique links. Your plan checks the first {meta.limit} per scan.{' '}
-                    {meta.tier !== 'paid' && (
+                    {truncPages.length === 1
+                      ? `This page has ${truncPages[0].found} unique links. Your plan checks the first ${truncPages[0].limit} per scan.`
+                      : `${truncPages.length} pages have more links than your plan checks per scan (${truncPages[0].limit}).`}{' '}
+                    {planTier !== 'agency' && (
                       <Link href="/upgrade" className="text-[#1B5FA8] font-semibold hover:underline">
                         Upgrade for a higher limit
                       </Link>
@@ -363,7 +496,9 @@ export default function BrokenLinkCheckerPage() {
 
                 {links.length === 0 && (
                   <p className="text-sm text-gray-500">
-                    No links were found on this page. If the page builds its links with JavaScript, they will not appear here because the tool reads the page&apos;s HTML.
+                    {meta?.error
+                      ? meta.error
+                      : <>No links were found on this page. If the page builds its links with JavaScript, they will not appear here because the tool reads the page&apos;s HTML.</>}
                   </p>
                 )}
               </div>
@@ -522,7 +657,7 @@ export default function BrokenLinkCheckerPage() {
                           const s = STATUS[r.status]
                           const redirectText = redirectLabel(r)
                           return (
-                            <li key={r.url} className="py-3">
+                            <li key={`${r.sourceUrl}|${r.url}`} className="py-3">
                               <div className="flex flex-wrap items-center gap-2 mb-1">
                                 <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${s.badge}`}>
                                   {s.label}{r.code ? ` ${r.code}` : ''}
@@ -548,6 +683,9 @@ export default function BrokenLinkCheckerPage() {
                               >
                                 {r.url}
                               </a>
+                              {activeKey === 'all' && (
+                                <p className="text-xs text-gray-400 mt-1 break-all">Found on: {r.sourceUrl}</p>
+                              )}
                               {(r.status === 'redirect' || r.finalUrl) && (
                                 <p className="text-xs text-gray-500 mt-1 break-all">
                                   {redirectText}

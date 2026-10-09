@@ -1,38 +1,17 @@
 // app/api/tools/broken-links/extract/route.js
 // Step 1 of the Broken Link Checker: fetch ONE page and return the links on it.
 // No AI is used, so this costs nothing in Groq credits.
+// Bulk scan = the browser calls this once per page (it sends batchSize so the plan can be checked).
 
-import { createClient } from '../../../../../lib/supabase'
 import { fetchWithRedirects, SafeFetchError } from '../../../../../lib/url-safety'
 import { extractLinks } from '../../../../../lib/link-extractor'
 import { rateLimit, getClientIp } from '../../../../../lib/rate-limit'
+import { LINK_LIMITS, BATCH_LIMITS, SCAN_LIMITS, getTier } from '../../../../../lib/linkCheckerPlans'
 
 export const runtime = 'nodejs'
 export const maxDuration = 30 // seconds; lower or remove if your Vercel plan rejects it
 
-// How many links one scan may check, by plan. Change these numbers any time.
-const LINK_LIMITS = { guest: 50, free: 100, paid: 300 }
-const PAID_PLANS = ['starter', 'pro', 'premium', 'agency']
-
-// Scans per hour, per IP address
-const SCAN_LIMITS = { guest: 15, member: 40 }
 const HOUR = 60 * 60 * 1000
-
-async function getTier() {
-  try {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return 'guest'
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('plan')
-      .eq('id', user.id)
-      .single()
-    return PAID_PLANS.includes(profile?.plan) ? 'paid' : 'free'
-  } catch {
-    return 'guest'
-  }
-}
 
 function errorResponse(message, status) {
   return Response.json({ error: message }, { status })
@@ -54,11 +33,19 @@ export async function POST(request) {
 
     const tier = await getTier()
 
-    const limit = rateLimit(
-      `extract:${getClientIp(request)}`,
-      tier === 'guest' ? SCAN_LIMITS.guest : SCAN_LIMITS.member,
-      HOUR
-    )
+    // Bulk scan: how many pages the browser says are in this batch
+    const batchSize = Number.isInteger(body?.batchSize) && body.batchSize > 0 ? body.batchSize : 1
+    const maxBatch = BATCH_LIMITS[tier]
+    if (batchSize > maxBatch) {
+      return errorResponse(
+        maxBatch === 1
+          ? 'Bulk scan is available on paid plans. Upgrade to scan several pages at once.'
+          : `Your plan can scan up to ${maxBatch} pages at once. Remove some URLs and try again.`,
+        403
+      )
+    }
+
+    const limit = rateLimit(`extract:${getClientIp(request)}`, SCAN_LIMITS[tier], HOUR)
     if (!limit.ok) {
       const minutes = Math.ceil(limit.retryAfter / 60)
       return errorResponse(`You have reached the scan limit. Try again in about ${minutes} minute${minutes === 1 ? '' : 's'}.`, 429)

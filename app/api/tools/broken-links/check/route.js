@@ -3,27 +3,16 @@
 // The browser calls this repeatedly, which gives a live progress bar and keeps
 // every request well inside serverless time limits. No AI is used.
 
-import { createClient } from '../../../../../lib/supabase'
 import { fetchWithRedirects } from '../../../../../lib/url-safety'
 import { rateLimit, getClientIp } from '../../../../../lib/rate-limit'
+import { LINK_BUDGET, getTier } from '../../../../../lib/linkCheckerPlans'
 
 export const runtime = 'nodejs'
 export const maxDuration = 30 // seconds; lower or remove if your Vercel plan rejects it
 
 const MAX_URLS_PER_REQUEST = 10
-const LINK_BUDGET = { guest: 300, member: 900 } // links checked per hour, per IP
 const HOUR = 60 * 60 * 1000
 const PER_LINK_DEADLINE_MS = 8000
-
-async function isLoggedIn() {
-  try {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    return !!user
-  } catch {
-    return false
-  }
-}
 
 // Turns a result (or error) into one of these statuses:
 //   ok            2xx, no redirect
@@ -144,10 +133,10 @@ export async function POST(request) {
       return Response.json({ error: 'Invalid link in request.' }, { status: 400 })
     }
 
-    const loggedIn = await isLoggedIn()
+    const tier = await getTier()
     const limit = rateLimit(
       `check:${getClientIp(request)}`,
-      loggedIn ? LINK_BUDGET.member : LINK_BUDGET.guest,
+      LINK_BUDGET[tier],
       HOUR,
       urls.length
     )
