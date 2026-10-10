@@ -402,7 +402,7 @@ export default function BrokenLinkCheckerPage() {
             <p className="text-xs text-gray-400 mt-2">
               {bulkMode ? (
                 <>
-                  Bulk scan: up to 3 pages on Starter, 10 on Pro and 25 on Agency. A link that appears on several pages is checked once.{' '}
+                  Bulk scan: up to 5 pages on Starter, 10 on Pro and 25 on Agency. A link that appears on several pages is checked once.{' '}
                   <Link href="/upgrade" className="text-[#1B5FA8] font-semibold hover:underline">See plans</Link>
                 </>
               ) : (

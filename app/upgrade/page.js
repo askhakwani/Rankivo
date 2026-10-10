@@ -26,7 +26,7 @@ const PLANS = [
   {
     id: 'starter', name: 'Starter', price: '$9', period: 'per month',
     postsLabel: '30 posts/month', searchesLabel: '30 keyword searches/day',
-    features: ['30 posts/month', '30 keyword searches/day', '100 keywords per search', 'Broken Link Checker: 200 links checked per page', 'Bulk scan: 3 pages at once', 'CSV export', 'Basic filters', 'Limited clustering (3 groups)'],
+    features: ['30 posts/month', '30 keyword searches/day', '100 keywords per search', 'Broken Link Checker: 200 links checked per page', 'Bulk scan: 5 pages at once', 'CSV export', 'Basic filters', 'Limited clustering (3 groups)'],
     missing: ['Intent Detection', 'Full filters', 'Trend graphs'],
     color: 'teal',
   },
