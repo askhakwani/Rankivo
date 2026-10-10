@@ -25,15 +25,15 @@ const PLANS = [
   },
   {
     id: 'starter', name: 'Starter', price: '$9', period: 'per month',
-    postsLabel: '30 posts/month', searchesLabel: '30 keyword searches/day',
-    features: ['30 posts/month', '30 keyword searches/day', '100 keywords per search', 'Broken Link Checker: 200 links checked per page', 'Bulk scan: 5 pages at once', 'CSV export', 'Basic filters', 'Limited clustering (3 groups)'],
+    postsLabel: '50 posts/month', searchesLabel: '30 keyword searches/day',
+    features: ['50 posts/month', '30 keyword searches/day', '100 keywords per search', 'Broken Link Checker: 200 links checked per page', 'Bulk scan: 5 pages at once', 'CSV export', 'Basic filters', 'Limited clustering (3 groups)'],
     missing: ['Intent Detection', 'Full filters', 'Trend graphs'],
     color: 'teal',
   },
   {
     id: 'pro', name: 'Pro', price: '$29', period: 'per month',
-    postsLabel: '100 posts/month', searchesLabel: '100 keyword searches/day',
-    features: ['100 posts/month', '100 keyword searches/day', '500 keywords per search', 'Broken Link Checker: 500 links checked per page', 'Bulk scan: 10 pages at once', 'Full filters + clustering', 'Intent detection', 'Trend graphs', 'Priority speed'],
+    postsLabel: '200 posts/month', searchesLabel: '100 keyword searches/day',
+    features: ['200 posts/month', '100 keyword searches/day', '500 keywords per search', 'Broken Link Checker: 500 links checked per page', 'Bulk scan: 10 pages at once', 'Full filters + clustering', 'Intent detection', 'Trend graphs', 'Priority speed'],
     missing: [],
     color: 'blue', popular: true,
     anchor: 'Why pay $100+ for SEO tools when Rankivo gives you what you need for $29?',
@@ -49,8 +49,8 @@ const PLANS = [
 
 const PLAN_LIMITS = {
   free:    { posts: 3,        searches: 3   },
-  starter: { posts: 30,       searches: 30  },
-  pro:     { posts: 100,      searches: 100 },
+  starter: { posts: 50,       searches: 30  },
+  pro:     { posts: 200,      searches: 100 },
   agency:  { posts: Infinity, searches: 300 },
 }
 

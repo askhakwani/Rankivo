@@ -1,4 +1,4 @@
-import { createClient } from '../../../../lib/supabase'
+import { getServerUser } from '../../../../lib/serverUser'
 import { generateWithFallback } from '../../../../lib/groq-helper'
 
 export async function POST(request) {
@@ -9,21 +9,11 @@ export async function POST(request) {
       return Response.json({ error: 'Keyword and title are required.' }, { status: 400 })
     }
 
-    // Check auth — determine free vs paid
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    // Check auth — determine free vs paid (verified login from the auth cookie)
+    const user = await getServerUser()
+    const plan = user ? user.plan : 'free'
 
-    let plan = 'free'
-    if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('plan')
-        .eq('id', user.id)
-        .single()
-      plan = profile?.plan || 'free'
-    }
-
-    const isPaid = plan === 'pro' || plan === 'premium' || plan === 'agency'
+    const isPaid = plan === 'starter' || plan === 'pro' || plan === 'agency'
 
     const prompt = `You are an expert SEO meta tag writer. Generate meta tags for the following page.
 

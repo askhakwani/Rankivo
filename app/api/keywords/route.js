@@ -1,4 +1,4 @@
-import { createClient } from '../../../lib/supabase'
+import { getServerUser } from '../../../lib/serverUser'
 import { PLANS } from '../../../lib/plans'
 import { getUserUsage, incrementSearch, deductCredit } from '../../../lib/usageTracker'
 import { generateWithFallback } from '../../../lib/groq-helper'
@@ -41,8 +41,8 @@ export async function POST(request) {
     const body = await request.json()
     const { seeds, url } = body
 
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    // Verified login from the auth cookie (null = guest)
+    const user = await getServerUser()
 
     if (!seeds || seeds.length === 0) return Response.json({ error: 'No keywords provided' }, { status: 400 })
 
@@ -51,8 +51,8 @@ export async function POST(request) {
     let chargeAction = null // 'search' | 'credit' -- charged only AFTER the AI call succeeds
 
     if (user) {
+      plan = user.plan
       usage = await getUserUsage(user.id)
-      plan = usage?.plan || 'free'
       const planLimits = PLANS[plan]
       const searchesToday = usage?.searches_today || 0
       const credits = usage?.credits || 0
