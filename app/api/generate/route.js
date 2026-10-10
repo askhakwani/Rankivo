@@ -1,6 +1,7 @@
 import Groq from 'groq-sdk'
 import { checkGenerationPolicy, incrementPostCount } from '../../../lib/usagePolicy'
 import { createServerClient } from '@supabase/ssr'
+import { normalizePlan } from '../../../lib/serverUser'
 import { cookies } from 'next/headers'
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
@@ -435,17 +436,16 @@ export async function POST(request) {
         const parsed = JSON.parse(json)
         const accessToken = parsed.access_token
         if (accessToken) {
-          const payloadBase64 = accessToken.split('.')[1]
-          const payload = JSON.parse(Buffer.from(payloadBase64, 'base64').toString('utf-8'))
-          console.log('=== JWT sub:', payload.sub, '| exp:', new Date(payload.exp * 1000).toISOString())
-          const isExpired = payload.exp * 1000 < Date.now()
-          if (!isExpired && payload.sub) {
+          // Ask Supabase to verify the token (signature and expiry). Just decoding it would let
+          // anyone forge a cookie that names another user's id.
+          const { data: authData, error: authErr } = await adminDb.auth.getUser(accessToken)
+          if (authErr || !authData?.user) {
+            console.log('=== token not verified — treating as guest:', authErr?.message)
+          } else {
             const { data: userData, error: userErr } = await adminDb
-              .from('profiles').select('id').eq('id', payload.sub).single()
+              .from('profiles').select('id').eq('id', authData.user.id).single()
             console.log('=== profile lookup:', userData?.id, '| err:', userErr?.message)
-            if (!userErr && userData) serverUser = { id: payload.sub, email: payload.email }
-          } else if (isExpired) {
-            console.log('=== JWT expired — treating as guest')
+            if (!userErr && userData) serverUser = { id: authData.user.id, email: authData.user.email }
           }
         }
       }
@@ -461,7 +461,7 @@ export async function POST(request) {
       const { data: profile, error: profErr } = await adminDb
         .from('profiles').select('plan, posts_count, reset_date').eq('id', serverUser.id).single()
       console.log('=== PROFILE:', profile, 'profErr:', profErr)
-      const plan  = profile?.plan || 'free'
+      const plan  = normalizePlan(profile?.plan)
       const limit = LIMITS[plan] ?? 3
       const used  = profile?.posts_count || 0
       const currentMonth = new Date().toISOString().slice(0, 7)
