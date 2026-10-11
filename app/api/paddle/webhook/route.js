@@ -91,6 +91,18 @@ export async function POST(request) {
   const eventType = event.event_type
   const data = event.data
 
+  // Paddle can send the same event more than once (for example when it retries).
+  // Remember each event id so a credit pack is never added twice.
+  // Needs the paddle_events table; if it is missing we still process the event.
+  if (event.event_id) {
+    const { error: dupErr } = await admin.from('paddle_events').insert({ event_id: event.event_id })
+    if (dupErr?.code === '23505') {
+      console.log('Duplicate webhook event ignored:', event.event_id)
+      return Response.json({ received: true, duplicate: true })
+    }
+    if (dupErr) console.error('paddle_events insert failed (continuing without duplicate protection):', dupErr.message)
+  }
+
   console.log('Paddle webhook:', eventType)
 
   try {
@@ -193,6 +205,8 @@ export async function POST(request) {
     }
   } catch (err) {
     console.error('Webhook handler error:', err)
+    // Let Paddle's retry be processed: forget this event id
+    if (event.event_id) await admin.from('paddle_events').delete().eq('event_id', event.event_id)
     return Response.json({ error: 'Handler error' }, { status: 500 })
   }
 

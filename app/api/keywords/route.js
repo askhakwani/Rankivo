@@ -1,7 +1,12 @@
 import { getServerUser } from '../../../lib/serverUser'
-import { PLANS } from '../../../lib/plans'
+import { PLANS, KEYWORD_FEATURES } from '../../../lib/plans'
+import { rateLimit, getClientIp } from '../../../lib/rate-limit'
 import { getUserUsage, incrementSearch, deductCredit } from '../../../lib/usageTracker'
 import { generateWithFallback } from '../../../lib/groq-helper'
+
+// Guests (not logged in): searches per day, per IP address
+const GUEST_SEARCHES_PER_DAY = 5
+const DAY = 24 * 60 * 60 * 1000
 
 function detectIntent(keyword) {
   const kw = keyword.toLowerCase()
@@ -45,6 +50,18 @@ export async function POST(request) {
     const user = await getServerUser()
 
     if (!seeds || seeds.length === 0) return Response.json({ error: 'No keywords provided' }, { status: 400 })
+
+    // Guests get a small daily allowance so the tool cannot be used to drain AI credits
+    if (!user) {
+      const guestLimit = rateLimit(`kw:${getClientIp(request)}`, GUEST_SEARCHES_PER_DAY, DAY)
+      if (!guestLimit.ok) {
+        return Response.json({
+          error: 'LIMIT_REACHED',
+          message: `You've used your ${GUEST_SEARCHES_PER_DAY} free searches for today. Sign up free to keep going.`,
+          upgrade: true,
+        }, { status: 403 })
+      }
+    }
 
     let plan = 'free'
     let usage = null
@@ -118,14 +135,26 @@ Return only valid JSON. No markdown. No explanation.`
       ...(parsed.longtail || []),
     ].slice(0, maxKeywords)
 
-    const results = allKeywords.map((kw, i) => generateMockData(kw, i))
-    const clusters = clusterKeywords(results)
+    const allResults = allKeywords.map((kw, i) => generateMockData(kw, i))
+    const allClusters = clusterKeywords(allResults)
+
+    // Only send what the user's plan includes (so it cannot be read from the response)
+    const features = KEYWORD_FEATURES[plan]
+    const strip = k => ({
+      ...k,
+      difficulty: features.difficulty ? k.difficulty : null,
+      intent: features.intent ? k.intent : null,
+      trend: features.trend ? k.trend : [],
+    })
+    const results = allResults.map(strip)
+    const clusters = Object.fromEntries(Object.entries(allClusters).slice(0, features.clusters))
+    const clustersTotal = Object.keys(allClusters).length
 
     const grouped = {
       all: results,
-      questions: (parsed.questions || []).slice(0, maxKeywords).map((kw, i) => generateMockData(kw, i)),
-      buying: (parsed.buying || []).slice(0, maxKeywords).map((kw, i) => generateMockData(kw, i + 10)),
-      longtail: (parsed.longtail || []).slice(0, maxKeywords).map((kw, i) => generateMockData(kw, i + 20)),
+      questions: (parsed.questions || []).slice(0, maxKeywords).map((kw, i) => strip(generateMockData(kw, i))),
+      buying: (parsed.buying || []).slice(0, maxKeywords).map((kw, i) => strip(generateMockData(kw, i + 10))),
+      longtail: (parsed.longtail || []).slice(0, maxKeywords).map((kw, i) => strip(generateMockData(kw, i + 20))),
       lowCompetition: results.filter(k => k.competition === 'Low'),
     }
 
@@ -135,7 +164,8 @@ Return only valid JSON. No markdown. No explanation.`
       : PLANS.free.searchesPerDay - 1
 
     return Response.json({
-      results, grouped, clusters,
+      results, grouped, clusters, clustersTotal,
+      features,
       plan,
       searchesRemaining,
       credits: updatedUsage?.search_credits || 0,

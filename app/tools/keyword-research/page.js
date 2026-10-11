@@ -34,6 +34,10 @@ function MiniTrend({ trend }) {
   )
 }
 
+const LockedCell = () => (
+  <Link href="/upgrade" title="Available on a paid plan" className="text-xs text-gray-400 hover:text-[#0D9488]">🔒</Link>
+)
+
 function SkeletonRow() {
   return (
     <tr className="border-t border-gray-100 animate-pulse">
@@ -45,6 +49,9 @@ function SkeletonRow() {
     </tr>
   )
 }
+
+// What a guest or free account gets until the server says otherwise
+const FREE_FEATURES = { difficulty: false, intent: false, trend: false, clusters: 0, csv: false, filters: 'none' }
 
 const TABS = [
   { key: 'all',       label: '🔍 All Keywords'    },
@@ -66,6 +73,8 @@ export default function KeywordResearchPage() {
   const [sort, setSort]             = useState({ key: 'volume', dir: 'desc' })
   const [selected, setSelected]     = useState([])
   const [copied, setCopied]         = useState(false)
+  const [features, setFeatures]     = useState(FREE_FEATURES)
+  const [clustersTotal, setClustersTotal] = useState(0)
 
   // ── Call the existing /api/keywords endpoint — no logic duplication ──
   async function handleGenerate() {
@@ -95,6 +104,8 @@ export default function KeywordResearchPage() {
       setResults(data.results  || [])
       setGrouped(data.grouped  || null)
       setClusters(data.clusters || {})
+      setFeatures(data.features || FREE_FEATURES)
+      setClustersTotal(data.clustersTotal || 0)
     } catch {
       setError('Something went wrong. Please try again.')
     } finally {
@@ -131,9 +142,10 @@ export default function KeywordResearchPage() {
   }
 
   function exportCSV() {
+    if (!features.csv) return
     const data   = selected.length > 0 ? filtered.filter(k => selected.includes(k.keyword)) : filtered
     const header = 'Keyword,Est. Volume,Est. CPC,Est. Difficulty,Est. Competition,Intent'
-    const rows   = data.map(k => `"${k.keyword}",${k.volume},${k.cpc},${k.difficulty},${k.competition},${k.intent}`)
+    const rows   = data.map(k => `"${k.keyword}",${k.volume},${k.cpc},${k.difficulty ?? ''},${k.competition},${k.intent ?? ''}`)
     const csv    = [header, ...rows].join('\n')
     const blob   = new Blob([csv], { type: 'text/csv' })
     const a      = document.createElement('a')
@@ -173,7 +185,7 @@ export default function KeywordResearchPage() {
               Keyword Research Tool
             </h1>
             <p className="text-gray-500 text-sm md:text-base max-w-xl mx-auto">
-              Discover related keywords, search intent and clusters, with estimated volume, CPC and difficulty — powered by AI.
+              Discover related keywords with estimated volume, CPC and competition — powered by AI. Paid plans add difficulty, search intent, trends, clusters and CSV export.
             </p>
           </div>
 
@@ -247,12 +259,21 @@ export default function KeywordResearchPage() {
                   >
                     {copied ? '✅ Copied!' : '📋 Copy'}
                   </button>
-                  <button
-                    onClick={exportCSV}
-                    className="text-sm bg-[#1B5FA8] text-white px-3 py-1.5 rounded-lg hover:bg-[#0D9488] transition-colors"
-                  >
-                    ⬇️ Export CSV
-                  </button>
+                  {features.csv ? (
+                    <button
+                      onClick={exportCSV}
+                      className="text-sm bg-[#1B5FA8] text-white px-3 py-1.5 rounded-lg hover:bg-[#0D9488] transition-colors"
+                    >
+                      ⬇️ Export CSV
+                    </button>
+                  ) : (
+                    <Link
+                      href="/upgrade"
+                      className="text-sm border border-gray-200 px-3 py-1.5 rounded-lg text-gray-500 hover:bg-gray-50"
+                    >
+                      🔒 CSV export (Starter+)
+                    </Link>
+                  )}
                 </div>
               </div>
 
@@ -262,7 +283,7 @@ export default function KeywordResearchPage() {
                   <span><b className="text-gray-800">{filtered.length}</b> keywords</span>
                   <span>Avg Est. Volume: <b className="text-gray-800">{filtered.length ? Math.round(filtered.reduce((a, k) => a + k.volume, 0) / filtered.length).toLocaleString() : 0}</b></span>
                   <span>Avg Est. CPC: <b className="text-gray-800">${filtered.length ? (filtered.reduce((a, k) => a + k.cpc, 0) / filtered.length).toFixed(2) : '0.00'}</b></span>
-                  <span>Avg Est. Difficulty: <b className="text-gray-800">{filtered.length ? Math.round(filtered.reduce((a, k) => a + k.difficulty, 0) / filtered.length) : 0}</b></span>
+                  {features.difficulty && <span>Avg Est. Difficulty: <b className="text-gray-800">{filtered.length ? Math.round(filtered.reduce((a, k) => a + k.difficulty, 0) / filtered.length) : 0}</b></span>}
                   {selected.length > 0 && <span className="text-[#0D9488]"><b>{selected.length}</b> selected</span>}
                 </div>
               )}
@@ -331,26 +352,30 @@ export default function KeywordResearchPage() {
                           <td className="px-4 py-3 text-gray-700">{kw.volume.toLocaleString()}</td>
                           <td className="px-4 py-3 text-gray-700">${kw.cpc}</td>
                           <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <div className="w-16 bg-gray-200 rounded-full h-1.5">
-                                <div
-                                  className="h-1.5 rounded-full bg-[#0D9488]"
-                                  style={{ width: `${kw.difficulty}%` }}
-                                />
+                            {kw.difficulty == null ? <LockedCell /> : (
+                              <div className="flex items-center gap-2">
+                                <div className="w-16 bg-gray-200 rounded-full h-1.5">
+                                  <div
+                                    className="h-1.5 rounded-full bg-[#0D9488]"
+                                    style={{ width: `${kw.difficulty}%` }}
+                                  />
+                                </div>
+                                <span className="text-gray-700">{kw.difficulty}</span>
                               </div>
-                              <span className="text-gray-700">{kw.difficulty}</span>
-                            </div>
+                            )}
                           </td>
                           <td className={`px-4 py-3 font-semibold ${COMPETITION_COLORS[kw.competition]}`}>
                             {kw.competition}
                           </td>
                           <td className="px-4 py-3">
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${INTENT_COLORS[kw.intent]}`}>
-                              {kw.intent}
-                            </span>
+                            {kw.intent == null ? <LockedCell /> : (
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${INTENT_COLORS[kw.intent]}`}>
+                                {kw.intent}
+                              </span>
+                            )}
                           </td>
                           <td className="px-4 py-3">
-                            <MiniTrend trend={kw.trend} />
+                            {kw.trend && kw.trend.length > 0 ? <MiniTrend trend={kw.trend} /> : <LockedCell />}
                           </td>
                         </tr>
                       ))
@@ -359,10 +384,23 @@ export default function KeywordResearchPage() {
                 </table>
               </div>
 
+              {!loading && features.clusters === 0 && (
+                <div className="p-6 border-t border-gray-100 text-sm text-gray-500">
+                  🧠 Keyword clusters are included on Starter and above.{' '}
+                  <Link href="/upgrade" className="text-[#1B5FA8] font-semibold hover:underline">See plans</Link>
+                </div>
+              )}
+
               {/* Clusters */}
               {!loading && Object.keys(clusters).length > 0 && (
                 <div className="p-6 border-t border-gray-100">
                   <h3 className="text-sm font-semibold text-gray-700 mb-3">🧠 Keyword Clusters</h3>
+                  {clustersTotal > Object.keys(clusters).length && (
+                    <p className="text-xs text-gray-400 mb-3 -mt-1">
+                      Showing {Object.keys(clusters).length} of {clustersTotal} clusters.{' '}
+                      <Link href="/upgrade" className="text-[#1B5FA8] font-semibold hover:underline">Upgrade to Pro to see them all</Link>
+                    </p>
+                  )}
                   <div className="flex flex-wrap gap-3">
                     {Object.entries(clusters).slice(0, 12).map(([cluster, kws]) => (
                       <div key={cluster} className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-2">
@@ -381,7 +419,7 @@ export default function KeywordResearchPage() {
             <div className="text-center py-24 text-gray-400">
               <div className="text-5xl mb-4">🔍</div>
               <p className="text-lg font-medium text-gray-500">Enter a keyword to get started</p>
-              <p className="text-sm mt-1">Get related keywords, search intent, clusters and estimated metrics — free.</p>
+              <p className="text-sm mt-1">Get related keywords with estimated volume and competition — free.</p>
             </div>
           )}
 
@@ -421,8 +459,8 @@ export default function KeywordResearchPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               {[
                 { step: '1', icon: '🌱', title: 'Enter Seed Keywords', desc: 'Type one or more broad keywords separated by commas. These are your starting points — the tool expands them into dozens of related ideas.' },
-                { step: '2', icon: '📊', title: 'Get Keyword Ideas and Estimates', desc: 'Instantly see estimated volume, CPC, difficulty and competition, plus search intent, for every keyword — grouped and sortable.' },
-                { step: '3', icon: '🎯', title: 'Filter and Export', desc: 'Use tabs to filter by questions, buying intent or low competition. Select the best keywords and export to CSV in one click.' },
+                { step: '2', icon: '📊', title: 'Get Keyword Ideas and Estimates', desc: 'Instantly see estimated volume, CPC and competition for every keyword — grouped and sortable. Paid plans also show difficulty, search intent and trends.' },
+                { step: '3', icon: '🎯', title: 'Filter and Export', desc: 'Use tabs to filter by questions, buying intent or low competition. Select the best keywords and copy them, or export to CSV on paid plans.' },
               ].map(({ step, icon, title, desc }) => (
                 <div key={step} className="flex flex-col items-start gap-3">
                   <div className="w-8 h-8 rounded-full bg-[#1B5FA8] text-white text-sm font-bold flex items-center justify-center shrink-0">{step}</div>
@@ -463,7 +501,7 @@ export default function KeywordResearchPage() {
                 { q: 'How accurate is the search volume data?', a: 'Volume, CPC, difficulty, competition and trend are estimates generated by Rankivo, not exact data from search engines. The keyword ideas and search intent come from AI. Use the numbers as rough signals only, and check important keywords against a source of real search data.' },
                 { q: 'What is keyword difficulty?', a: 'Keyword difficulty (0–100) estimates how hard it is to rank on the first page. Aim for under 40 if your site is new.' },
                 { q: 'What does search intent mean?', a: 'Search intent tells you why someone searches a keyword — Informational (research), Commercial (comparing), Transactional (ready to buy), or Navigational (looking for a specific site).' },
-                { q: 'Can I export my keywords?', a: 'Yes — click Export CSV to download all keywords, or select specific ones and export only those.' },
+                { q: 'Can I export my keywords?', a: 'CSV export is included on paid plans: click Export CSV to download all keywords, or select specific ones and export only those. On every plan you can select keywords and use Copy.' },
                 { q: 'How many seed keywords can I enter?', a: 'You can enter multiple seeds separated by commas. The tool generates related keywords for each one.' },
               ].map((faq, i) => (
                 <div key={i}>
