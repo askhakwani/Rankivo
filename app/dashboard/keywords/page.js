@@ -15,6 +15,10 @@ const COMPETITION_COLORS = {
   High: 'text-red-600',
 }
 
+const LockedCell = () => (
+  <a href="/upgrade" title="Available on a paid plan" className="text-xs text-gray-400 hover:text-[#0D9488]">🔒</a>
+)
+
 function MiniTrend({ trend }) {
   if (!trend || trend.length === 0) return null
   const max = Math.max(...trend.map(t => t.volume))
@@ -60,6 +64,9 @@ export default function KeywordsPage() {
   })
   const [showFilters, setShowFilters] = useState(false)
   const [copied, setCopied] = useState(false)
+  // What this account's plan includes (the server sends it with each search)
+  const [features, setFeatures] = useState({ difficulty: true, intent: true, trend: true, clusters: 12, csv: true, filters: 'full' })
+  const [clustersTotal, setClustersTotal] = useState(0)
 
   async function handleGenerate() {
     if (!seeds.trim()) return
@@ -76,10 +83,23 @@ export default function KeywordsPage() {
         body: JSON.stringify({ seeds: seedList, url }),
       })
       const data = await res.json()
-      if (data.error) { setError(data.error); return }
+      if (data.error) {
+        setError(data.error === 'LIMIT_REACHED' ? (data.message || 'You have reached your daily search limit.') : data.error)
+        return
+      }
       setResults(data.results || [])
       setGrouped(data.grouped || null)
       setClusters(data.clusters || {})
+      setClustersTotal(data.clustersTotal || 0)
+      const f = data.features || { difficulty: true, intent: true, trend: true, clusters: 12, csv: true, filters: 'full' }
+      setFeatures(f)
+      // Drop any filter the plan does not include
+      if (f.filters !== 'full') {
+        setFilters(prev => ({
+          ...prev, minCpc: '', maxCpc: '', minDiff: '', maxDiff: '',
+          ...(f.filters === 'none' ? { minVolume: '', maxVolume: '', competition: '' } : {}),
+        }))
+      }
     } catch {
       setError('Something went wrong. Please try again.')
     } finally {
@@ -123,9 +143,10 @@ export default function KeywordsPage() {
   }
 
   function exportCSV() {
+    if (!features.csv) return
     const data = selected.length > 0 ? filtered.filter(k => selected.includes(k.keyword)) : filtered
-    const header = 'Keyword,Volume,CPC,Difficulty,Competition,Intent'
-    const rows = data.map(k => `"${k.keyword}",${k.volume},${k.cpc},${k.difficulty},${k.competition},${k.intent}`)
+    const header = 'Keyword,Est. Volume,Est. CPC,Est. Difficulty,Est. Competition,Intent'
+    const rows = data.map(k => `"${k.keyword}",${k.volume},${k.cpc},${k.difficulty ?? ''},${k.competition},${k.intent ?? ''}`)
     const csv = [header, ...rows].join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
     const a = document.createElement('a')
@@ -166,7 +187,7 @@ export default function KeywordsPage() {
           {/* Header */}
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-[#1B5FA8]" style={{ fontFamily: 'Syne, sans-serif' }}>Keyword Research</h1>
-            <p className="text-gray-500 text-sm mt-1">Discover high-value keywords with search volume, CPC, and competition data.</p>
+            <p className="text-gray-500 text-sm mt-1">Discover related keywords with estimated volume, CPC and competition. Higher plans add difficulty, search intent, trends, clusters and more filters.</p>
           </div>
 
           {/* Input */}
@@ -194,15 +215,21 @@ export default function KeywordsPage() {
                   {loading ? 'Generating...' : '🔍 Generate Keywords'}
                 </button>
               </div>
-              <button
-                onClick={() => setShowFilters(f => !f)}
-                className="text-sm text-[#0D9488] hover:underline self-start"
-              >
-                {showFilters ? '▲ Hide Filters' : '▼ Show Filters'}
-              </button>
+              {features.filters === 'none' ? (
+                <a href="/upgrade" className="text-sm text-gray-400 hover:text-[#0D9488] self-start">
+                  🔒 Filters (Starter and above)
+                </a>
+              ) : (
+                <button
+                  onClick={() => setShowFilters(f => !f)}
+                  className="text-sm text-[#0D9488] hover:underline self-start"
+                >
+                  {showFilters ? '▲ Hide Filters' : '▼ Show Filters'}
+                </button>
+              )}
 
               {/* Filters */}
-              {showFilters && (
+              {showFilters && features.filters !== 'none' && (
                 <div className="grid grid-cols-4 gap-3 mt-2 p-4 bg-gray-50 rounded-xl">
                   {[
                     { label: 'Min Volume', key: 'minVolume', placeholder: '100' },
@@ -211,7 +238,7 @@ export default function KeywordsPage() {
                     { label: 'Max CPC ($)', key: 'maxCpc', placeholder: '10' },
                     { label: 'Min Difficulty', key: 'minDiff', placeholder: '0' },
                     { label: 'Max Difficulty', key: 'maxDiff', placeholder: '100' },
-                  ].map(f => (
+                  ].filter(f => features.filters === 'full' || ['minVolume', 'maxVolume'].includes(f.key)).map(f => (
                     <div key={f.key}>
                       <label className="text-xs text-gray-500 mb-1 block">{f.label}</label>
                       <input
@@ -270,9 +297,15 @@ export default function KeywordsPage() {
                   <button onClick={copySelected} className="text-sm border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 text-gray-600">
                     {copied ? '✅ Copied!' : '📋 Copy'}
                   </button>
-                  <button onClick={exportCSV} className="text-sm bg-[#1B5FA8] text-white px-3 py-1.5 rounded-lg hover:bg-[#0D9488]">
-                    ⬇️ Export CSV
-                  </button>
+                  {features.csv ? (
+                    <button onClick={exportCSV} className="text-sm bg-[#1B5FA8] text-white px-3 py-1.5 rounded-lg hover:bg-[#0D9488]">
+                      ⬇️ Export CSV
+                    </button>
+                  ) : (
+                    <a href="/upgrade" className="text-sm border border-gray-200 px-3 py-1.5 rounded-lg text-gray-500 hover:bg-gray-50">
+                      🔒 CSV export (Starter+)
+                    </a>
+                  )}
                 </div>
               </div>
 
@@ -280,11 +313,17 @@ export default function KeywordsPage() {
               {!loading && (
                 <div className="px-6 py-3 bg-gray-50 border-b border-gray-100 flex gap-6 text-sm text-gray-500">
                   <span><b className="text-gray-800">{filtered.length}</b> keywords</span>
-                  <span>Avg Volume: <b className="text-gray-800">{filtered.length ? Math.round(filtered.reduce((a, k) => a + k.volume, 0) / filtered.length).toLocaleString() : 0}</b></span>
-                  <span>Avg CPC: <b className="text-gray-800">${filtered.length ? (filtered.reduce((a, k) => a + k.cpc, 0) / filtered.length).toFixed(2) : '0.00'}</b></span>
-                  <span>Avg Difficulty: <b className="text-gray-800">{filtered.length ? Math.round(filtered.reduce((a, k) => a + k.difficulty, 0) / filtered.length) : 0}</b></span>
+                  <span>Avg Est. Volume: <b className="text-gray-800">{filtered.length ? Math.round(filtered.reduce((a, k) => a + k.volume, 0) / filtered.length).toLocaleString() : 0}</b></span>
+                  <span>Avg Est. CPC: <b className="text-gray-800">${filtered.length ? (filtered.reduce((a, k) => a + k.cpc, 0) / filtered.length).toFixed(2) : '0.00'}</b></span>
+                  {features.difficulty && <span>Avg Est. Difficulty: <b className="text-gray-800">{filtered.length ? Math.round(filtered.reduce((a, k) => a + k.difficulty, 0) / filtered.length) : 0}</b></span>}
                   {selected.length > 0 && <span className="text-[#0D9488]"><b>{selected.length}</b> selected</span>}
                 </div>
+              )}
+
+              {!loading && (
+                <p className="px-6 py-2 text-xs text-gray-400 border-b border-gray-100">
+                  Volume, CPC, difficulty, competition and trend are estimates generated by Rankivo, not exact search-engine data. Keywords and search intent are AI-generated suggestions.
+                </p>
               )}
 
               {/* Table */}
@@ -297,12 +336,12 @@ export default function KeywordsPage() {
                       </th>
                       {[
                         { label: 'Keyword', key: 'keyword' },
-                        { label: 'Volume', key: 'volume' },
-                        { label: 'CPC', key: 'cpc' },
-                        { label: 'Difficulty', key: 'difficulty' },
-                        { label: 'Competition', key: 'competition' },
+                        { label: 'Est. Volume', key: 'volume' },
+                        { label: 'Est. CPC', key: 'cpc' },
+                        { label: 'Est. Difficulty', key: 'difficulty' },
+                        { label: 'Est. Competition', key: 'competition' },
                         { label: 'Intent', key: 'intent' },
-                        { label: 'Trend', key: null },
+                        { label: 'Est. Trend', key: null },
                       ].map(col => (
                         <th
                           key={col.label}
@@ -329,18 +368,22 @@ export default function KeywordsPage() {
                           <td className="px-4 py-3 text-gray-700">{kw.volume.toLocaleString()}</td>
                           <td className="px-4 py-3 text-gray-700">${kw.cpc}</td>
                           <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <div className="w-16 bg-gray-200 rounded-full h-1.5">
-                                <div className="h-1.5 rounded-full bg-[#0D9488]" style={{ width: `${kw.difficulty}%` }} />
+                            {kw.difficulty == null ? <LockedCell /> : (
+                              <div className="flex items-center gap-2">
+                                <div className="w-16 bg-gray-200 rounded-full h-1.5">
+                                  <div className="h-1.5 rounded-full bg-[#0D9488]" style={{ width: `${kw.difficulty}%` }} />
+                                </div>
+                                <span className="text-gray-700">{kw.difficulty}</span>
                               </div>
-                              <span className="text-gray-700">{kw.difficulty}</span>
-                            </div>
+                            )}
                           </td>
                           <td className={`px-4 py-3 font-semibold ${COMPETITION_COLORS[kw.competition]}`}>{kw.competition}</td>
                           <td className="px-4 py-3">
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${INTENT_COLORS[kw.intent]}`}>{kw.intent}</span>
+                            {kw.intent == null ? <LockedCell /> : (
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${INTENT_COLORS[kw.intent]}`}>{kw.intent}</span>
+                            )}
                           </td>
-                          <td className="px-4 py-3"><MiniTrend trend={kw.trend} /></td>
+                          <td className="px-4 py-3">{kw.trend && kw.trend.length > 0 ? <MiniTrend trend={kw.trend} /> : <LockedCell />}</td>
                         </tr>
                       ))
                     )}
@@ -348,10 +391,23 @@ export default function KeywordsPage() {
                 </table>
               </div>
 
+              {!loading && features.clusters === 0 && (
+                <div className="p-6 border-t border-gray-100 text-sm text-gray-500">
+                  🧠 Keyword clusters are included on Starter and above.{' '}
+                  <a href="/upgrade" className="text-[#1B5FA8] font-semibold hover:underline">See plans</a>
+                </div>
+              )}
+
               {/* Clusters */}
               {!loading && Object.keys(clusters).length > 0 && (
                 <div className="p-6 border-t border-gray-100">
                   <h3 className="text-sm font-semibold text-gray-700 mb-3">🧠 Keyword Clusters</h3>
+                  {clustersTotal > Object.keys(clusters).length && (
+                    <p className="text-xs text-gray-400 mb-3 -mt-1">
+                      Showing {Object.keys(clusters).length} of {clustersTotal} clusters.{' '}
+                      <a href="/upgrade" className="text-[#1B5FA8] font-semibold hover:underline">Upgrade to Pro to see them all</a>
+                    </p>
+                  )}
                   <div className="flex flex-wrap gap-3">
                     {Object.entries(clusters).slice(0, 12).map(([cluster, kws]) => (
                       <div key={cluster} className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-2">
@@ -370,7 +426,7 @@ export default function KeywordsPage() {
             <div className="text-center py-24 text-gray-400">
               <div className="text-5xl mb-4">🔍</div>
               <p className="text-lg font-medium text-gray-500">Enter a keyword to get started</p>
-              <p className="text-sm mt-1">Discover search volume, CPC, competition, and more.</p>
+              <p className="text-sm mt-1">Get related keywords and estimated metrics for any topic.</p>
             </div>
           )}
 

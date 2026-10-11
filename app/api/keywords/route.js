@@ -55,7 +55,7 @@ export async function POST(request) {
       usage = await getUserUsage(user.id)
       const planLimits = PLANS[plan]
       const searchesToday = usage?.searches_today || 0
-      const credits = usage?.credits || 0
+      const credits = usage?.search_credits || 0
 
       if (searchesToday >= planLimits.searchesPerDay) {
         if (credits > 0) {
@@ -138,7 +138,7 @@ Return only valid JSON. No markdown. No explanation.`
       results, grouped, clusters,
       plan,
       searchesRemaining,
-      credits: updatedUsage?.credits || 0,
+      credits: updatedUsage?.search_credits || 0,
     })
 
   } catch (error) {

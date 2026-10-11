@@ -456,10 +456,11 @@ export async function POST(request) {
     const isGuest = !serverUser
     console.log('=== AUTH isGuest:', isGuest, 'userId:', serverUser?.id)
 
+    let useCredit = false // true when this post is paid for with a bought post credit
     if (!isGuest) {
       const LIMITS = { free: 3, starter: 50, pro: 200, agency: Infinity }
       const { data: profile, error: profErr } = await adminDb
-        .from('profiles').select('plan, posts_count, reset_date').eq('id', serverUser.id).single()
+        .from('profiles').select('plan, posts_count, reset_date, post_credits').eq('id', serverUser.id).single()
       console.log('=== PROFILE:', profile, 'profErr:', profErr)
       const plan  = normalizePlan(profile?.plan)
       const limit = LIMITS[plan] ?? 3
@@ -473,11 +474,15 @@ export async function POST(request) {
           .eq('id', serverUser.id)
         console.log('=== RESET posts_count to 0')
       } else if (limit !== Infinity && used >= limit) {
-        return Response.json({
-          error: 'LIMIT_REACHED',
-          message: `You've used all ${limit} posts this month on the ${plan} plan.`,
-          upgrade: true, postsUsed: used, postsLimit: limit, plan,
-        }, { status: 403 })
+        if ((profile?.post_credits || 0) > 0) {
+          useCredit = true // over the plan limit: spend a bought credit instead of blocking
+        } else {
+          return Response.json({
+            error: 'LIMIT_REACHED',
+            message: `You've used all ${limit} posts this month on the ${plan} plan. Upgrade or buy post credits.`,
+            upgrade: true, postsUsed: used, postsLimit: limit, plan,
+          }, { status: 403 })
+        }
       }
     }
 
@@ -524,7 +529,14 @@ export async function POST(request) {
     }
 
     // ── Track usage ───────────────────────────────────────────────────────────
-    if (!isGuest && serverUser) {
+    if (!isGuest && serverUser && useCredit) {
+      // Over the plan limit: use one bought credit (the monthly count stays as it is)
+      const { data: cr } = await adminDb
+        .from('profiles').select('post_credits').eq('id', serverUser.id).single()
+      if ((cr?.post_credits || 0) > 0) {
+        await adminDb.from('profiles').update({ post_credits: cr.post_credits - 1 }).eq('id', serverUser.id)
+      }
+    } else if (!isGuest && serverUser) {
       console.log('=== INCREMENT for userId:', serverUser.id)
       const { data: cur, error: selErr } = await adminDb
         .from('profiles').select('posts_count').eq('id', serverUser.id).single()
