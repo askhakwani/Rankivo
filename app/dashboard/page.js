@@ -424,7 +424,8 @@ function DashboardInner() {
         )}
 
         {/* ── KEYWORDS ─────────────────────────────────────────────────── */}
-        {activeTab === 'keywords' && (
+        {/* HIDDEN: remove 'false &&' to restore */}
+        {false && activeTab === 'keywords' && (
           <div className="max-w-2xl">
             <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">Keyword Research</h2>
             <p className="text-gray-500 mb-5 text-sm">Find keyword ideas and related questions.</p>
